@@ -48,11 +48,14 @@ swarmvault demo
 After the first compile, use:
 
 ```bash
+swarmvault next
 swarmvault query "What are the key concepts?"
 swarmvault graph serve
 swarmvault doctor
 swarmvault candidate list
 ```
+
+`swarmvault next` is read-only. It detects whether the current folder needs init, ingest, compile, graph refresh, review, or query work and prints the safest next commands.
 
 Use the step-by-step flow when you want more control:
 
@@ -62,6 +65,7 @@ swarmvault ingest ./src --repo-root .
 swarmvault ingest ./meeting.srt --guide
 swarmvault add https://arxiv.org/abs/2401.12345
 swarmvault compile
+swarmvault next
 swarmvault query "What is the auth flow?"
 swarmvault graph serve
 ```
@@ -69,6 +73,16 @@ swarmvault graph serve
 Use `source add` for recurring inputs (`swarmvault source add https://github.com/karpathy/micrograd`, `swarmvault source add https://example.com/docs/getting-started`, `swarmvault source list`, `swarmvault source reload --all`, and `swarmvault source session file-customer-call-srt-12345678`). Use advanced graph/context surfaces when needed: `swarmvault graph status ./src`, `swarmvault check-update ./src`, `swarmvault update ./src`, `swarmvault graph stats`, `swarmvault graph validate --strict`, `swarmvault graph cluster`, `swarmvault cluster-only`, `swarmvault tree --output ./exports/tree.html`, `swarmvault export ai --out ./exports/ai`, `swarmvault context build "Ship this feature safely" --target ./src --budget 8000`, and `swarmvault task start "Ship this feature safely" --target ./src --agent codex`.
 
 ## Commands
+
+### `swarmvault next`
+
+Print the safest next command for the current directory without changing files.
+
+- reports `uninitialized`, `initialized`, or `compiled`
+- prints key vault paths such as config, schema, `raw/`, `wiki/`, `state/graph.json`, and the graph report
+- recommends `quickstart`, `init`, `ingest`, `compile`, `query`, review, doctor, or graph refresh commands based on current state
+- supports `--json` with `status`, `paths`, `checks`, and `recommendations`
+- does not emit notices, prompts, repairs, or writes
 
 ### `swarmvault init [--obsidian] [--profile <alias-or-presets>]`
 

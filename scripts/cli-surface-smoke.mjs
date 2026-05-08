@@ -83,6 +83,7 @@ const SURFACE_MANIFEST = {
   "memory start": "behavior",
   "memory update": "behavior",
   migrate: "behavior",
+  next: "behavior",
   provider: "help",
   "provider setup": "behavior",
   quickstart: "behavior",
@@ -150,7 +151,8 @@ try {
   );
 
   await assertExecutableCli(cliPath);
-  await runCli(["--help"], { cwd: repoRoot, label: "root-help" });
+  const rootHelp = await runCli(["--help"], { cwd: repoRoot, label: "root-help" });
+  assertRootHelpIsProgressive(rootHelp.stdout);
   await runCli(["--version"], { cwd: repoRoot, label: "root-version" });
   for (const commandPath of discovered.paths) {
     await runCli([...commandPath.split(" "), "--help"], {
@@ -277,6 +279,18 @@ function commandToken(spec) {
   return String(spec).trim().split(/\s+/u)[0];
 }
 
+function assertRootHelpIsProgressive(stdout) {
+  assert.ok(stdout.includes("next"), "root help should include the next command");
+  assert.ok(stdout.includes("swarmvault next"), "root help should point users at swarmvault next");
+  for (const alias of ["scan", "clone", "check-update", "update", "cluster-only", "tree", "merge-graphs", "memory"]) {
+    const visibleAliasLine = stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .some((line) => line === alias || line.startsWith(`${alias} `));
+    assert.equal(visibleAliasLine, false, `root help should hide compatibility alias: ${alias}`);
+  }
+}
+
 async function assertExecutableCli(targetPath) {
   await fs.access(targetPath);
 }
@@ -310,14 +324,32 @@ async function runBehaviorSmoke() {
     "utf8"
   );
 
+  const nextEmptyWorkspace = await makeTempDir("swarmvault-cli-surface-next-empty-");
+  await runJsonCheck(["next"], nextEmptyWorkspace, "next uninitialized", (result) => {
+    assert.equal(result.status, "uninitialized", "next did not identify an uninitialized workspace");
+    assert.ok(result.recommendations.some((entry) => entry.command.startsWith("swarmvault quickstart")), "next did not recommend quickstart");
+  });
+
   const init = await runJson(["init"], workspaceDir);
   assert.ok(init.rootDir || init.paths, "init JSON did not describe the initialized workspace");
+
+  await runJsonCheck(["next"], workspaceDir, "next initialized", (result) => {
+    assert.equal(result.status, "initialized", "next did not identify an initialized workspace before compile");
+    assert.ok(result.recommendations.some((entry) => entry.command === "swarmvault compile"), "next did not recommend compile");
+  });
 
   const ingested = await runJson(["ingest", sourceDir, "--repo-root", sourceDir], workspaceDir);
   assert.ok(Array.isArray(ingested.imported) && ingested.imported.length >= 2, "ingest did not import the smoke sources");
 
   const compiled = await runJson(["compile"], workspaceDir);
   assert.ok(compiled.sourceCount >= 2, "compile did not report the smoke sources");
+
+  await runJsonCheck(["next"], workspaceDir, "next compiled", (result) => {
+    assert.equal(result.status, "compiled", "next did not identify a compiled workspace");
+    assert.equal(result.graph?.exists, true, "next did not report a compiled graph");
+    assert.ok(Array.isArray(result.checks) && result.checks.length > 0, "next did not return checks");
+    assert.ok(Array.isArray(result.recommendations), "next did not return recommendations");
+  });
 
   await runJsonCheck(["query", "What does the vault say about durable outputs?", "--no-save"], workspaceDir, "query", (result) => {
     assert.ok(typeof result.answer === "string" && result.answer.length > 0, "query returned no answer");
@@ -561,6 +593,24 @@ async function runBehaviorSmoke() {
     assert.ok(result.compiled?.sourceCount >= 1, "quickstart --no-serve did not compile the input");
     assert.ok(typeof result.shareKitPath === "string", "quickstart did not return share kit path");
   });
+
+  const quickstartHumanWorkspace = path.join(scanDir, "quickstart-human-workspace");
+  await fs.mkdir(quickstartHumanWorkspace, { recursive: true });
+  const quickstartHuman = await runCli(["quickstart", scanInput, "--no-serve"], {
+    cwd: quickstartHumanWorkspace,
+    label: "quickstart human"
+  });
+  assert.ok(quickstartHuman.stdout.trim().endsWith("swarmvault next"), "quickstart human output should end with swarmvault next");
+  summary.behaviorChecks.push("quickstart human next");
+
+  const initHumanWorkspace = path.join(scanDir, "init-human-workspace");
+  await fs.mkdir(initHumanWorkspace, { recursive: true });
+  const initHuman = await runCli(["init"], {
+    cwd: initHumanWorkspace,
+    label: "init human"
+  });
+  assert.ok(initHuman.stdout.trim().endsWith("Next: swarmvault next"), "init human output should end with swarmvault next");
+  summary.behaviorChecks.push("init human next");
 
   const cloneWorkspace = path.join(scanDir, "clone-workspace");
   await fs.mkdir(cloneWorkspace, { recursive: true });

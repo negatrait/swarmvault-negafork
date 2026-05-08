@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 3.14.0
+
+- Added `swarmvault next` as a read-only orientation command with human and JSON output for uninitialized, initialized, and compiled vault states.
+- Simplified default top-level help by keeping primary commands visible while hiding older compatibility aliases from the first screen; direct alias help and execution still work.
+- Updated `quickstart` and `init` human output to point new users at `swarmvault next` after setup.
+- Extended parser-backed CLI surface smoke to cover `next`, progressive root help, quickstart/init orientation output, and uninitialized/initialized/compiled JSON behavior.
+- Moved the website input-type matrix into a dedicated reference page and synced OSS README, localized READMEs, package docs, site docs, spec notes, and the ClawHub skill bundle.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, and ClawHub skill metadata to `3.14.0`.
+
 ## 3.13.0
 
 - Added `swarmvault quickstart <input>` as the beginner-friendly first-run command over the existing scan implementation, including `--no-serve`, `--no-viz`, `--mcp`, and public GitHub checkout flags.

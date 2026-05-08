@@ -13,7 +13,8 @@ Expected shape:
 - runs `pnpm live:cli-surface` from the OSS repo before release preflight when CLI command coverage is in scope
 - expects the smoke to parse `packages/cli/src/index.ts` with the TypeScript compiler API
 - expects every stable command path and alias to be classified in the surface manifest
-- expects `--help` coverage across the full command tree plus direct JSON behavior checks for the main local workflows, including `swarmvault chat` and `swarmvault export ai`
+- expects root `--help` to show the essential commands while hiding compatibility aliases from the default view
+- expects `--help` coverage across the full command tree plus direct JSON behavior checks for the main local workflows, including `swarmvault next`, `swarmvault chat`, and `swarmvault export ai`
 
 ## First-run prompt
 
@@ -27,6 +28,7 @@ Expected shape:
 - may use `swarmvault demo --no-serve` for the fastest zero-config walkthrough
 - may use `swarmvault quickstart <directory> --no-serve` as the beginner path for a quick local repo walkthrough
 - may use `swarmvault scan <directory> --no-serve` when the user asks for the older concise scan command
+- uses or suggests `swarmvault next` when the current workspace state is unclear
 - points at `swarmvault.schema.md`
 - mentions `wiki/` and `state/`
 - prefers `wiki/graph/report.md` once compile exists

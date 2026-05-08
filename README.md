@@ -33,11 +33,14 @@ swarmvault demo
 After your first compile, the most useful next commands are:
 
 ```bash
+swarmvault next
 swarmvault query "What are the key concepts?"
 swarmvault graph serve
 swarmvault doctor
 swarmvault candidate list
 ```
+
+Not sure what state the vault is in? `swarmvault next` is read-only and tells you whether to initialize, ingest, compile, query, review, or refresh.
 
 ![SwarmVault graph workspace](https://www.swarmvault.ai/images/screenshots/graph-workspace.png)
 
@@ -145,6 +148,7 @@ Run this from an empty folder or a scratch folder where you want the vault artif
 mkdir my-vault
 cd my-vault
 swarmvault quickstart ../your-repo
+swarmvault next
 ```
 
 That is the easiest path for a new user. It does the same work as `swarmvault scan`: initialize the vault, ingest the input, compile the wiki and graph, write share artifacts, and open the graph viewer unless you pass `--no-serve` or `--no-viz`.
@@ -171,6 +175,7 @@ swarmvault ingest ./src --repo-root .
 swarmvault ingest ./meeting.srt --guide
 swarmvault add https://arxiv.org/abs/2401.12345
 swarmvault compile
+swarmvault next
 swarmvault query "What is the auth flow?"
 swarmvault graph serve
 ```
@@ -181,6 +186,7 @@ Use `swarmvault source add https://github.com/karpathy/micrograd`, `swarmvault s
 
 | Goal | Command |
 | --- | --- |
+| See the best next command for this folder | `swarmvault next` |
 | Run the beginner path without opening the viewer | `swarmvault quickstart ./path --no-serve` |
 | Use the older concise alias | `swarmvault scan ./path --no-viz` |
 | Inspect graph freshness | `swarmvault graph status ./src` or `swarmvault check-update ./src` |

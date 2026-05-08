@@ -63,6 +63,7 @@ Then verify:
 Run:
 
 ```bash
+swarmvault next
 swarmvault compile
 swarmvault doctor
 ```
@@ -106,6 +107,8 @@ Before exporting, merging, pushing, or publishing graph artifacts, run `swarmvau
 ## Vault doctor reports warnings
 
 `swarmvault doctor` is the broad health summary. It checks graph artifacts, retrieval, review queues, watch state, migrations, managed sources, and task ledgers, then prints concrete follow-up commands. The `swarmvault graph serve` workbench shows the same full check list with details and copyable suggested commands.
+
+If you only need orientation and do not want any prompts, notices, repairs, or writes, run `swarmvault next` first. It returns `status`, key `paths`, `checks`, and prioritized `recommendations` in human or JSON output.
 
 Safe derived retrieval repairs can be applied with:
 

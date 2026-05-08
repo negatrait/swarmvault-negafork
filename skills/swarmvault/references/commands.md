@@ -5,6 +5,7 @@
 ```bash
 swarmvault demo --no-serve
 swarmvault quickstart ./apps/api
+swarmvault next
 swarmvault quickstart ./apps/api --no-serve
 swarmvault init
 swarmvault init --obsidian --profile personal-research

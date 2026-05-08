@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
@@ -11,6 +11,7 @@ import type {
   GraphArtifact,
   GraphQueryFilters,
   GuidedSourceSessionQuestion,
+  ResolvedPaths,
   SourceClass
 } from "@swarmvaultai/engine";
 import {
@@ -28,6 +29,7 @@ import {
   compileVault,
   consolidateVault,
   createSupersessionEdge,
+  defaultVaultConfig,
   deleteChatSession,
   deleteContextPack,
   deleteManagedSource,
@@ -92,6 +94,7 @@ import {
   renderGraphShareBundleFiles,
   renderGraphShareMarkdown,
   renderGraphShareSvg,
+  resolvePaths,
   resumeMemoryTask,
   resumeSourceSession,
   reviewManagedSource,
@@ -124,12 +127,23 @@ program
   .enablePositionalOptions()
   .option("--json", "Emit structured JSON output", false);
 
+program.addHelpText("after", (context) =>
+  context.command === program
+    ? [
+        "",
+        "Need help choosing? Run `swarmvault next`.",
+        "Advanced and compatibility commands are still available with `swarmvault <command> --help`.",
+        "CLI docs: https://www.swarmvault.ai/docs/cli"
+      ].join("\n")
+    : ""
+);
+
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.13.0";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.14.0";
   } catch {
-    return "3.13.0";
+    return "3.14.0";
   }
 }
 
@@ -220,6 +234,315 @@ function log(message: string): void {
     process.stderr.write(`${message}\n`);
   } else {
     process.stdout.write(`${message}\n`);
+  }
+}
+
+type NextCommandStatus = "uninitialized" | "initialized" | "compiled";
+type NextCommandPriority = "high" | "medium" | "low";
+type NextCommandCheckStatus = "ok" | "warning" | "error";
+
+interface NextCommandCheck {
+  id: string;
+  label: string;
+  status: NextCommandCheckStatus;
+  summary: string;
+  detail?: string;
+  command?: string;
+}
+
+interface NextCommandRecommendation {
+  label: string;
+  command: string;
+  description: string;
+  priority: NextCommandPriority;
+}
+
+interface NextCommandPaths {
+  configPath: string;
+  schemaPath: string;
+  rawDir: string;
+  wikiDir: string;
+  stateDir: string;
+  graphPath: string;
+  reportPath: string;
+}
+
+interface NextCommandReport {
+  status: NextCommandStatus;
+  rootDir: string;
+  generatedAt: string;
+  paths: NextCommandPaths;
+  checks: NextCommandCheck[];
+  recommendations: NextCommandRecommendation[];
+  counts?: {
+    sources: number;
+    managedSources: number;
+    pages: number;
+    nodes: number;
+    edges: number;
+    approvalsPending: number;
+    candidates: number;
+    tasks: number;
+    pendingSemanticRefresh: number;
+  };
+  graph?: {
+    exists: boolean;
+    reportExists: boolean;
+    stale: boolean;
+    codeChangeCount: number;
+    semanticChangeCount: number;
+    trackedRepoRoots: string[];
+  };
+}
+
+function serializeNextPaths(paths: ResolvedPaths): NextCommandPaths {
+  return {
+    configPath: paths.configPath,
+    schemaPath: paths.schemaPath,
+    rawDir: paths.rawDir,
+    wikiDir: paths.wikiDir,
+    stateDir: paths.stateDir,
+    graphPath: paths.graphPath,
+    reportPath: path.join(paths.wikiDir, "graph", "report.md")
+  };
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function nextRecommendation(label: string, command: string, description: string, priority: NextCommandPriority): NextCommandRecommendation {
+  return { label, command, description, priority };
+}
+
+function dedupeNextRecommendations(recommendations: NextCommandRecommendation[]): NextCommandRecommendation[] {
+  const seen = new Set<string>();
+  const rank = { high: 0, medium: 1, low: 2 } as const;
+  return recommendations
+    .filter((recommendation) => {
+      if (seen.has(recommendation.command)) {
+        return false;
+      }
+      seen.add(recommendation.command);
+      return true;
+    })
+    .sort((left, right) => rank[left.priority] - rank[right.priority] || left.command.localeCompare(right.command));
+}
+
+async function buildNextCommandReport(rootDir: string): Promise<NextCommandReport> {
+  const generatedAt = new Date().toISOString();
+  const fallbackPaths = resolvePaths(rootDir, defaultVaultConfig());
+  const fallbackNextPaths = serializeNextPaths(fallbackPaths);
+  const [configExists, schemaExists] = await Promise.all([pathExists(fallbackPaths.configPath), pathExists(fallbackPaths.schemaPath)]);
+
+  if (!configExists && !schemaExists) {
+    return {
+      status: "uninitialized",
+      rootDir,
+      generatedAt,
+      paths: fallbackNextPaths,
+      checks: [
+        {
+          id: "workspace",
+          label: "Workspace",
+          status: "error",
+          summary: "No SwarmVault workspace files were found in this directory.",
+          command: "swarmvault quickstart ./your-repo"
+        }
+      ],
+      recommendations: [
+        nextRecommendation(
+          "Fast start",
+          "swarmvault quickstart ./your-repo",
+          "Initialize, ingest, compile, and open the graph viewer.",
+          "high"
+        ),
+        nextRecommendation("Try a sample", "swarmvault demo", "Build a small demo vault before using your own files.", "medium"),
+        nextRecommendation(
+          "Manual setup",
+          "swarmvault init",
+          "Create an empty vault when you want to ingest and compile step by step.",
+          "medium"
+        )
+      ]
+    };
+  }
+
+  let paths: ResolvedPaths;
+  try {
+    ({ paths } = await loadVaultConfig(rootDir));
+  } catch (error: unknown) {
+    return {
+      status: "initialized",
+      rootDir,
+      generatedAt,
+      paths: fallbackNextPaths,
+      checks: [
+        {
+          id: "config",
+          label: "Config",
+          status: "error",
+          summary: "SwarmVault workspace files exist, but the config could not be loaded.",
+          detail: error instanceof Error ? error.message : String(error),
+          command: "swarmvault doctor"
+        }
+      ],
+      recommendations: [
+        nextRecommendation(
+          "Inspect workspace health",
+          "swarmvault doctor",
+          "Review the config/schema issue before ingesting or compiling.",
+          "high"
+        )
+      ]
+    };
+  }
+
+  const nextPaths = serializeNextPaths(paths);
+  const graphStatus = await getGraphStatus(rootDir).catch(() => null);
+  const graphExists = graphStatus?.graphExists ?? (await pathExists(paths.graphPath));
+
+  if (!graphExists) {
+    return {
+      status: "initialized",
+      rootDir,
+      generatedAt,
+      paths: nextPaths,
+      checks: [
+        {
+          id: "workspace",
+          label: "Workspace",
+          status: "ok",
+          summary: "Workspace config and schema are present."
+        },
+        {
+          id: "graph",
+          label: "Graph",
+          status: "error",
+          summary: "No compiled graph artifact was found.",
+          command: "swarmvault compile"
+        }
+      ],
+      recommendations: [
+        nextRecommendation("Add sources", "swarmvault ingest ./your-source", "Import a directory, file, or URL into raw/.", "high"),
+        nextRecommendation("Compile vault", "swarmvault compile", "Build wiki pages, graph JSON, and the graph report.", "high"),
+        nextRecommendation("Open the viewer", "swarmvault graph serve", "Open the local graph viewer after compiling.", "medium")
+      ],
+      graph: graphStatus
+        ? {
+            exists: graphStatus.graphExists,
+            reportExists: graphStatus.reportExists,
+            stale: graphStatus.stale,
+            codeChangeCount: graphStatus.codeChangeCount,
+            semanticChangeCount: graphStatus.semanticChangeCount,
+            trackedRepoRoots: graphStatus.trackedRepoRoots
+          }
+        : undefined
+    };
+  }
+
+  const doctor = await doctorVault(rootDir, { repair: false });
+  const recommendations = dedupeNextRecommendations([
+    ...(graphStatus?.recommendedCommand
+      ? [
+          nextRecommendation(
+            graphStatus.stale ? "Refresh graph" : "Check graph",
+            graphStatus.recommendedCommand,
+            graphStatus.stale ? "Tracked inputs changed since the graph was compiled." : "Review graph freshness.",
+            graphStatus.stale ? "high" : "medium"
+          )
+        ]
+      : []),
+    ...doctor.recommendations
+      .filter((recommendation) => recommendation.command)
+      .map((recommendation) =>
+        nextRecommendation(
+          recommendation.label,
+          recommendation.command as string,
+          recommendation.description ?? recommendation.summary,
+          recommendation.priority
+        )
+      ),
+    ...(doctor.recommendations.length
+      ? []
+      : [
+          nextRecommendation(
+            "Ask a question",
+            'swarmvault query "What are the key concepts?"',
+            "Query the compiled wiki and graph.",
+            "medium"
+          ),
+          nextRecommendation("Open the graph", "swarmvault graph serve", "Explore the compiled graph locally.", "medium"),
+          nextRecommendation("Run health checks", "swarmvault doctor", "Re-check graph, retrieval, review queues, and migrations.", "low")
+        ])
+  ]);
+
+  return {
+    status: "compiled",
+    rootDir,
+    generatedAt,
+    paths: nextPaths,
+    checks: doctor.checks.map((check) => ({
+      id: check.id,
+      label: check.label,
+      status: check.status,
+      summary: check.summary,
+      detail: check.detail,
+      command: check.actions?.[0]?.command
+    })),
+    recommendations,
+    counts: doctor.counts,
+    graph: graphStatus
+      ? {
+          exists: graphStatus.graphExists,
+          reportExists: graphStatus.reportExists,
+          stale: graphStatus.stale,
+          codeChangeCount: graphStatus.codeChangeCount,
+          semanticChangeCount: graphStatus.semanticChangeCount,
+          trackedRepoRoots: graphStatus.trackedRepoRoots
+        }
+      : undefined
+  };
+}
+
+function printNextCommandReport(report: NextCommandReport): void {
+  if (report.status === "uninitialized") {
+    log(`SwarmVault is not initialized in ${report.rootDir}.`);
+    log("");
+    log("Start here:");
+  } else {
+    log(`SwarmVault workspace: ${report.rootDir}`);
+    log(`Config: ${report.paths.configPath}`);
+    log(`Schema: ${report.paths.schemaPath}`);
+    log(`Raw sources: ${report.paths.rawDir}`);
+    log(`Wiki output: ${report.paths.wikiDir}`);
+    const graphPresent = report.graph?.exists ?? report.status === "compiled";
+    log(`Graph JSON: ${graphPresent ? report.paths.graphPath : `missing (${report.paths.graphPath})`}`);
+    log(`Graph report: ${report.graph?.reportExists ? report.paths.reportPath : `missing (${report.paths.reportPath})`}`);
+    if (report.graph) {
+      log(`Graph state: ${report.graph.stale ? "stale" : "fresh"}`);
+      log(`Tracked repo roots: ${report.graph.trackedRepoRoots.length ? report.graph.trackedRepoRoots.join(", ") : "none"}`);
+      log(`Pending changes: ${report.graph.codeChangeCount + report.graph.semanticChangeCount}`);
+    }
+    if (report.counts) {
+      log(
+        `Counts: ${report.counts.sources} source(s), ${report.counts.pages} page(s), ${report.counts.nodes} node(s), ${report.counts.edges} edge(s).`
+      );
+    }
+    log("");
+    log(report.status === "initialized" ? "Status: initialized, not compiled yet." : "Status: compiled.");
+    log("");
+    log("Next steps:");
+  }
+
+  for (const recommendation of report.recommendations.slice(0, 6)) {
+    log(`  ${recommendation.command}`);
+    log(`    ${recommendation.description}`);
   }
 }
 
@@ -490,6 +813,7 @@ async function runScanCommand(
     log("  swarmvault graph serve");
     log("  swarmvault doctor");
     log("  swarmvault candidate list");
+    log("  swarmvault next");
   }
 
   if (options.mcp) {
@@ -519,6 +843,7 @@ async function runScanCommand(
       });
     } else {
       log(`Graph viewer running at http://localhost:${server.port}`);
+      log("Next orientation: swarmvault next");
     }
     process.on("SIGINT", async () => {
       try {
@@ -653,8 +978,12 @@ async function runInteractiveChat(options: {
 }
 
 program.hook("postAction", async (_thisCommand, actionCommand) => {
+  const commandPath = getCommandPath(actionCommand);
+  if (commandPath[0] === "next" || commandPath[0] === "quickstart" || commandPath[0] === "init") {
+    return;
+  }
   const notices = await collectCliNotices({
-    commandPath: getCommandPath(actionCommand),
+    commandPath,
     currentVersion: CLI_VERSION,
     json: isJson()
   });
@@ -662,6 +991,18 @@ program.hook("postAction", async (_thisCommand, actionCommand) => {
     emitNotice(notice);
   }
 });
+
+program
+  .command("next")
+  .description("Show the safest next command for this directory without changing files.")
+  .action(async () => {
+    const report = await buildNextCommandReport(process.cwd());
+    if (isJson()) {
+      emitJson(report);
+      return;
+    }
+    printNextCommandReport(report);
+  });
 
 program
   .command("quickstart")
@@ -705,6 +1046,7 @@ program
       });
     } else {
       log(options.lite ? "Initialized SwarmVault lite workspace." : "Initialized SwarmVault workspace.");
+      log("Next: swarmvault next");
     }
   });
 
@@ -1421,7 +1763,7 @@ context
     log(`Deleted context pack ${deleted.id}.`);
   });
 
-const memory = program.command("memory").description("Manage git-backed agent memory task ledger entries.");
+const memory = program.command("memory", { hidden: true }).description("Manage git-backed agent memory task ledger entries.");
 
 memory
   .command("start")
@@ -2644,13 +2986,13 @@ watch.command("status").description("Show the latest watch run plus pending sema
 program.command("watch-status").description("Show the latest watch run plus pending semantic refresh entries.").action(showWatchStatus);
 
 program
-  .command("check-update")
+  .command("check-update", { hidden: true })
   .description("Compatibility alias for graph status: read-only graph/report freshness and tracked repo change check.")
   .argument("[path]", "Optional repo root to check instead of configured/tracked roots")
   .action(showGraphStatusCommand);
 
 program
-  .command("update")
+  .command("update", { hidden: true })
   .description("Compatibility alias for graph update: refresh code-derived graph artifacts from tracked repo roots.")
   .argument("[path]", "Optional repo root to refresh instead of configured/tracked roots")
   .option("--lint", "Run lint after the refresh cycle", false)
@@ -2658,7 +3000,7 @@ program
   .action(runGraphUpdateCommand);
 
 program
-  .command("cluster-only")
+  .command("cluster-only", { hidden: true })
   .description("Compatibility alias for graph cluster: recompute graph communities and report artifacts without re-ingesting.")
   .argument("[vault]", "Optional vault root to cluster instead of the current directory")
   .option("--resolution <number>", "Override the Louvain community resolution for this run")
@@ -2667,7 +3009,7 @@ program
   );
 
 program
-  .command("tree")
+  .command("tree", { hidden: true })
   .description("Compatibility alias for graph tree: write a collapsible source/module/symbol tree for the compiled graph.")
   .option("--output <html>", "Output HTML path (default: wiki/graph/tree.html)")
   .option("--root <path>", "Vault root to read instead of the current directory")
@@ -2676,7 +3018,7 @@ program
   .action(runGraphTreeCommand);
 
 program
-  .command("merge-graphs")
+  .command("merge-graphs", { hidden: true })
   .description("Compatibility alias for graph merge: combine graph JSON files into one namespaced graph artifact.")
   .argument("<graphs...>", "Graph JSON files to merge")
   .requiredOption("--out <path>", "Output graph JSON path")
@@ -3309,7 +3651,7 @@ retrieval
   });
 
 program
-  .command("scan")
+  .command("scan", { hidden: true })
   .description("Quick-start: initialize, ingest, compile, and serve a graph viewer in one command.")
   .argument("<input>", "Directory or public GitHub repo root URL to scan")
   .option("--port <port>", "Port for the graph viewer")
@@ -3322,7 +3664,7 @@ program
   .action(runScanCommand);
 
 program
-  .command("clone")
+  .command("clone", { hidden: true })
   .description("Compatibility alias for scan: initialize, clone/register a public repo URL, and compile it into the vault.")
   .argument("<input>", "Public GitHub repo URL or local directory to scan")
   .option("--port <port>", "Port for the graph viewer")

@@ -7,6 +7,7 @@ Use this when the user needs the shortest path from install to a working vault.
 ```bash
 npm install -g @swarmvaultai/cli
 swarmvault quickstart ./repo
+swarmvault next
 swarmvault quickstart ./repo --no-serve
 swarmvault demo --no-serve
 swarmvault init --obsidian
@@ -47,6 +48,7 @@ swarmvault export ai --out ./exports/ai
 ## What To Check
 
 - `swarmvault.schema.md` exists and reflects the vault contract
+- `swarmvault next` reports `uninitialized`, `initialized`, or `compiled` and recommends the next safe command without changing files
 - `demo --no-serve` leaves a temporary compiled vault behind even on a clean machine
 - `quickstart`, `quickstart --no-serve`, `scan --no-serve`, `scan --no-viz`, and `clone --no-viz` leave a compiled vault behind even when the viewer is not launched
 - `state/sources.json` contains the managed source registry entry

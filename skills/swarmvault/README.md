@@ -18,6 +18,7 @@ Install the CLI it depends on:
 npm install -g @swarmvaultai/cli
 swarmvault --version
 swarmvault quickstart ./your-repo
+swarmvault next
 swarmvault demo --no-serve
 swarmvault source add https://github.com/karpathy/micrograd
 swarmvault ingest ./meeting.srt --guide
@@ -55,6 +56,7 @@ npm install -g @swarmvaultai/cli@latest
 ```bash
 swarmvault quickstart ./your-repo
 swarmvault quickstart ./your-repo --no-serve
+swarmvault next
 swarmvault demo --no-serve
 swarmvault init --obsidian --profile personal-research
 swarmvault source add ./exports/customer-call.srt --guide
@@ -96,7 +98,7 @@ swarmvault clone https://github.com/owner/repo --no-viz
 swarmvault mcp
 ```
 
-For the fastest scratch walkthrough of a local repo, public GitHub repo, or docs tree, run `swarmvault quickstart ./path`, `swarmvault quickstart ./path --no-serve`, `swarmvault scan ./path --no-viz`, or `swarmvault clone https://github.com/owner/repo --branch main --no-viz`. `quickstart` is the beginner-friendly alias for `scan`: it initializes the current directory as a vault, ingests that input, compiles immediately, opens the graph viewer by default, and writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`. Use `quickstart --mcp`, `scan --mcp`, or `clone --mcp` when the next step should be an MCP stdio server.
+For the fastest scratch walkthrough of a local repo, public GitHub repo, or docs tree, run `swarmvault quickstart ./path`, `swarmvault quickstart ./path --no-serve`, `swarmvault scan ./path --no-viz`, or `swarmvault clone https://github.com/owner/repo --branch main --no-viz`. `quickstart` is the beginner-friendly alias for `scan`: it initializes the current directory as a vault, ingests that input, compiles immediately, opens the graph viewer by default, and writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`. Run `swarmvault next` when you want a read-only status check that recommends init, ingest, compile, query, review, or refresh commands. Use `quickstart --mcp`, `scan --mcp`, or `clone --mcp` when the next step should be an MCP stdio server.
 
 If you want the same zero-config walkthrough without supplying your own inputs first, run `swarmvault demo --no-serve`. It creates a temporary demo vault with bundled sources and compiles it immediately.
 
@@ -156,16 +158,17 @@ The published ClawHub package is intentionally text-only in this release.
 
 ## Core Workflow
 
-1. Initialize the vault with `swarmvault init`.
-2. Treat `swarmvault.schema.md` as the vault contract before serious compile or query work.
-3. Use `swarmvault source add` when the input is a recurring local file, local directory, public GitHub repo root, or docs hub that should stay registered. Add `--branch`, `--ref`, or `--checkout-dir` for pinned public GitHub repo sources.
-4. Add one-off material with `swarmvault ingest`, `swarmvault add`, or `swarmvault inbox import`.
-5. Use `swarmvault ingest --guide`, `swarmvault source add --guide`, `swarmvault source reload --guide`, `swarmvault source guide <id>`, or `swarmvault source session <id>` when you want the stronger guided-session workflow. Set `profile.guidedIngestDefault: true` when guided mode should be the default for ingest/source commands, and use `--no-guide` to force the lighter path for a specific run. Profiles using `guidedSessionMode: "canonical_review"` stage approval-queued canonical page edits; `insights_only` profiles keep exploratory synthesis under `wiki/insights/`.
-6. Compile with `swarmvault compile`, use `compile --max-tokens <n>` when the generated wiki must fit a bounded context window, or use `compile --approve` when the change should land in the approval queue first.
-7. Inspect `wiki/`, `wiki/dashboards/`, and `state/` artifacts before broad re-search. When the vault lives inside git, `ingest|compile|query --commit` can commit those artifacts immediately after the run.
-8. Use `swarmvault query`, `swarmvault chat`, `swarmvault context build`, `swarmvault export ai`, `swarmvault task`, `swarmvault memory`, `swarmvault explore`, `swarmvault review`, `swarmvault candidate`, and `swarmvault lint` to keep the vault current, portable, and reviewable. Set `profile.deepLintDefault: true` when `lint` should run the advisory deep pass by default, and use `--no-deep` to force a structural-only run.
-9. Use `swarmvault doctor [--repair]` when the vault needs one health summary before deeper troubleshooting or handoff.
-10. Use `swarmvault graph share --post` for a quick copyable summary, `swarmvault graph share --svg [path]` for a visual share card, `swarmvault graph share --bundle [dir]` for a portable share kit, `swarmvault graph blast` for reverse-import impact checks, `swarmvault graph status [path]` or `swarmvault check-update [path]` for read-only graph freshness checks, `swarmvault graph stats` for lightweight counts and relation mix, `swarmvault graph validate [graph] --strict` before export/merge/push workflows, `swarmvault graph update [path] --force` or `swarmvault update [path] --force` only when a large graph shrink is expected, `swarmvault graph query "<seed>" --context calls --evidence extracted` for focused relation-aware traversal, `swarmvault graph tree` for an interactive source/module/symbol tree, `swarmvault graph merge <graph...> --out <path>` for combining SwarmVault or node-link JSON, `swarmvault graph cluster` or `swarmvault cluster-only` for graph community/report refresh without re-ingest, `swarmvault graph serve` for the live workspace, detailed health workbench, prioritized next actions, explicit capture modes, title/tag capture fields, budgeted agent handoffs, and bookmarklet clipper, `swarmvault graph export --report` for a self-contained HTML report, `swarmvault graph export --neo4j <path>` for a Neo4j-ready Cypher import, other `swarmvault graph export` formats, `swarmvault graph push neo4j`, or `swarmvault mcp` when the vault needs to be explored or shared elsewhere.
+1. Run `swarmvault next` when you need orientation before taking action.
+2. Initialize the vault with `swarmvault init`.
+3. Treat `swarmvault.schema.md` as the vault contract before serious compile or query work.
+4. Use `swarmvault source add` when the input is a recurring local file, local directory, public GitHub repo root, or docs hub that should stay registered. Add `--branch`, `--ref`, or `--checkout-dir` for pinned public GitHub repo sources.
+5. Add one-off material with `swarmvault ingest`, `swarmvault add`, or `swarmvault inbox import`.
+6. Use `swarmvault ingest --guide`, `swarmvault source add --guide`, `swarmvault source reload --guide`, `swarmvault source guide <id>`, or `swarmvault source session <id>` when you want the stronger guided-session workflow. Set `profile.guidedIngestDefault: true` when guided mode should be the default for ingest/source commands, and use `--no-guide` to force the lighter path for a specific run. Profiles using `guidedSessionMode: "canonical_review"` stage approval-queued canonical page edits; `insights_only` profiles keep exploratory synthesis under `wiki/insights/`.
+7. Compile with `swarmvault compile`, use `compile --max-tokens <n>` when the generated wiki must fit a bounded context window, or use `compile --approve` when the change should land in the approval queue first.
+8. Inspect `wiki/`, `wiki/dashboards/`, and `state/` artifacts before broad re-search. When the vault lives inside git, `ingest|compile|query --commit` can commit those artifacts immediately after the run.
+9. Use `swarmvault query`, `swarmvault chat`, `swarmvault context build`, `swarmvault export ai`, `swarmvault task`, `swarmvault memory`, `swarmvault explore`, `swarmvault review`, `swarmvault candidate`, and `swarmvault lint` to keep the vault current, portable, and reviewable. Set `profile.deepLintDefault: true` when `lint` should run the advisory deep pass by default, and use `--no-deep` to force a structural-only run.
+10. Use `swarmvault doctor [--repair]` when the vault needs one health summary before deeper troubleshooting or handoff.
+11. Use `swarmvault graph share --post` for a quick copyable summary, `swarmvault graph share --svg [path]` for a visual share card, `swarmvault graph share --bundle [dir]` for a portable share kit, `swarmvault graph blast` for reverse-import impact checks, `swarmvault graph status [path]` or `swarmvault check-update [path]` for read-only graph freshness checks, `swarmvault graph stats` for lightweight counts and relation mix, `swarmvault graph validate [graph] --strict` before export/merge/push workflows, `swarmvault graph update [path] --force` or `swarmvault update [path] --force` only when a large graph shrink is expected, `swarmvault graph query "<seed>" --context calls --evidence extracted` for focused relation-aware traversal, `swarmvault graph tree` for an interactive source/module/symbol tree, `swarmvault graph merge <graph...> --out <path>` for combining SwarmVault or node-link JSON, `swarmvault graph cluster` or `swarmvault cluster-only` for graph community/report refresh without re-ingest, `swarmvault graph serve` for the live workspace, detailed health workbench, prioritized next actions, explicit capture modes, title/tag capture fields, budgeted agent handoffs, and bookmarklet clipper, `swarmvault graph export --report` for a self-contained HTML report, `swarmvault graph export --neo4j <path>` for a Neo4j-ready Cypher import, other `swarmvault graph export` formats, `swarmvault graph push neo4j`, or `swarmvault mcp` when the vault needs to be explored or shared elsewhere.
 
 ## What SwarmVault Writes
 

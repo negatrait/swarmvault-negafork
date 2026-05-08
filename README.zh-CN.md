@@ -33,11 +33,14 @@ swarmvault demo
 第一次 compile 之后，最常用的下一步是：
 
 ```bash
+swarmvault next
 swarmvault query "What are the key concepts?"
 swarmvault graph serve
 swarmvault doctor
 swarmvault candidate list
 ```
+
+如果不确定当前 vault 处于什么状态，运行只读的 `swarmvault next`；它会告诉你应该 init、ingest、compile、query、review 还是 refresh。
 
 ![SwarmVault graph workspace](https://www.swarmvault.ai/images/screenshots/graph-workspace.png)
 
@@ -145,6 +148,7 @@ npm install -g @swarmvaultai/cli@latest
 mkdir my-vault
 cd my-vault
 swarmvault quickstart ../your-repo
+swarmvault next
 ```
 
 这是新用户最简单的路径。它和 `swarmvault scan` 使用同一套执行逻辑：初始化 vault、导入输入、编译 wiki 和 graph、写出 share artifacts，并在没有传入 `--no-serve` 或 `--no-viz` 时打开 graph viewer。
@@ -171,6 +175,7 @@ swarmvault ingest ./src --repo-root .
 swarmvault ingest ./meeting.srt --guide
 swarmvault add https://arxiv.org/abs/2401.12345
 swarmvault compile
+swarmvault next
 swarmvault query "What is the auth flow?"
 swarmvault graph serve
 ```
@@ -181,6 +186,7 @@ swarmvault graph serve
 
 | 目标 | 命令 |
 | --- | --- |
+| 查看当前目录最适合的下一条命令 | `swarmvault next` |
 | 不打开 viewer 运行新手路径 | `swarmvault quickstart ./path --no-serve` |
 | 使用旧的简洁别名 | `swarmvault scan ./path --no-viz` |
 | 检查图谱新鲜度 | `swarmvault graph status ./src` 或 `swarmvault check-update ./src` |
