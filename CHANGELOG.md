@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 3.14.1
+
+- Fixed MCP tool responses so optional fields are serialized as `null` in the returned JSON text instead of leaking `undefined` to MCP clients.
+- Hardened SQLite FTS retrieval against hyphenated concept targets such as `concept:distributionally-robust-receive-combining`, retrying with conservative tokenization if FTS syntax rejects a query.
+- Extended MCP and retrieval regression coverage for `query_vault`, `build_context_pack`, `start_task`, `start_memory_task`, and hyphenated target searches.
+- Updated MCP troubleshooting notes for client-side `[object Undefined]` and `no such column` errors.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.14.1`.
+
 ## 3.14.0
 
 - Added `swarmvault next` as a read-only orientation command with human and JSON output for uninitialized, initialized, and compiled vault states.

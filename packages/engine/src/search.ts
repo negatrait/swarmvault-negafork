@@ -71,6 +71,15 @@ function toFtsQuery(query: string): string {
     .join(" OR ");
 }
 
+function toConservativeFtsQuery(query: string): string {
+  return toFtsQuery(query.replaceAll(":", " ").replaceAll("-", " ").replaceAll("_", " "));
+}
+
+function isFtsSyntaxError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("fts5: syntax error") || message.includes("no such column:");
+}
+
 function normalizeKind(value: unknown): PageKind | undefined {
   return value === "index" ||
     value === "source" ||
@@ -309,8 +318,20 @@ export function searchPages(dbPath: string, query: string, limitOrOptions: numbe
     LIMIT ?
   `);
   params.push(options.limit ?? 5);
-  const rows = statement.all(...params) as Array<Record<string, unknown>>;
-  db.close();
+  let rows: Array<Record<string, unknown>>;
+  try {
+    rows = statement.all(...params) as Array<Record<string, unknown>>;
+  } catch (error) {
+    const fallbackFtsQuery = toConservativeFtsQuery(query);
+    if (!fallbackFtsQuery || fallbackFtsQuery === ftsQuery || !isFtsSyntaxError(error)) {
+      throw error;
+    }
+    const fallbackParams = [...params];
+    fallbackParams[0] = fallbackFtsQuery;
+    rows = statement.all(...fallbackParams) as Array<Record<string, unknown>>;
+  } finally {
+    db.close();
+  }
   return rows.map((row) => ({
     projectIds: (() => {
       const raw = String(row.projectIds ?? "[]");

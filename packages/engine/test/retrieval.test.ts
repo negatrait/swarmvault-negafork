@@ -48,6 +48,21 @@ describe("retrieval index", () => {
     expect(results.some((result) => result.title.includes("Alpha"))).toBe(true);
   });
 
+  it("treats hyphenated concept targets as FTS text, not column syntax", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    await fs.writeFile(
+      path.join(rootDir, "combining.md"),
+      "# Distributionally Robust Receive Combining\n\nThe concept:distributionally-robust-receive-combining target should be searchable.\n",
+      "utf8"
+    );
+    await ingestInput(rootDir, "combining.md");
+    await compileVault(rootDir);
+
+    const results = await searchVault(rootDir, "concept:distributionally-robust-receive-combining", 5);
+    expect(results.some((result) => result.title.includes("Distributionally Robust Receive Combining"))).toBe(true);
+  });
+
   it("repairs missing retrieval artifacts", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);

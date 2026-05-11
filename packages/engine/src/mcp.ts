@@ -44,7 +44,7 @@ import {
 } from "./vault.js";
 import { getWatchStatus } from "./watch.js";
 
-const SERVER_VERSION = "3.14.0";
+const SERVER_VERSION = "3.14.1";
 const codeLanguageSchema = z.enum([
   "javascript",
   "jsx",
@@ -1006,7 +1006,7 @@ function asToolText(value: unknown) {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(value, null, 2)
+        text: JSON.stringify(value, (_key, item) => (item === undefined ? null : item), 2) ?? "null"
       }
     ]
   };

@@ -2489,6 +2489,40 @@ describe("swarmvault workflow", () => {
     const chartContent = chartQuery.content as ToolContent;
     expect(JSON.parse(chartContent[0]?.text ?? "{}").outputFormat).toBe("chart");
 
+    const unsavedQuery = await client.callTool({
+      name: "query_vault",
+      arguments: { question: "Summarize MCP optional response fields", save: false }
+    });
+    const unsavedContent = unsavedQuery.content as ToolContent;
+    const parsedUnsavedQuery = JSON.parse(unsavedContent[0]?.text ?? "{}") as { savedPath?: string | null };
+    expect(parsedUnsavedQuery.savedPath).toBeNull();
+
+    const untargetedContextPack = await client.callTool({
+      name: "build_context_pack",
+      arguments: { goal: "Prepare MCP context without a target", budgetTokens: 300 }
+    });
+    const untargetedContextContent = untargetedContextPack.content as ToolContent;
+    const parsedUntargetedContext = JSON.parse(untargetedContextContent[0]?.text ?? "{}") as {
+      pack?: { target?: string | null };
+    };
+    expect(parsedUntargetedContext.pack?.target).toBeNull();
+
+    const hyphenatedContextPack = await client.callTool({
+      name: "build_context_pack",
+      arguments: {
+        goal: "Review distributionally robust receive combining",
+        target: "concept:distributionally-robust-receive-combining",
+        budgetTokens: 300
+      }
+    });
+    const hyphenatedContextContent = hyphenatedContextPack.content as ToolContent;
+    const parsedHyphenatedContext = JSON.parse(hyphenatedContextContent[0]?.text ?? "{}") as {
+      isError?: boolean;
+      pack?: { target?: string | null };
+    };
+    expect(parsedHyphenatedContext.isError).not.toBe(true);
+    expect(parsedHyphenatedContext.pack?.target).toBe("concept:distributionally-robust-receive-combining");
+
     const memoryStart = await client.callTool({
       name: "start_memory_task",
       arguments: { goal: "Remember MCP task work", target: "notes.md", budgetTokens: 300, agent: "test-client" }
@@ -2496,6 +2530,16 @@ describe("swarmvault workflow", () => {
     const memoryStartContent = memoryStart.content as ToolContent;
     const memoryTaskId = JSON.parse(memoryStartContent[0]?.text ?? "{}").task.id as string;
     expect(memoryTaskId).toBeTruthy();
+
+    const memoryStartWithoutOptionals = await client.callTool({
+      name: "start_memory_task",
+      arguments: { goal: "Remember MCP task work without optionals", budgetTokens: 300 }
+    });
+    const parsedMemoryStartWithoutOptionals = JSON.parse((memoryStartWithoutOptionals.content as ToolContent)[0]?.text ?? "{}") as {
+      task?: { target?: string | null; agent?: string | null };
+    };
+    expect(parsedMemoryStartWithoutOptionals.task?.target).toBeNull();
+    expect(parsedMemoryStartWithoutOptionals.task?.agent).toBeNull();
 
     const memoryUpdate = await client.callTool({
       name: "update_memory_task",
@@ -2526,6 +2570,16 @@ describe("swarmvault workflow", () => {
     });
     const taskId = JSON.parse((taskStart.content as ToolContent)[0]?.text ?? "{}").task.id as string;
     expect(taskId).toBeTruthy();
+
+    const taskStartWithoutOptionals = await client.callTool({
+      name: "start_task",
+      arguments: { goal: "Remember MCP task alias work without optionals", budgetTokens: 300 }
+    });
+    const parsedTaskStartWithoutOptionals = JSON.parse((taskStartWithoutOptionals.content as ToolContent)[0]?.text ?? "{}") as {
+      task?: { target?: string | null; agent?: string | null };
+    };
+    expect(parsedTaskStartWithoutOptionals.task?.target).toBeNull();
+    expect(parsedTaskStartWithoutOptionals.task?.agent).toBeNull();
 
     const taskStatus = await client.callTool({ name: "retrieval_status", arguments: {} });
     expect(JSON.parse((taskStatus.content as ToolContent)[0]?.text ?? "{}").configured.backend).toBe("sqlite");

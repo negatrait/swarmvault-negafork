@@ -133,6 +133,20 @@ Then verify:
 
 If many items are listed as omitted, increase `--budget` or narrow `--target`.
 
+## MCP client reports `[object Undefined]` or `no such column`
+
+First verify the installed CLI version used by the MCP client:
+
+```bash
+swarmvault --version
+```
+
+SwarmVault 3.14.1 and newer normalize optional MCP response fields and retry hyphenated retrieval targets with conservative SQLite FTS tokenization. Upgrade and restart the MCP client subprocess if you see `unacceptable kind of an object to dump [object Undefined]` from `query_vault`, `build_context_pack`, `start_task`, or `start_memory_task`, or if a hyphenated target such as `concept:distributionally-robust-receive-combining` reports `no such column`.
+
+```bash
+npm install -g @swarmvaultai/cli@latest
+```
+
 ## Task is missing or does not show in the graph
 
 Tasks are durable local artifacts. Start or inspect them with:
