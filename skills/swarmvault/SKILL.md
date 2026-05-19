@@ -1,7 +1,7 @@
 ---
 name: swarmvault
 description: "Use SwarmVault when the user needs a local-first knowledge vault that writes durable markdown, graph, search, dashboard, review, chat-session, context-pack, task-ledger, static AI export, retrieval, and MCP artifacts to disk from books, notes, transcripts, exports, datasets, slide decks, files, URLs, code, and recurring source workflows."
-version: "3.14.2"
+version: "3.15.0"
 metadata: '{"openclaw":{"requires":{"anyBins":["swarmvault","vault"]},"install":[{"id":"node","kind":"node","package":"@swarmvaultai/cli","bins":["swarmvault","vault"],"label":"Install SwarmVault CLI (npm)"}],"emoji":"🗃️","homepage":"https://www.swarmvault.ai/docs"}}'
 ---
 
@@ -17,8 +17,8 @@ For onboarding, examples, command references, or troubleshooting, read the bundl
 - Use `swarmvault next` when you need a read-only orientation command before deciding whether to initialize, ingest, compile, query, review, or refresh.
 - If the vault does not exist yet, run `swarmvault init`.
 - Use `swarmvault demo --no-serve` when the user wants the fastest zero-config walkthrough before pointing SwarmVault at their own sources.
-- Use `swarmvault quickstart <directory-or-github-url>` as the beginner-friendly first-run path when the user wants init + ingest + compile + graph viewer in one command.
-- Use `swarmvault scan <directory-or-github-url> --no-serve`, `swarmvault scan <directory-or-github-url> --no-viz`, or `swarmvault clone <directory-or-github-url> --no-viz` when the user wants the fastest scratch pass over a local repo, public GitHub repo, or docs tree without manually stepping through init + ingest + compile first; for GitHub URLs add `--branch`, `--ref`, or `--checkout-dir` when the user needs a pinned checkout. Use `scan --mcp` or `clone --mcp` when the next step should be an MCP stdio server. Use `swarmvault graph share --post` for copyable text, `swarmvault graph share --svg [path]` for a visual card, or `swarmvault graph share --bundle [dir]` for a portable folder with markdown, post text, SVG, HTML preview, and JSON metadata.
+- Use `swarmvault quickstart <file-or-directory-or-github-url>` as the beginner-friendly first-run path when the user wants init + ingest + compile + graph viewer in one command.
+- Use `swarmvault scan <file-or-directory-or-github-url> --no-serve`, `swarmvault scan <file-or-directory-or-github-url> --no-viz`, or `swarmvault clone <file-or-directory-or-github-url> --no-viz` when the user wants the fastest scratch pass over a local file, local repo, public GitHub repo, or docs tree without manually stepping through init + ingest + compile first; for GitHub URLs add `--branch`, `--ref`, or `--checkout-dir` when the user needs a pinned checkout. Use `scan --mcp` or `clone --mcp` when the next step should be an MCP stdio server. Use `swarmvault graph share --post` for copyable text, `swarmvault graph share --svg [path]` for a visual card, or `swarmvault graph share --bundle [dir]` for a portable folder with markdown, post text, SVG, HTML preview, and JSON metadata.
 - Use `swarmvault context build "<goal>" --target <path-or-node> --budget <tokens>` when the next agent, review, or handoff needs a bounded evidence pack instead of a broad vault search.
 - Use `swarmvault chat "question"` when a multi-turn conversation should survive handoff; resume with `swarmvault chat --resume <id> "follow-up"` and inspect saved transcripts under `wiki/outputs/chat-sessions/`.
 - Use `swarmvault export ai --out <dir>` when another agent, crawler, or static workflow needs `llms.txt`, full text, JSON-LD graph data, a manifest, and per-page siblings without starting `graph serve`.
@@ -99,6 +99,7 @@ For onboarding, examples, command references, or troubleshooting, read the bundl
 ## Agent integration
 
 - `swarmvault install --agent codex|claude|cursor|goose|pi|gemini|opencode|aider|copilot|trae|claw|droid|kiro|hermes|antigravity|vscode|amp|augment|adal|bob|cline|codebuddy|command-code|continue|cortex|crush|deepagents|firebender|iflow|junie|kilo-code|kimi|kode|mcpjam|mistral-vibe|mux|neovate|openclaw|openhands|pochi|qoder|qwen-code|replit|roo-code|trae-cn|warp|windsurf|zencoder` installs agent-specific rules into the current project. Agents in the extended roster receive a project-level skill bundle at the tool's conventional skills directory.
+- `swarmvault init`, `quickstart`, `scan`, and `clone` leave project-local agent rule files alone by default. Use `install --agent` explicitly, or set `agents` in `swarmvault.config.json` and pass `--install-agent-rules` to initialization or scan commands when configured installs are intentional.
 - `swarmvault install --agent codex|claude|opencode|gemini|copilot --hook` installs graph-first hook or plugin support for the agents that expose project hook APIs.
 - `swarmvault install --agent aider` installs `CONVENTIONS.md` and wires `.aider.conf.yml` to read it when that config is valid YAML.
 - `swarmvault install --agent antigravity` writes `.agents/rules/swarmvault.md` and `.agents/workflows/swarmvault.md`; reinstall removes older fully managed `.agent/` files.

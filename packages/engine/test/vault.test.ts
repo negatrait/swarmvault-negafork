@@ -15,6 +15,7 @@ import {
   benchmarkVault,
   compileVault,
   createMcpServer,
+  defaultVaultConfig,
   explainGraphVault,
   exploreVault,
   exportGraphFormat,
@@ -401,7 +402,7 @@ function attachmentRelativePath(sourceId: string, storedAttachmentPath: string):
 }
 
 describe("swarmvault workflow", () => {
-  it("initializes the workspace and installs agent instructions", async () => {
+  it("initializes the workspace without installing agent instructions by default", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
@@ -410,9 +411,24 @@ describe("swarmvault workflow", () => {
     await expect(fs.access(path.join(rootDir, "inbox"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, "wiki", "insights", "index.md"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, "state", "sessions"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(rootDir, "AGENTS.md"))).rejects.toThrow();
+    await expect(fs.access(path.join(rootDir, "CLAUDE.md"))).rejects.toThrow();
+    await expect(fs.access(path.join(rootDir, ".cursor", "rules", "swarmvault.mdc"))).rejects.toThrow();
+  });
+
+  it("installs configured agent instructions only when explicitly requested", async () => {
+    const rootDir = await createTempWorkspace();
+    await fs.writeFile(
+      path.join(rootDir, "swarmvault.config.json"),
+      `${JSON.stringify({ ...defaultVaultConfig(), agents: ["codex", "cursor"] }, null, 2)}\n`,
+      "utf8"
+    );
+
+    await initVault(rootDir, { installAgentRules: true });
+
     await expect(fs.access(path.join(rootDir, "AGENTS.md"))).resolves.toBeUndefined();
-    await expect(fs.access(path.join(rootDir, "CLAUDE.md"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, ".cursor", "rules", "swarmvault.mdc"))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(rootDir, "CLAUDE.md"))).rejects.toThrow();
   });
 
   it("can initialize an obsidian workspace layout", async () => {

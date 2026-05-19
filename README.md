@@ -22,7 +22,7 @@ npm install -g @swarmvaultai/cli
 swarmvault quickstart ./your-repo
 ```
 
-`quickstart` initializes a vault in the current directory, ingests the input, compiles the wiki and graph, writes share artifacts, and opens the local graph viewer. It is the beginner-friendly alias for `swarmvault scan`.
+`quickstart` initializes a vault in the current directory, ingests a local file, directory, or public GitHub repo, compiles the wiki and graph, writes share artifacts, and opens the local graph viewer. It is the beginner-friendly alias for `swarmvault scan`.
 
 No repo handy?
 
@@ -151,7 +151,7 @@ swarmvault quickstart ../your-repo
 swarmvault next
 ```
 
-That is the easiest path for a new user. It does the same work as `swarmvault scan`: initialize the vault, ingest the input, compile the wiki and graph, write share artifacts, and open the graph viewer unless you pass `--no-serve` or `--no-viz`.
+That is the easiest path for a new user. It does the same work as `swarmvault scan`: initialize the vault, ingest a local file, directory, or public GitHub repo, compile the wiki and graph, write share artifacts, and open the graph viewer unless you pass `--no-serve` or `--no-viz`. Interactive runs show bounded ingest progress on stderr, including the active file, so large PDFs and document folders do not look silent while extraction runs.
 
 ```text
 my-vault/
@@ -203,7 +203,7 @@ Use `swarmvault source add https://github.com/karpathy/micrograd`, `swarmvault s
 | Merge or inspect source/module trees | `swarmvault tree --output ./exports/tree.html` and `swarmvault merge-graphs ./exports/graph.json ./other-graph.json --out ./exports/merged-graph.json` |
 | Push graph data to Neo4j | `swarmvault graph push neo4j --dry-run` |
 
-Want the minimal LLM-Wiki starter instead? `swarmvault init --lite` creates just `raw/`, `wiki/`, `wiki/index.md`, `wiki/log.md`, and `swarmvault.schema.md` - no config, no state, no agent installs.
+Want the minimal LLM-Wiki starter instead? `swarmvault init --lite` creates just `raw/`, `wiki/`, `wiki/index.md`, `wiki/log.md`, and `swarmvault.schema.md` - no config, no state, no agent installs. Normal `init`, `quickstart`, `scan`, and `clone` also avoid writing agent rule files by default; run `swarmvault install --agent <agent>` when you want project-local agent instructions.
 
 When the vault lives inside a git repo, `ingest`, `compile`, and `query` support `--commit`. `compile --max-tokens <n>` trims lower-priority pages for bounded context windows. `swarmvault ingest ./customer-call.mp3`, `swarmvault ingest https://www.youtube.com/watch?v=dQw4w9WgXcQ`, and `swarmvault ingest --video https://example.com/product-demo.mp4` cover audio, YouTube transcript, and video workflows when the required providers or helper binaries are available.
 
@@ -341,6 +341,8 @@ swarmvault install --agent antigravity      # Google Antigravity rules + /swarmv
 swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
 ```
 
+SwarmVault never writes these project-local rule files during `init`, `quickstart`, `scan`, or `clone` unless you explicitly opt into configured installs. Use `swarmvault install --agent <agent>` for one target at a time, or list agents in `swarmvault.config.json` and run `swarmvault init --install-agent-rules` or `swarmvault quickstart <input> --install-agent-rules` when you want configured targets installed together.
+
 Or expose the vault directly over MCP:
 
 ```bash
@@ -442,9 +444,9 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 
 **Optional model providers** - OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Groq, Together, xAI, Cerebras, generic OpenAI-compatible, custom adapters, or the built-in heuristic for offline/local use.
 
-**Agent integrations** - install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Hermes, Google Antigravity, VS Code Copilot Chat, and the extended skill-bundle roster. Optional graph-first hooks bias supported agents, including Codex, toward the wiki before broad search. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
+**Agent integrations** - explicitly install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Hermes, Google Antigravity, VS Code Copilot Chat, and the extended skill-bundle roster. `init`, `quickstart`, `scan`, and `clone` leave project-local rule files alone unless you opt into configured installs. Optional graph-first hooks bias supported agents, including Codex, toward the wiki before broad search. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
 
-**MCP server** - `swarmvault mcp` exposes the vault to any compatible agent client over stdio, including graph stats, graph clustering refresh, community lookup, hyperedges, context-pack, task-ledger, compatibility memory-task, vault doctor, and retrieval health tools.
+**MCP server** - `swarmvault mcp` exposes the vault to any compatible agent client over stdio, including graph stats, graph clustering refresh, community lookup, hyperedges, context-pack, task-ledger, compatibility memory-task, vault doctor, and retrieval health tools. The repository also ships Docker/registry metadata for MCP server registries that validate a stdio container entrypoint.
 
 **Built-in browser clipper** - `graph serve` exposes a local `/api/bookmarklet` page and `/api/clip` endpoint so a running vault can capture the current browser URL, page title, selected text, markdown, HTML excerpts, and tags from the workbench or bookmarklet. URL-only bookmarklet clips use normalized `add`; selected text is imported through the inbox path.
 
@@ -463,7 +465,9 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 
 **External graph sinks** - export to full HTML, lightweight standalone HTML, self-contained report HTML, SVG, GraphML, Cypher, JSON, Obsidian note bundles, or Obsidian canvas, or push the live graph directly into Neo4j over Bolt/Aura with shared-database-safe `vaultId` namespacing.
 
-**Large-repo hardening** - long repo ingests and compile passes emit bounded progress on big batches, provider-backed non-code analysis chunks long extracted text before model calls, nested `.gitignore` and `.swarmvaultignore` files are respected with `.swarmvaultinclude` allowlists for intentional exceptions, parser compatibility failures stay local to the affected sources with explicit diagnostics, code-only repo watch cycles skip non-code re-analysis, and graph reports roll up tiny fragmented communities for readability.
+**Interactive ingest feedback** - file and directory ingest emits bounded progress on stderr with the active file and processed content size, while JSON, MCP, watch, and CI-style flows stay quiet.
+
+**Large-repo hardening** - long repo ingests and compile passes stay bounded, provider-backed non-code analysis chunks long extracted text before model calls, nested `.gitignore` and `.swarmvaultignore` files are respected with `.swarmvaultinclude` allowlists for intentional exceptions, parser compatibility failures stay local to the affected sources with explicit diagnostics, code-only repo watch cycles skip non-code re-analysis, and graph reports roll up tiny fragmented communities for readability.
 
 Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know what was found vs guessed.
 

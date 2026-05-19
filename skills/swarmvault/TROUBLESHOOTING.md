@@ -119,6 +119,8 @@ Current releases bound source-analysis concurrency and graph projection during c
 
 That can be expected. SwarmVault owns only the managed block between `swarmvault:managed:start` and `swarmvault:managed:end`. The managed SwarmVault block should match across compatible agent rule files, but user-owned text before or after that block is preserved and may differ per tool.
 
+New vaults do not receive agent rule files during `init`, `quickstart`, `scan`, or `clone` unless you pass `--install-agent-rules` with configured `agents`. For one-off setup, run `swarmvault install --agent <agent>` instead.
+
 ## Vault doctor reports warnings
 
 `swarmvault doctor` is the broad health summary. It checks graph artifacts, retrieval, review queues, watch state, migrations, managed sources, and task ledgers, then prints concrete follow-up commands. The `swarmvault graph serve` workbench shows the same full check list with details and copyable suggested commands.

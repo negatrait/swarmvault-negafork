@@ -105,25 +105,26 @@ Set `SWARMVAULT_OUT=<dir>` when generated artifacts should be isolated from the 
 
 `--profile` accepts `default`, `personal-research`, or a comma-separated preset list such as `reader,timeline`. For fully custom vault behavior, edit the `profile` block in `swarmvault.config.json`; that deterministic profile layer works alongside the human-written `swarmvault.schema.md`. The `personal-research` preset also sets `profile.guidedIngestDefault: true` and `profile.deepLintDefault: true`, so guided ingest/source and lint flows are on by default until you override them with `--no-guide` or `--no-deep`.
 
-### `swarmvault quickstart <directory|github-url> [--port <port>] [--no-serve] [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>]`
+### `swarmvault quickstart <file|directory|github-url> [--port <port>] [--no-serve] [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>] [--install-agent-rules]`
 
 Beginner-friendly alias for `swarmvault scan`.
 
 - initializes the current directory as a SwarmVault workspace
-- ingests the supplied local directory, or registers/syncs the supplied public GitHub repo root URL
+- ingests the supplied local file or directory, or registers/syncs the supplied public GitHub repo root URL
 - compiles wiki, graph, search, and share artifacts immediately
 - prints the generated `raw/`, `wiki/`, `state/graph.json`, and `wiki/graph/` paths in human output
 - starts `graph serve` unless you pass `--no-serve` or `--no-viz`
 - keeps the same JSON output contract as `scan`
+- leaves agent rule files alone unless you pass `--install-agent-rules`
 
 Use this as the default first-run command in docs and onboarding.
 
-### `swarmvault scan <directory|github-url> [--port <port>] [--no-serve] [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>]`
+### `swarmvault scan <file|directory|github-url> [--port <port>] [--no-serve] [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>] [--install-agent-rules]`
 
-Quick-start a scratch vault from a local directory or public GitHub repo root URL in one command.
+Quick-start a scratch vault from a local file, directory, or public GitHub repo root URL in one command.
 
 - initializes the current directory as a SwarmVault workspace
-- ingests the supplied directory as local sources, or registers/syncs the supplied public GitHub repo root URL
+- ingests the supplied file or directory as local sources, or registers/syncs the supplied public GitHub repo root URL
 - compiles the vault immediately
 - writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`, then prints the paths
 - starts `graph serve` unless you pass `--no-serve` or `--no-viz`
@@ -131,10 +132,11 @@ Quick-start a scratch vault from a local directory or public GitHub repo root UR
 - `--mcp` starts the MCP stdio server after compile instead of the graph viewer
 - respects `--port` when you want a specific viewer port
 - for GitHub repo URLs, supports `--branch`, `--ref`, and `--checkout-dir`
+- `--install-agent-rules` installs the configured `agents` targets during initialization
 
 Use this when you want the fastest repo or docs-tree walkthrough without first deciding on managed-source registration.
 
-### `swarmvault clone <directory|github-url> [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>]`
+### `swarmvault clone <file|directory|github-url> [--no-viz] [--mcp] [--branch <name>] [--ref <ref>] [--checkout-dir <path>] [--install-agent-rules]`
 
 Compatibility alias for `swarmvault scan`.
 
@@ -268,7 +270,7 @@ Useful flags:
 
 Repo ingest defaults to `first_party` material. The extra `--include-*` flags opt dependency trees, resource bundles, and generated output back in when you actually want them in the vault.
 
-Large repo ingest now emits low-noise progress on materially large batches, and parser compatibility failures stay local to the affected source instead of aborting unrelated analysis.
+Interactive file and directory ingest now emits bounded stderr progress, including the active file and processed content size. JSON, MCP, watch, and CI-style flows stay quiet, and parser compatibility failures stay local to the affected source instead of aborting unrelated analysis.
 
 Audio and video files use `tasks.audioProvider` when you configure a provider with `audio` capability. Local video extraction shells out to `ffmpeg`; public video URL extraction with `--video` shells out to `yt-dlp`. When no audio provider or extractor binary is configured, SwarmVault still ingests the source and records an explicit extraction warning instead of failing. YouTube transcript ingest does not require a model provider.
 
@@ -714,6 +716,8 @@ Defaults:
 ### `swarmvault install --agent <agent>`
 
 Install agent-specific rules into the current project so an agent understands the SwarmVault workspace contract and workflow.
+
+`init`, `quickstart`, `scan`, and `clone` do not write project-local agent rule files by default. Run `swarmvault install --agent <agent>` for one target at a time, or list targets in `swarmvault.config.json` and pass `--install-agent-rules` to `init`, `quickstart`, `scan`, or `clone` when you intentionally want configured targets installed together.
 
 Hook-capable installs:
 

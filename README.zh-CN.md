@@ -22,7 +22,7 @@ npm install -g @swarmvaultai/cli
 swarmvault quickstart ./your-repo
 ```
 
-`quickstart` 会在当前目录初始化 vault、导入输入、编译 wiki 和 graph、写入 share artifacts，并打开本地图谱查看器。它是 `swarmvault scan` 的新手友好别名。
+`quickstart` 会在当前目录初始化 vault、导入本地文件、目录或公开 GitHub 仓库、编译 wiki 和 graph、写入 share artifacts，并打开本地图谱查看器。它是 `swarmvault scan` 的新手友好别名。
 
 没有现成的仓库？
 
@@ -151,7 +151,7 @@ swarmvault quickstart ../your-repo
 swarmvault next
 ```
 
-这是新用户最简单的路径。它和 `swarmvault scan` 使用同一套执行逻辑：初始化 vault、导入输入、编译 wiki 和 graph、写出 share artifacts，并在没有传入 `--no-serve` 或 `--no-viz` 时打开 graph viewer。
+这是新用户最简单的路径。它和 `swarmvault scan` 使用同一套执行逻辑：初始化 vault、导入本地文件、目录或公开 GitHub 仓库、编译 wiki 和 graph、写出 share artifacts，并在没有传入 `--no-serve` 或 `--no-viz` 时打开 graph viewer。交互式运行会在 stderr 输出有边界的 ingest 进度和当前文件，因此大型 PDF 或文档目录在抽取时不会像卡住一样安静。
 
 ```text
 my-vault/
@@ -203,7 +203,7 @@ swarmvault graph serve
 | 合并或查看 source/module tree | `swarmvault tree --output ./exports/tree.html` 和 `swarmvault merge-graphs ./exports/graph.json ./other-graph.json --out ./exports/merged-graph.json` |
 | 推送图谱数据到 Neo4j | `swarmvault graph push neo4j --dry-run` |
 
-想要最小 LLM-Wiki starter？`swarmvault init --lite` 只创建 `raw/`、`wiki/`、`wiki/index.md`、`wiki/log.md` 和 `swarmvault.schema.md`，不生成 config、state 或 agent installs。
+想要最小 LLM-Wiki starter？`swarmvault init --lite` 只创建 `raw/`、`wiki/`、`wiki/index.md`、`wiki/log.md` 和 `swarmvault.schema.md`，不生成 config、state 或 agent installs。普通 `init`、`quickstart`、`scan` 和 `clone` 默认也不会写入 agent 规则文件；需要项目级 agent instructions 时再运行 `swarmvault install --agent <agent>`。
 
 当 vault 位于 git 仓库中时，`ingest`、`compile` 和 `query` 支持 `--commit`。`compile --max-tokens <n>` 可为受限上下文窗口裁剪低优先级页面。`swarmvault ingest ./customer-call.mp3`、`swarmvault ingest https://www.youtube.com/watch?v=dQw4w9WgXcQ` 和 `swarmvault ingest --video https://example.com/product-demo.mp4` 分别覆盖音频、YouTube transcript 和视频流程，前提是所需 provider 或辅助二进制可用。
 
@@ -219,6 +219,8 @@ swarmvault graph serve
 ```bash
 ollama pull gemma4
 ```
+
+SwarmVault 在 `init`、`quickstart`、`scan` 或 `clone` 时不会默认写这些项目本地规则文件，除非你显式选择安装已配置的 agent。单个目标用 `swarmvault install --agent <agent>`；如果要一次安装多个目标，可以先在 `swarmvault.config.json` 里列出 agents，再运行 `swarmvault init --install-agent-rules` 或 `swarmvault quickstart <input> --install-agent-rules`。
 
 ```json
 {
@@ -442,9 +444,9 @@ clawhub install swarmvault
 
 **可选模型提供方** - OpenAI、Anthropic、Gemini、Ollama、OpenRouter、Groq、Together、xAI、Cerebras、通用 OpenAI-compatible、自定义适配器，以及适合离线/本地默认流程的 heuristic。
 
-**Agent 集成** - 支持 Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Hermes、Google Antigravity、VS Code Copilot Chat，以及扩展 skill-bundle roster。可选 graph-first hooks 会先引导包括 Codex 在内的支持 agent 读取 wiki，再进行大范围搜索。Antigravity 会安装到 `.agents/rules/` 与 `.agents/workflows/`；重新安装时会清理旧的全托管 `.agent/` 文件。
+**Agent 集成** - 显式安装 Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Hermes、Google Antigravity、VS Code Copilot Chat，以及扩展 skill-bundle roster 的规则。`init`、`quickstart`、`scan` 和 `clone` 默认不会写项目本地规则文件，除非你选择配置安装。可选 graph-first hooks 会先引导包括 Codex 在内的支持 agent 读取 wiki，再进行大范围搜索。Antigravity 会安装到 `.agents/rules/` 与 `.agents/workflows/`；重新安装时会清理旧的全托管 `.agent/` 文件。
 
-**MCP server** - `swarmvault mcp` 通过 stdio 把知识库暴露给任意兼容的代理客户端，包括 graph stats、graph clustering refresh、community lookup、hyperedges、context-pack、task ledger、兼容 memory-task、vault doctor 与 retrieval health 工具。
+**MCP server** - `swarmvault mcp` 通过 stdio 把知识库暴露给任意兼容的代理客户端，包括 graph stats、graph clustering refresh、community lookup、hyperedges、context-pack、task ledger、兼容 memory-task、vault doctor 与 retrieval health 工具。仓库也包含 Docker/registry metadata，供会验证 stdio container entrypoint 的 MCP server registry 使用。
 
 **内置浏览器剪藏器** - `graph serve` 会暴露本地 `/api/bookmarklet` 页面和 `/api/clip` 接口，让正在运行的 vault 可以从工作台或 bookmarklet 收录当前浏览器 URL、页面标题、选中文本、Markdown、HTML 片段和标签。URL-only bookmarklet 剪藏会使用 normalized `add`，选中文本会走 inbox 导入路径。
 
@@ -463,7 +465,9 @@ clawhub install swarmvault
 
 **外部图谱输出** - 可导出为完整 HTML、轻量 standalone HTML、自包含 report HTML、SVG、GraphML、Cypher、JSON、Obsidian 笔记包或 Obsidian canvas，也可以通过 Bolt/Aura 直接把实时图谱推送到 Neo4j，并用共享数据库安全的 `vaultId` 进行命名空间隔离。
 
-**大型仓库加固** - 面对大批量仓库 ingest 和 compile 时会输出有边界的进度提示；provider-backed 非代码分析会在模型调用前对超长提取文本分块；嵌套 `.gitignore` 与 `.swarmvaultignore` 会被遵守，并可用 `.swarmvaultinclude` 为有意保留的路径设置 allowlist；parser 兼容性失败只会影响对应源文件并留下明确诊断；仅代码改动的 repo watch cycle 会跳过非代码重分析；图谱报告会把过于碎片化的小社区折叠展示，保持可读性。
+**交互式 ingest 反馈** - 文件和目录 ingest 会在 stderr 输出有边界的进度、当前文件和已处理内容大小；JSON、MCP、watch 和 CI 风格流程保持安静。
+
+**大型仓库加固** - 面对大批量仓库 ingest 和 compile 时保持有边界；provider-backed 非代码分析会在模型调用前对超长提取文本分块；嵌套 `.gitignore` 与 `.swarmvaultignore` 会被遵守，并可用 `.swarmvaultinclude` 为有意保留的路径设置 allowlist；parser 兼容性失败只会影响对应源文件并留下明确诊断；仅代码改动的 repo watch cycle 会跳过非代码重分析；图谱报告会把过于碎片化的小社区折叠展示，保持可读性。
 
 每条边都会标记为 `extracted`、`inferred` 或 `ambiguous`，因此你始终知道哪些是明确提取到的，哪些只是推断。
 

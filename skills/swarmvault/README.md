@@ -18,6 +18,7 @@ Install the CLI it depends on:
 npm install -g @swarmvaultai/cli
 swarmvault --version
 swarmvault quickstart ./your-repo
+swarmvault quickstart ./whitepaper.pdf --no-serve
 swarmvault next
 swarmvault demo --no-serve
 swarmvault source add https://github.com/karpathy/micrograd
@@ -55,6 +56,7 @@ npm install -g @swarmvaultai/cli@latest
 
 ```bash
 swarmvault quickstart ./your-repo
+swarmvault quickstart ./whitepaper.pdf --no-serve
 swarmvault quickstart ./your-repo --no-serve
 swarmvault next
 swarmvault demo --no-serve
@@ -98,7 +100,7 @@ swarmvault clone https://github.com/owner/repo --no-viz
 swarmvault mcp
 ```
 
-For the fastest scratch walkthrough of a local repo, public GitHub repo, or docs tree, run `swarmvault quickstart ./path`, `swarmvault quickstart ./path --no-serve`, `swarmvault scan ./path --no-viz`, or `swarmvault clone https://github.com/owner/repo --branch main --no-viz`. `quickstart` is the beginner-friendly alias for `scan`: it initializes the current directory as a vault, ingests that input, compiles immediately, opens the graph viewer by default, and writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`. Run `swarmvault next` when you want a read-only status check that recommends init, ingest, compile, query, review, or refresh commands. Use `quickstart --mcp`, `scan --mcp`, or `clone --mcp` when the next step should be an MCP stdio server.
+For the fastest scratch walkthrough of a local file, local repo, public GitHub repo, or docs tree, run `swarmvault quickstart ./path`, `swarmvault quickstart ./path --no-serve`, `swarmvault scan ./path --no-viz`, or `swarmvault clone https://github.com/owner/repo --branch main --no-viz`. `quickstart` is the beginner-friendly alias for `scan`: it initializes the current directory as a vault, ingests that input, compiles immediately, opens the graph viewer by default, and writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`. Interactive file and directory runs show bounded stderr progress with the active file while JSON, MCP, watch, and CI-style flows stay quiet. Run `swarmvault next` when you want a read-only status check that recommends init, ingest, compile, query, review, or refresh commands. Use `quickstart --mcp`, `scan --mcp`, or `clone --mcp` when the next step should be an MCP stdio server.
 
 If you want the same zero-config walkthrough without supplying your own inputs first, run `swarmvault demo --no-serve`. It creates a temporary demo vault with bundled sources and compiles it immediately.
 
@@ -125,6 +127,8 @@ With an embedding-capable provider available, SwarmVault can also merge semantic
 Audio and video ingest use `tasks.audioProvider` when you configure a provider with `audio` capability. The fully-local option is `swarmvault provider setup --local-whisper --apply`, which installs a `local-whisper` provider, downloads a whisper.cpp ggml model into `~/.swarmvault/models/`, and assigns `tasks.audioProvider` so voice memos, meetings, interviews, and video audio transcribe with no API keys and no network calls. Local video needs `ffmpeg`; public video URL ingest with `--video` needs `yt-dlp`. YouTube transcript ingest works without a model provider. If you want to pin graph clustering instead of using the adaptive default and its oversized/low-cohesion community split pass, set `graph.communityResolution` in `swarmvault.config.json` or run `swarmvault graph cluster --resolution <n>` for one recompute.
 
 Set `SWARMVAULT_OUT=<dir>` when generated `raw/`, `wiki/`, `state/`, `agent/`, and `inbox/` artifacts should be isolated from the source tree. Config and schema files remain in the project root, which keeps shared source worktrees clean while still giving agents the same vault contract.
+
+`init`, `quickstart`, `scan`, and `clone` do not write project-local agent rule files by default. Run `swarmvault install --agent <agent>` for explicit installs, or set `agents` in `swarmvault.config.json` and pass `--install-agent-rules` when you intentionally want configured targets installed together.
 
 `swarmvault lint --deep --web` augments deep-lint findings with external evidence from a configured `webSearch` adapter. Web search is currently scoped to deep lint; compile, query, and explore stay on local vault state plus your configured LLM providers.
 

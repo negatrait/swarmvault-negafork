@@ -183,7 +183,7 @@ const vaultConfigSchema = z.object({
       })
     )
     .optional(),
-  agents: z.array(agentTypeSchema).default(["codex", "claude", "cursor"]),
+  agents: z.array(agentTypeSchema).default([]),
   schedules: z
     .record(z.string(), z.object({ enabled: z.boolean().optional(), when: scheduleTriggerSchema, task: scheduledTaskSchema }))
     .optional(),
@@ -445,7 +445,7 @@ export function defaultVaultConfig(profile: VaultProfileConfig = defaultVaultPro
     },
     profile,
     projects: {},
-    agents: ["codex", "claude", "cursor"],
+    agents: [],
     schedules: {},
     orchestration: {
       maxParallelRoles: 2,

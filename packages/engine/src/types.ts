@@ -688,6 +688,11 @@ export interface IngestOptions {
    * redaction entirely for this run.
    */
   redact?: boolean;
+  /**
+   * Emit bounded human progress to stderr for interactive CLI runs. Defaults
+   * to false so JSON, MCP, watch, and library callers stay quiet.
+   */
+  progress?: boolean;
 }
 
 export interface DirectoryIngestSkip {
@@ -1513,6 +1518,7 @@ export interface InitOptions {
   obsidian?: boolean;
   profile?: string;
   lite?: boolean;
+  installAgentRules?: boolean;
 }
 
 export interface CompileResult {

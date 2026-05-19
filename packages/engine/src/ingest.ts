@@ -87,7 +87,6 @@ const HARD_REPO_IGNORES = new Set([".git", ".venv"]);
 const SWARMVAULT_IGNORE_FILENAME = ".swarmvaultignore";
 const SWARMVAULT_INCLUDE_FILENAME = ".swarmvaultinclude";
 const VCS_BOUNDARY_DIRS = new Set([".git", ".hg", ".svn"]);
-const PROGRESS_FILE_THRESHOLD = 150;
 const PROGRESS_UPDATE_INTERVAL = 100;
 const RST_HEADING_MARKERS = new Set(["=", "-", "~", "^", '"', "#", "*", "+"]);
 const MARKDOWN_SEMANTIC_FRONTMATTER_KEYS = [
@@ -234,6 +233,7 @@ type NormalizedIngestOptions = {
   resume?: string;
   repoAnalysis?: VaultConfig["repoAnalysis"];
   redact?: boolean;
+  progress: boolean;
   redactor?: Redactor | null;
 };
 
@@ -819,27 +819,59 @@ function finalizePreparedInput(prepared: PreparedInput): PreparedInput {
   };
 }
 
-function shouldEmitProgress(totalItems: number): boolean {
-  return totalItems >= PROGRESS_FILE_THRESHOLD && Boolean(process.stderr?.isTTY);
+function shouldEmitProgress(totalItems: number, enabled: boolean): boolean {
+  return enabled && totalItems > 0 && Boolean(process.stderr?.isTTY);
 }
 
-function createProgressReporter(prefix: string, totalItems: number): { tick: () => void; finish: (summary?: string) => void } {
-  if (!shouldEmitProgress(totalItems)) {
+function formatProgressBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex === 0 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function preparedContentBytes(preparedInputs: PreparedInput[]): number {
+  return preparedInputs.reduce((total, prepared) => {
+    const attachmentBytes = (prepared.attachments ?? []).reduce((sum, attachment) => sum + attachment.bytes.byteLength, 0);
+    return total + prepared.payloadBytes.byteLength + attachmentBytes;
+  }, 0);
+}
+
+function createProgressReporter(
+  prefix: string,
+  totalItems: number,
+  enabled: boolean
+): { startFile: (filePath: string) => void; tick: (bytes?: number) => void; finish: (summary?: string) => void } {
+  if (!shouldEmitProgress(totalItems, enabled)) {
     return {
+      startFile: () => {},
       tick: () => {},
       finish: () => {}
     };
   }
 
   let completed = 0;
+  let contentBytes = 0;
   let nextUpdate = Math.min(PROGRESS_UPDATE_INTERVAL, totalItems);
   process.stderr.write(`[swarmvault ${prefix}] starting ${totalItems} file(s)\n`);
 
   return {
-    tick: () => {
+    startFile: (filePath) => {
+      process.stderr.write(`[swarmvault ${prefix}] file ${filePath}\n`);
+    },
+    tick: (bytes = 0) => {
       completed += 1;
+      contentBytes += Math.max(0, bytes);
       if (completed >= nextUpdate || completed === totalItems) {
-        process.stderr.write(`[swarmvault ${prefix}] ${completed}/${totalItems}\n`);
+        process.stderr.write(`[swarmvault ${prefix}] ${completed}/${totalItems} (${formatProgressBytes(contentBytes)})\n`);
         while (completed >= nextUpdate) {
           nextUpdate += PROGRESS_UPDATE_INTERVAL;
         }
@@ -864,7 +896,8 @@ function normalizeIngestOptions(options?: IngestOptions): NormalizedIngestOption
     video: options?.video ?? false,
     extractClasses: options?.extractClasses ?? ["first_party"],
     resume: options?.resume,
-    redact: options?.redact
+    redact: options?.redact,
+    progress: options?.progress ?? false
   };
 }
 
@@ -2468,11 +2501,12 @@ export async function syncTrackedRepos(rootDir: string, options?: IngestOptions,
         }))
     );
     scannedCount += files.length;
-    const progress = createProgressReporter("sync", files.length);
+    const progress = createProgressReporter("sync", files.length, normalizedOptions.progress);
 
     const currentPaths = new Set(files.map((absolutePath) => path.resolve(absolutePath)));
     for (const absolutePath of files) {
       const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+      progress.startFile(relativePath);
       const preparedInputs = await prepareFileInputs(
         rootDir,
         absolutePath,
@@ -2483,7 +2517,7 @@ export async function syncTrackedRepos(rootDir: string, options?: IngestOptions,
       imported.push(...result.created);
       updated.push(...result.updated);
       removed.push(...result.removed);
-      progress.tick();
+      progress.tick(preparedContentBytes(preparedInputs));
     }
     progress.finish(`repo=${toPosix(path.relative(rootDir, repoRoot)) || "."}`);
 
@@ -2587,11 +2621,12 @@ export async function syncTrackedReposForWatch(
         }))
     );
     scannedCount += files.length;
-    const progress = createProgressReporter("sync-watch", files.length);
+    const progress = createProgressReporter("sync-watch", files.length, normalizedOptions.progress);
 
     const currentPaths = new Set(files.map((absolutePath) => path.resolve(absolutePath)));
     for (const absolutePath of files) {
       const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+      progress.startFile(relativePath);
       const preparedInputs = await prepareFileInputs(
         rootDir,
         absolutePath,
@@ -2632,7 +2667,7 @@ export async function syncTrackedReposForWatch(
             staleSourceIds.add(manifest.sourceId);
           }
         }
-        progress.tick();
+        progress.tick(preparedContentBytes(preparedInputs));
         continue;
       }
 
@@ -2640,7 +2675,7 @@ export async function syncTrackedReposForWatch(
       imported.push(...result.created);
       updated.push(...result.updated);
       removed.push(...result.removed);
-      progress.tick();
+      progress.tick(preparedContentBytes(preparedInputs));
     }
     progress.finish(`repo=${toPosix(path.relative(rootDir, repoRoot)) || "."}`);
 
@@ -3504,11 +3539,17 @@ export async function ingestInputDetailed(rootDir: string, input: string, option
     isHttpUrl(input) || normalizedOptions.repoRoot
       ? normalizedOptions.repoRoot
       : await detectScopedRepoRoot(rootDir, absoluteInput, path.dirname(absoluteInput));
+  const progress = createProgressReporter("ingest", 1, normalizedOptions.progress);
+  progress.startFile(isHttpUrl(input) ? input : toPosix(path.relative(rootDir, absoluteInput)) || path.basename(absoluteInput));
   const prepared = isHttpUrl(input)
     ? await prepareUrlInputs(rootDir, input, normalizedOptions)
     : await prepareFileInputs(rootDir, absoluteInput, repoRoot);
-
-  return await persistPreparedInputs(rootDir, input, prepared, paths, normalizedOptions.redactor);
+  const result = await persistPreparedInputs(rootDir, input, prepared, paths, normalizedOptions.redactor);
+  progress.tick(preparedContentBytes(prepared));
+  progress.finish(
+    `created=${result.created.length}, updated=${result.updated.length}, unchanged=${result.unchanged.length}, removed=${result.removed.length}`
+  );
+  return result;
 }
 
 export async function ingestInput(rootDir: string, input: string, options?: IngestOptions): Promise<SourceManifest> {
@@ -3678,11 +3719,12 @@ export async function ingestDirectory(rootDir: string, inputDir: string, options
   const failed: DirectoryIngestFailure[] = [];
   const failedRecords: IngestRunStateFailure[] = [];
   const redactions: RedactionSummary[] = [];
-  const progress = createProgressReporter("ingest", files.length);
+  const progress = createProgressReporter("ingest", files.length, normalizedOptions.progress);
 
   for (const absolutePath of files) {
     const relativeForLog = toPosix(path.relative(rootDir, absolutePath));
     const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+    progress.startFile(relativeForLog);
     let preparedInputs: Awaited<ReturnType<typeof prepareFileInputs>>;
     try {
       preparedInputs = await prepareFileInputs(
@@ -3712,7 +3754,7 @@ export async function ingestDirectory(rootDir: string, inputDir: string, options
       failed.push({ path: relativeForLog, error: message, stage: "persist" });
       failedRecords.push({ absolutePath, path: relativeForLog, error: message, stage: "persist" });
     }
-    progress.tick();
+    progress.tick(preparedContentBytes(preparedInputs));
   }
   progress.finish(`imported=${imported.length}, updated=${updated.length}, skipped=${skipped.length}, failed=${failed.length}`);
 

@@ -7,6 +7,7 @@ Use this when the user needs the shortest path from install to a working vault.
 ```bash
 npm install -g @swarmvaultai/cli
 swarmvault quickstart ./repo
+swarmvault quickstart ./notes.pdf --no-serve
 swarmvault next
 swarmvault quickstart ./repo --no-serve
 swarmvault demo --no-serve
@@ -50,7 +51,8 @@ swarmvault export ai --out ./exports/ai
 - `swarmvault.schema.md` exists and reflects the vault contract
 - `swarmvault next` reports `uninitialized`, `initialized`, or `compiled` and recommends the next safe command without changing files
 - `demo --no-serve` leaves a temporary compiled vault behind even on a clean machine
-- `quickstart`, `quickstart --no-serve`, `scan --no-serve`, `scan --no-viz`, and `clone --no-viz` leave a compiled vault behind even when the viewer is not launched
+- `quickstart`, `quickstart --no-serve`, `scan --no-serve`, `scan --no-viz`, and `clone --no-viz` accept local files as well as directories and leave a compiled vault behind even when the viewer is not launched
+- `quickstart`, `scan`, and `clone` do not create project-local agent rule files unless `--install-agent-rules` is passed with configured agents
 - `state/sources.json` contains the managed source registry entry
 - `wiki/graph/report.md` exists after compile
 - `graph status` and `check-update` report whether tracked repo changes need `graph update`/`update` or a full `compile` without writing watch state

@@ -5174,7 +5174,9 @@ export async function initVault(rootDir: string, options: InitOptions = {}): Pro
   const { config, paths } = await initWorkspace(rootDir, { profile: requestedProfile });
   const profile = config.profile;
   const isResearchProfile = profile.presets.length > 0 || profile.guidedSessionMode === "canonical_review" || profile.dataviewBlocks;
-  await installConfiguredAgents(rootDir);
+  if (options.installAgentRules) {
+    await installConfiguredAgents(rootDir);
+  }
   const insightsIndexPath = path.join(paths.wikiDir, "insights", "index.md");
   const now = new Date().toISOString();
   await writeFileIfChanged(

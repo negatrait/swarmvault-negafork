@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 3.15.0
+
+- Fixed `quickstart`, `scan`, and `clone` so local file inputs such as PDFs work directly instead of failing with directory-only path handling.
+- Added interactive, bounded ingest progress on stderr with active-file feedback and processed content size while keeping JSON, MCP, watch, and CI-style flows quiet.
+- Changed `init`, `quickstart`, `scan`, and `clone` to avoid writing project-local agent rule files by default; rule installs are now explicit through `install --agent` or configured `--install-agent-rules`.
+- Added MCP registry container metadata (`Dockerfile`, `.dockerignore`, and `glama.json`) for stdio container validation.
+- Extended CLI surface smoke and engine coverage for single-file quickstart and explicit agent-rule installation behavior.
+- Updated OSS docs, localized READMEs, site docs, spec notes, and the published ClawHub skill bundle.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.15.0`.
+
 ## 3.14.2
 
 - Hardened compile for larger heuristic vaults by bounding source analysis concurrency, graph co-occurrence projection, concept conflict pairing, and contradiction comparisons.

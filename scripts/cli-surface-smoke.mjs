@@ -594,6 +594,15 @@ async function runBehaviorSmoke() {
     assert.ok(typeof result.shareKitPath === "string", "quickstart did not return share kit path");
   });
 
+  const quickstartFileWorkspace = path.join(scanDir, "quickstart-file-workspace");
+  await fs.mkdir(quickstartFileWorkspace, { recursive: true });
+  await runJsonCheck(["quickstart", path.join(scanInput, "README.md"), "--no-serve"], quickstartFileWorkspace, "quickstart file", (result) => {
+    assert.ok(result.compiled?.sourceCount >= 1, "quickstart file input did not compile");
+    assert.ok(Array.isArray(result.created), "quickstart file input did not return single-input ingest details");
+  });
+  await assert.rejects(fs.access(path.join(quickstartFileWorkspace, "AGENTS.md")), "quickstart file input should not install agent rules by default");
+  summary.behaviorChecks.push("quickstart file no default agent rules");
+
   const quickstartHumanWorkspace = path.join(scanDir, "quickstart-human-workspace");
   await fs.mkdir(quickstartHumanWorkspace, { recursive: true });
   const quickstartHuman = await runCli(["quickstart", scanInput, "--no-serve"], {

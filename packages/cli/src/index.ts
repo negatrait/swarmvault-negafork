@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
@@ -141,9 +141,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.14.2";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.15.0";
   } catch {
-    return "3.14.2";
+    return "3.15.0";
   }
 }
 
@@ -766,10 +766,20 @@ async function runGraphMergeCommand(graphPaths: string[], options: { out: string
 
 async function runScanCommand(
   input: string,
-  options: { port?: string; serve?: boolean; viz?: boolean; branch?: string; ref?: string; checkoutDir?: string; mcp?: boolean }
+  options: {
+    port?: string;
+    serve?: boolean;
+    viz?: boolean;
+    branch?: string;
+    ref?: string;
+    checkoutDir?: string;
+    mcp?: boolean;
+    installAgentRules?: boolean;
+  }
 ): Promise<void> {
   const rootDir = process.cwd();
-  await initVault(rootDir, {});
+  const progress = !isJson() && !options.mcp;
+  await initVault(rootDir, { installAgentRules: options.installAgentRules ?? false });
   if (!isJson()) {
     log("Initialized workspace.");
   }
@@ -782,14 +792,17 @@ async function runScanCommand(
         ref: options.ref,
         checkoutDir: options.checkoutDir
       })
-    : await ingestDirectory(rootDir, input, {});
+    : await ingestScanInput(rootDir, input, progress);
   if (!isJson()) {
     if ("source" in result) {
       log(
         `Registered ${result.source.kind} source ${result.source.id}. Imported ${result.source.lastSyncCounts?.importedCount ?? 0}, updated ${result.source.lastSyncCounts?.updatedCount ?? 0}.`
       );
-    } else {
+    } else if ("inputDir" in result) {
       log(`Ingested ${result.imported.length} file(s).`);
+    } else {
+      const sourceCount = result.created.length + result.updated.length + result.unchanged.length;
+      log(`Ingested ${sourceCount} source(s).`);
     }
   }
 
@@ -854,6 +867,18 @@ async function runScanCommand(
   } else if (isJson()) {
     emitJson({ ...result, compiled, shareCardPath, shareCardSvgPath, shareKitPath });
   }
+}
+
+async function ingestScanInput(rootDir: string, input: string, progress: boolean) {
+  const absoluteInput = path.resolve(rootDir, input);
+  const inputStat = await stat(absoluteInput);
+  if (inputStat.isDirectory()) {
+    return ingestDirectory(rootDir, input, { progress });
+  }
+  if (inputStat.isFile()) {
+    return ingestInputDetailed(rootDir, input, { progress });
+  }
+  throw new Error(`Input must be a file or directory: ${input}`);
 }
 
 async function resolveChatResumeId(resume: boolean | string | undefined): Promise<string | undefined> {
@@ -1015,6 +1040,7 @@ program
   .option("--branch <name>", "GitHub branch to clone when the input is a public repo URL")
   .option("--ref <ref>", "Git ref, tag, or commit to check out when the input is a public repo URL")
   .option("--checkout-dir <path>", "Persistent checkout directory for a public GitHub repo input")
+  .option("--install-agent-rules", "Install configured agent rule files during initialization", false)
   .action(runScanCommand);
 
 program
@@ -1030,11 +1056,13 @@ program
     "Minimal LLM-Wiki starter (raw/, wiki/, wiki/index.md, wiki/log.md, swarmvault.schema.md) without config, state, or agent installs",
     false
   )
-  .action(async (options: { obsidian?: boolean; profile?: string; lite?: boolean }) => {
+  .option("--install-agent-rules", "Install configured agent rule files during initialization", false)
+  .action(async (options: { obsidian?: boolean; profile?: string; lite?: boolean; installAgentRules?: boolean }) => {
     await initVault(process.cwd(), {
       obsidian: options.obsidian ?? false,
       profile: options.profile,
-      lite: options.lite ?? false
+      lite: options.lite ?? false,
+      installAgentRules: options.installAgentRules ?? false
     });
     if (isJson()) {
       emitJson({
@@ -1042,7 +1070,8 @@ program
         rootDir: process.cwd(),
         obsidian: options.obsidian ?? false,
         profile: options.profile ?? "default",
-        lite: options.lite ?? false
+        lite: options.lite ?? false,
+        installAgentRules: options.installAgentRules ?? false
       });
     } else {
       log(options.lite ? "Initialized SwarmVault lite workspace." : "Initialized SwarmVault workspace.");
@@ -1125,15 +1154,13 @@ program
         video: options.video,
         extractClasses,
         resume: options.resume,
-        redact: options.redact
+        redact: options.redact,
+        progress: !isJson()
       };
       const directoryResult = !/^https?:\/\//i.test(input)
-        ? await import("node:fs/promises").then((fs) =>
-            fs
-              .stat(input)
-              .then((stat) => (stat.isDirectory() ? ingestDirectory(process.cwd(), input, commonOptions) : null))
-              .catch(() => null)
-          )
+        ? await stat(input)
+            .then((inputStat) => (inputStat.isDirectory() ? ingestDirectory(process.cwd(), input, commonOptions) : null))
+            .catch(() => null)
         : null;
       if (directoryResult) {
         const scope =
@@ -3661,6 +3688,7 @@ program
   .option("--branch <name>", "GitHub branch to clone when scanning a public repo URL")
   .option("--ref <ref>", "Git ref, tag, or commit to check out when scanning a public repo URL")
   .option("--checkout-dir <path>", "Persistent checkout directory for a public GitHub repo scan")
+  .option("--install-agent-rules", "Install configured agent rule files during initialization", false)
   .action(runScanCommand);
 
 program
@@ -3674,6 +3702,7 @@ program
   .option("--branch <name>", "GitHub branch to clone when scanning a public repo URL")
   .option("--ref <ref>", "Git ref, tag, or commit to check out when scanning a public repo URL")
   .option("--checkout-dir <path>", "Persistent checkout directory for a public GitHub repo scan")
+  .option("--install-agent-rules", "Install configured agent rule files during initialization", false)
   .action(runScanCommand);
 
 function enableStructuredJsonOnSubcommands(command: Command): void {
