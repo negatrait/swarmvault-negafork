@@ -286,7 +286,8 @@ This matters because many "OpenAI-compatible" backends only implement part of th
 - `getWatchStatus(rootDir)` reads the latest watch-status artifact plus pending semantic refresh entries
 - `syncTrackedRepos(rootDir)` refreshes previously ingested repo roots, updates changed manifests, and removes deleted repo manifests
 - `syncTrackedReposForWatch(rootDir)` is the repo-watch sync path that defers non-code semantic refresh into `state/watch/`
-- large ingest and compile passes emit low-noise progress on TTYs, and report presentation rolls up tiny fragmented communities without mutating the canonical graph artifact
+- large ingest and compile passes emit low-noise progress on TTYs, bound source-analysis concurrency, and use sparse graph co-occurrence projection so dense note sets do not create unbounded pairwise graph work
+- JSON state writes are atomic, and JSON parse failures include the exact state file path that failed to parse
 - `installGitHooks(rootDir)`, `uninstallGitHooks(rootDir)`, and `getGitHookStatus(rootDir)` manage local `post-commit` and `post-checkout` hook blocks for the nearest git repository
 - `installAgent(rootDir, agent, { hook })` writes agent instructions and returns the primary `target`, all touched `targets`, and optional merge warnings for agents such as Aider
 - `lintVault(rootDir, options)` runs structural lint, optional deep lint, optional contradiction-only filtering through `{ conflicts: true }`, and optional web-augmented evidence gathering

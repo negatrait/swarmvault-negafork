@@ -303,6 +303,8 @@ Compile the current manifests into:
 
 The compiler also reads `swarmvault.schema.md` and records a `schema_hash` plus lifecycle metadata such as `status`, `created_at`, `updated_at`, `compiled_from`, and `managed_by` in generated pages so schema edits can mark pages stale without losing lifecycle state.
 
+Large compile runs process source analysis in bounded batches and use a sparse graph co-occurrence projection so high-overlap note sets do not explode into unbounded pairwise graph work.
+
 For ingested code trees, compile also writes `state/code-index.json` so local imports and module aliases can resolve across the repo-aware code graph.
 
 New concept and entity pages are staged into `wiki/candidates/` first. A later matching compile promotes them into `wiki/concepts/` or `wiki/entities/`.
@@ -739,6 +741,8 @@ Agent target mapping:
 - `antigravity` writes `.agents/rules/swarmvault.md` and `.agents/workflows/swarmvault.md`, and removes older fully managed `.agent/` files during reinstall
 - `vscode` writes `.github/chatmodes/swarmvault.chatmode.md` plus `.github/copilot-instructions.md`
 
+SwarmVault only owns the managed block inside shared markdown rule files. It keeps the SwarmVault block aligned across targets while preserving any user-owned text before or after the block, so `AGENTS.md` and `CLAUDE.md` do not need to be byte-identical.
+
 Hook semantics:
 
 - `codex --hook` writes `.codex/hooks.json` plus `.codex/hooks/swarmvault-graph-first.js` and emits model-visible guidance before broad shell search
@@ -841,6 +845,8 @@ Search behavior is configurable separately from provider routing:
 - If a provider claims OpenAI compatibility but fails structured generation, declare only the capabilities it actually supports
 - If `lint --deep --web` fails immediately, make sure a `webSearch` provider is configured and mapped to `tasks.deepLintProvider`
 - If you still see a `node:sqlite` experimental warning on Node 24, upgrade to the latest CLI; current releases suppress that upstream warning during normal runs
+- If compile reports `Failed to parse JSON file ...`, the named derived state file is corrupt or empty. Remove the named file or restore it from git, then rerun `swarmvault compile`; current releases write JSON state atomically to reduce partial-file failures.
+- If a large heuristic vault fails with heap exhaustion or `Map maximum size exceeded` on an older CLI, upgrade and rerun compile. Current releases bound analysis concurrency and graph projection during compile.
 
 ## Links
 

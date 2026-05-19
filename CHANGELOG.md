@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 3.14.2
+
+- Hardened compile for larger heuristic vaults by bounding source analysis concurrency, graph co-occurrence projection, concept conflict pairing, and contradiction comparisons.
+- Made JSON state writes atomic and parse failures path-aware, so corrupt derived state reports the exact JSON file instead of a bare `Unexpected end of JSON input`.
+- Documented agent rule-file behavior: shared managed SwarmVault blocks stay in sync, while user-owned content in files such as `AGENTS.md` and `CLAUDE.md` is preserved and may intentionally differ.
+- Added regression coverage for corrupt compile state, larger heuristic markdown compiles, and managed agent-rule parity.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.14.2`.
+
 ## 3.14.1
 
 - Fixed MCP tool responses so optional fields are serialized as `null` in the returned JSON text instead of leaking `undefined` to MCP clients.

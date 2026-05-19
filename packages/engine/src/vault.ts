@@ -207,6 +207,15 @@ type ManagedPageRecord = {
 
 const COMPILE_PROGRESS_THRESHOLD = 120;
 const COMPILE_PROGRESS_UPDATE_INTERVAL = 50;
+const COMPILE_ANALYSIS_CONCURRENCY = 8;
+const COMPILE_IO_CONCURRENCY = 32;
+const CO_OCCURRENCE_DENSE_NODE_LIMIT = 80;
+const CO_OCCURRENCE_SPARSE_NEIGHBORS = 3;
+const CO_OCCURRENCE_PAIR_CAP = 75_000;
+const CONTRADICTION_TOKEN_CANDIDATE_LIMIT = 200;
+const CONTRADICTION_COMPARISON_LIMIT = 120_000;
+const CONTRADICTION_RESULT_LIMIT = 500;
+const CONCEPT_CONFLICT_PAIR_LIMIT = 2_000;
 
 function uniqueStrings(values: string[]): string[] {
   return uniqueBy(values.filter(Boolean), (value) => value);
@@ -241,6 +250,24 @@ function createCompileProgressReporter(
       process.stderr.write(`[swarmvault compile] ${phase}: ${totalItems}/${totalItems}${summary ? ` (${summary})` : ""}\n`);
     }
   };
+}
+
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, run: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const limit = Math.max(1, Math.min(Math.floor(concurrency), items.length || 1));
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  await Promise.all(
+    Array.from({ length: limit }, async () => {
+      while (cursor < items.length) {
+        const index = cursor;
+        cursor += 1;
+        results[index] = await run(items[index] as T, index);
+      }
+    })
+  );
+
+  return results;
 }
 
 function normalizeOutputFormat(format: OutputFormat | undefined): OutputFormat {
@@ -1009,8 +1036,10 @@ async function loadAnalysesBySourceIds(
   paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
   sourceIds: string[]
 ): Promise<SourceAnalysis[]> {
-  const analyses = await Promise.all(
-    sourceIds.map(async (sourceId) => await readJsonFile<SourceAnalysis>(path.join(paths.analysesDir, `${sourceId}.json`)))
+  const analyses = await mapWithConcurrency(
+    sourceIds,
+    COMPILE_IO_CONCURRENCY,
+    async (sourceId) => await readJsonFile<SourceAnalysis>(path.join(paths.analysesDir, `${sourceId}.json`))
   );
   return analyses.filter((analysis): analysis is SourceAnalysis => Boolean(analysis?.sourceId));
 }
@@ -1749,6 +1778,60 @@ function splitCommunityMembers(graph: Graph, memberIds: string[], resolution: nu
   return split.length > 1 ? split : [memberIds];
 }
 
+function connectProjectedCoOccurrences(nodes: GraphNode[], connect: (left: string, right: string) => void): void {
+  const nodesBySourceId = new Map<string, string[]>();
+  for (const node of nodes) {
+    for (const sourceId of node.sourceIds) {
+      const current = nodesBySourceId.get(sourceId) ?? [];
+      current.push(node.id);
+      nodesBySourceId.set(sourceId, current);
+    }
+  }
+
+  let projectedPairs = 0;
+  const connectPair = (left: string, right: string): boolean => {
+    if (left === right) {
+      return true;
+    }
+    connect(left, right);
+    connect(right, left);
+    projectedPairs += 1;
+    return projectedPairs < CO_OCCURRENCE_PAIR_CAP;
+  };
+
+  for (const memberIds of [...nodesBySourceId.values()].sort((left, right) => left.length - right.length)) {
+    if (projectedPairs >= CO_OCCURRENCE_PAIR_CAP) {
+      break;
+    }
+    const ids = uniqueStrings(memberIds).sort((left, right) => left.localeCompare(right));
+    if (ids.length <= 1) {
+      continue;
+    }
+
+    if (ids.length <= CO_OCCURRENCE_DENSE_NODE_LIMIT) {
+      for (let index = 0; index < ids.length; index++) {
+        const left = ids[index] as string;
+        for (let cursor = index + 1; cursor < ids.length; cursor++) {
+          if (!connectPair(left, ids[cursor] as string)) {
+            return;
+          }
+        }
+      }
+      continue;
+    }
+
+    for (let index = 0; index < ids.length; index++) {
+      const left = ids[index] as string;
+      for (let offset = 1; offset <= CO_OCCURRENCE_SPARSE_NEIGHBORS; offset++) {
+        const right = ids[(index + offset) % ids.length] as string;
+        if (!connectPair(left, right)) {
+          return;
+        }
+      }
+    }
+  }
+}
+
 function deriveGraphMetrics(
   nodes: GraphNode[],
   edges: GraphEdge[],
@@ -1771,16 +1854,7 @@ function deriveGraphMetrics(
   }
 
   const nonSourceNodes = nodes.filter((node) => node.type !== "source");
-  for (let index = 0; index < nonSourceNodes.length; index++) {
-    const left = nonSourceNodes[index];
-    for (let cursor = index + 1; cursor < nonSourceNodes.length; cursor++) {
-      const right = nonSourceNodes[cursor];
-      if (left.sourceIds.some((sourceId) => right.sourceIds.includes(sourceId))) {
-        connect(left.id, right.id);
-        connect(right.id, left.id);
-      }
-    }
-  }
+  connectProjectedCoOccurrences(nonSourceNodes, connect);
 
   const communityMap = new Map<string, string>();
   const communities: Array<{ id: string; label: string; nodeIds: string[] }> = [];
@@ -2032,19 +2106,66 @@ function detectContradictions(analyses: SourceAnalysis[]): DetectedContradiction
       .map((c) => ({ sourceId: analysis.sourceId, claim: c, tokens: claimTokens(c.text) }))
   );
 
-  for (let i = 0; i < claimsWithTokens.length; i++) {
-    for (let j = i + 1; j < claimsWithTokens.length; j++) {
-      const a = claimsWithTokens[i];
-      const b = claimsWithTokens[j];
-      if (a.sourceId === b.sourceId) continue;
-      if (a.claim.polarity === b.claim.polarity) continue;
-      const similarity = claimJaccardSimilarity(a.tokens, b.tokens);
+  const tokenFrequency = new Map<string, number>();
+  for (const item of claimsWithTokens) {
+    for (const token of item.tokens) {
+      tokenFrequency.set(token, (tokenFrequency.get(token) ?? 0) + 1);
+    }
+  }
+
+  const negativeIndexByToken = new Map<string, number[]>();
+  for (let index = 0; index < claimsWithTokens.length; index++) {
+    const item = claimsWithTokens[index];
+    if (item?.claim.polarity !== "negative") {
+      continue;
+    }
+    for (const token of item.tokens) {
+      if ((tokenFrequency.get(token) ?? 0) > CONTRADICTION_TOKEN_CANDIDATE_LIMIT) {
+        continue;
+      }
+      const bucket = negativeIndexByToken.get(token) ?? [];
+      bucket.push(index);
+      negativeIndexByToken.set(token, bucket);
+    }
+  }
+
+  let comparisons = 0;
+  const seenPairs = new Set<string>();
+  for (let index = 0; index < claimsWithTokens.length; index++) {
+    const positive = claimsWithTokens[index];
+    if (positive?.claim.polarity !== "positive") {
+      continue;
+    }
+    const candidateIndexes = uniqueStrings(
+      [...positive.tokens]
+        .filter((token) => (tokenFrequency.get(token) ?? 0) <= CONTRADICTION_TOKEN_CANDIDATE_LIMIT)
+        .flatMap((token) => negativeIndexByToken.get(token)?.map(String) ?? [])
+    )
+      .map((candidate) => Number(candidate))
+      .filter((candidate) => Number.isInteger(candidate))
+      .sort((left, right) => left - right);
+
+    for (const candidateIndex of candidateIndexes) {
+      if (comparisons >= CONTRADICTION_COMPARISON_LIMIT || contradictions.length >= CONTRADICTION_RESULT_LIMIT) {
+        return contradictions;
+      }
+      const negative = claimsWithTokens[candidateIndex];
+      if (!negative || positive.sourceId === negative.sourceId) {
+        continue;
+      }
+      const pairKey = `${index}:${candidateIndex}`;
+      if (seenPairs.has(pairKey)) {
+        continue;
+      }
+      seenPairs.add(pairKey);
+      comparisons += 1;
+      const similarity = claimJaccardSimilarity(positive.tokens, negative.tokens);
       if (similarity >= 0.3) {
         contradictions.push({
-          sourceIdA: a.sourceId,
-          sourceIdB: b.sourceId,
-          claimA: { text: a.claim.text, confidence: a.claim.confidence },
-          claimB: { text: b.claim.text, confidence: b.claim.confidence },
+          sourceIdA: positive.sourceId,
+          sourceIdB: negative.sourceId,
+          claimA: { text: positive.claim.text, confidence: positive.claim.confidence },
+          claimB: { text: negative.claim.text, confidence: negative.claim.confidence },
           similarity
         });
       }
@@ -2472,11 +2593,16 @@ function buildGraph(
   for (const [, claimsForConcept] of conceptClaims) {
     const positive = claimsForConcept.filter((item) => item.claim.polarity === "positive");
     const negative = claimsForConcept.filter((item) => item.claim.polarity === "negative");
+    let pairCount = 0;
     for (const positiveClaim of positive) {
       for (const negativeClaim of negative) {
+        if (pairCount >= CONCEPT_CONFLICT_PAIR_LIMIT) {
+          break;
+        }
         if (positiveClaim.sourceId === negativeClaim.sourceId) {
           continue;
         }
+        pairCount += 1;
         const edgeKey = [positiveClaim.sourceId, negativeClaim.sourceId].sort().join("|");
         if (conflictEdgeKeys.has(edgeKey)) {
           continue;
@@ -2492,6 +2618,9 @@ function buildGraph(
           confidence: conflictConfidence(positiveClaim.claim, negativeClaim.claim),
           provenance: [positiveClaim.sourceId, negativeClaim.sourceId]
         });
+      }
+      if (pairCount >= CONCEPT_CONFLICT_PAIR_LIMIT) {
+        break;
       }
     }
   }
@@ -5329,39 +5458,33 @@ export async function compileVault(rootDir: string, options: CompileOptions = {}
   }
 
   const analysisProgress = createCompileProgressReporter("analyze", manifests.length);
-  const [dirtyAnalyses, cleanAnalyses] = await Promise.all([
-    Promise.all(
-      dirty.map(async (manifest) => {
-        const analysis = await analyzeSource(
-          manifest,
-          await readExtractedText(rootDir, manifest),
-          provider,
-          paths,
-          getEffectiveSchema(schemas, sourceProjects[manifest.sourceId] ?? null)
-        );
-        analysisProgress.tick(manifest.title);
-        return analysis;
-      })
-    ),
-    Promise.all(
-      clean.map(async (manifest) => {
-        const cached = await readJsonFile<SourceAnalysis>(path.join(paths.analysesDir, `${manifest.sourceId}.json`));
-        if (cached) {
-          analysisProgress.tick(manifest.title);
-          return cached;
-        }
-        const analysis = await analyzeSource(
-          manifest,
-          await readExtractedText(rootDir, manifest),
-          provider,
-          paths,
-          getEffectiveSchema(schemas, sourceProjects[manifest.sourceId] ?? null)
-        );
-        analysisProgress.tick(manifest.title);
-        return analysis;
-      })
-    )
-  ]);
+  const dirtyAnalyses = await mapWithConcurrency(dirty, COMPILE_ANALYSIS_CONCURRENCY, async (manifest) => {
+    const analysis = await analyzeSource(
+      manifest,
+      await readExtractedText(rootDir, manifest),
+      provider,
+      paths,
+      getEffectiveSchema(schemas, sourceProjects[manifest.sourceId] ?? null)
+    );
+    analysisProgress.tick(manifest.title);
+    return analysis;
+  });
+  const cleanAnalyses = await mapWithConcurrency(clean, COMPILE_ANALYSIS_CONCURRENCY, async (manifest) => {
+    const cached = await readJsonFile<SourceAnalysis>(path.join(paths.analysesDir, `${manifest.sourceId}.json`));
+    if (cached) {
+      analysisProgress.tick(manifest.title);
+      return cached;
+    }
+    const analysis = await analyzeSource(
+      manifest,
+      await readExtractedText(rootDir, manifest),
+      provider,
+      paths,
+      getEffectiveSchema(schemas, sourceProjects[manifest.sourceId] ?? null)
+    );
+    analysisProgress.tick(manifest.title);
+    return analysis;
+  });
   analysisProgress.finish(`dirty=${dirty.length}, clean=${clean.length}`);
 
   const initialAnalyses = [...dirtyAnalyses, ...cleanAnalyses];

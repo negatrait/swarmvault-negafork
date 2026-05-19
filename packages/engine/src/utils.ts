@@ -37,13 +37,24 @@ export async function readJsonFile<T>(filePath: string): Promise<T | null> {
     if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
+    if (error instanceof SyntaxError) {
+      throw new Error(`Failed to parse JSON file ${filePath}: ${error.message}`);
+    }
     throw error;
   }
 }
 
 export async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
   await ensureDir(path.dirname(filePath));
-  await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  const dir = path.dirname(filePath);
+  const tempPath = path.join(dir, `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`);
+  try {
+    await fs.writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function appendJsonLine(filePath: string, value: unknown): Promise<void> {

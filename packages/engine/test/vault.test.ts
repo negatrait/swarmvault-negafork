@@ -482,6 +482,30 @@ describe("swarmvault workflow", () => {
     expect(cursorContentAgain).toBe(cursorContent);
   });
 
+  it("keeps agent-specific user notes while installing matching managed SwarmVault blocks", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const agentsPath = path.join(rootDir, "AGENTS.md");
+    const claudePath = path.join(rootDir, "CLAUDE.md");
+    await fs.writeFile(agentsPath, "# Agent Notes\n\n- Prefer parser-backed code analysis.\n", "utf8");
+    await fs.writeFile(claudePath, "# Tool Notes\n\n- Run local hooks before broad searches.\n", "utf8");
+
+    await installAgent(rootDir, "codex");
+    await installAgent(rootDir, "claude");
+
+    const agentsContent = await fs.readFile(agentsPath, "utf8");
+    const claudeContent = await fs.readFile(claudePath, "utf8");
+    expect(agentsContent).toContain("- Prefer parser-backed code analysis.");
+    expect(claudeContent).toContain("- Run local hooks before broad searches.");
+
+    const managedBlockPattern = /<!-- swarmvault:managed:start -->[\s\S]*<!-- swarmvault:managed:end -->/;
+    const agentsManagedBlock = agentsContent.match(managedBlockPattern)?.[0];
+    const claudeManagedBlock = claudeContent.match(managedBlockPattern)?.[0];
+    expect(agentsManagedBlock).toBeTruthy();
+    expect(claudeManagedBlock).toBe(agentsManagedBlock);
+    expect(agentsContent).not.toBe(claudeContent);
+  });
+
   it("init --lite creates only the minimal LLM-Wiki starter structure", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir, { lite: true });
@@ -987,6 +1011,48 @@ describe("swarmvault workflow", () => {
     expect(sessionFiles.some((file) => file.includes("-compile-"))).toBe(true);
     expect(sessionFiles.some((file) => file.includes("-query-"))).toBe(true);
     expect(sessionFiles.some((file) => file.includes("-lint-"))).toBe(true);
+  });
+
+  it("reports corrupt JSON state with the path that failed to parse", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    await fs.writeFile(path.join(rootDir, "note.md"), "# Corrupt State\n\nCompile should identify corrupt state paths.", "utf8");
+    await ingestInput(rootDir, "note.md");
+    await fs.writeFile(path.join(rootDir, "state", "compile-state.json"), "", "utf8");
+
+    await expect(compileVault(rootDir)).rejects.toThrow(/compile-state\.json/);
+  });
+
+  it("compiles a larger heuristic markdown corpus without unbounded graph projection", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const sourceCount = 140;
+    await Promise.all(
+      Array.from({ length: sourceCount }, async (_, index) => {
+        const group = index % 7;
+        await fs.writeFile(
+          path.join(rootDir, `scale-${index + 1}.md`),
+          [
+            `# Scale Note ${index + 1}`,
+            "",
+            `Architecture group ${group} supports local-first workflows and deterministic evidence checks.`,
+            `The note links shared topic ${group} with unique marker scale-${index + 1}.`,
+            "Without bounded graph projection, dense shared concepts can exhaust memory on larger note sets."
+          ].join("\n"),
+          "utf8"
+        );
+      })
+    );
+    for (let index = 0; index < sourceCount; index += 1) {
+      await ingestInput(rootDir, `scale-${index + 1}.md`);
+    }
+
+    const compile = await compileVault(rootDir);
+    expect(compile.sourceCount).toBe(sourceCount);
+    expect(compile.pageCount).toBeGreaterThan(sourceCount);
+    const graph = JSON.parse(await fs.readFile(path.join(rootDir, "state", "graph.json"), "utf8")) as GraphArtifact;
+    expect(graph.nodes.length).toBeGreaterThan(sourceCount);
+    expect(graph.communities?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("extracts PDF text into markdown and extraction metadata sidecars", async () => {

@@ -104,6 +104,21 @@ If it recommends `swarmvault graph update`, the detected changes are code-only a
 
 Before exporting, merging, pushing, or publishing graph artifacts, run `swarmvault graph validate --strict` to catch dangling references, duplicate ids, or invalid confidence values.
 
+## Compile fails on a larger note set
+
+If an older CLI fails with heap exhaustion, `Map maximum size exceeded`, or a bare `Unexpected end of JSON input`, upgrade SwarmVault and rerun compile:
+
+```bash
+npm install -g @swarmvaultai/cli@latest
+swarmvault compile
+```
+
+Current releases bound source-analysis concurrency and graph projection during compile. If the error says `Failed to parse JSON file ...`, remove or restore the named derived state file and compile again; JSON state writes are atomic in current releases to reduce partial-file failures.
+
+## Agent rule files differ
+
+That can be expected. SwarmVault owns only the managed block between `swarmvault:managed:start` and `swarmvault:managed:end`. The managed SwarmVault block should match across compatible agent rule files, but user-owned text before or after that block is preserved and may differ per tool.
+
 ## Vault doctor reports warnings
 
 `swarmvault doctor` is the broad health summary. It checks graph artifacts, retrieval, review queues, watch state, migrations, managed sources, and task ledgers, then prints concrete follow-up commands. The `swarmvault graph serve` workbench shows the same full check list with details and copyable suggested commands.
