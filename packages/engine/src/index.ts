@@ -1,6 +1,6 @@
 /// <reference path="./shims.d.ts" />
 
-export { installAgent, installConfiguredAgents } from "./agents.js";
+export { getAgentInstallStatus, installAgent, installConfiguredAgents } from "./agents.js";
 export { exportAiPack } from "./ai-export.js";
 export { autoCommitWikiChanges } from "./auto-commit.js";
 export { DEFAULT_PROMOTION_CONFIG, evaluateCandidateForPromotion } from "./candidate-promotion.js";
@@ -54,7 +54,7 @@ export {
   renderGraphShareSvg
 } from "./graph-share.js";
 export { getGraphStatus } from "./graph-status.js";
-export { blastRadius, graphDiff, graphStats, validateGraphArtifact } from "./graph-tools.js";
+export { blastRadius, findGraphCycles, graphDiff, graphStats, validateGraphArtifact } from "./graph-tools.js";
 export { buildGraphTree, exportGraphTree, renderGraphTreeHtml } from "./graph-tree.js";
 export { getGitHookStatus, installGitHooks, uninstallGitHooks } from "./hooks.js";
 export {
@@ -88,6 +88,12 @@ export {
 } from "./memory.js";
 export type { MigrationPlan, MigrationResult, MigrationStep, VaultVersionRecord } from "./migrate.js";
 export { ALL_MIGRATIONS, detectVaultVersion, planMigration, runMigration } from "./migrate.js";
+export {
+  addProviderConfig,
+  getProviderConfigEntry,
+  listProviderConfigEntries,
+  removeProviderConfig
+} from "./providers/config-store.js";
 export type { LocalWhisperAdapterOptions, WhisperRunner, WhisperRunResult } from "./providers/local-whisper.js";
 export { LocalWhisperProviderAdapter } from "./providers/local-whisper.js";
 export type {

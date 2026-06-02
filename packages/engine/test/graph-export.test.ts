@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import matter from "gray-matter";
 import { afterEach, describe, expect, it } from "vitest";
-import { exportObsidianVault, initVault } from "../src/index.js";
+import { exportGraphFormat, exportObsidianVault, initVault } from "../src/index.js";
 import type { GraphArtifact, GraphNode, GraphPage } from "../src/types.js";
 
 const tempDirs: string[] = [];
@@ -401,5 +401,21 @@ describe("obsidian vault export", () => {
     const content = await fs.readFile(path.join(outputDir, "graph", "nodes", "entities", orphanFile!), "utf8");
     const parsed = matter(content);
     expect(parsed.data.aliases).toContain("Orphan Entity");
+  });
+
+  it("exports a callflow HTML view of directed graph relationships", async () => {
+    const root = await createTempWorkspace();
+    await initVault(root);
+    await writeGraph(root, sampleGraph());
+
+    const outputPath = path.join(root, "wiki", "graph", "callflow.html");
+    const result = await exportGraphFormat(root, "callflow", outputPath);
+
+    expect(result.format).toBe("callflow");
+    const html = await fs.readFile(outputPath, "utf8");
+    expect(html).toContain("SwarmVault Callflow");
+    expect(html).toContain("Alpha Source");
+    expect(html).toContain("Authentication");
+    expect(html).toContain("mentions");
   });
 });

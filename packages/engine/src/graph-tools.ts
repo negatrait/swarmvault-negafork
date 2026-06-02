@@ -9,6 +9,7 @@ import type {
   BlastRadiusResult,
   EvidenceClass,
   GraphArtifact,
+  GraphCycleResult,
   GraphDiffResult,
   GraphEdge,
   GraphExplainNeighbor,
@@ -789,6 +790,94 @@ export function graphDiff(oldGraph: GraphArtifact, newGraph: GraphArtifact): Gra
   const summary = parts.length ? parts.join("; ") : "No changes";
 
   return { addedNodes, removedNodes, addedEdges, removedEdges, addedPages, removedPages, summary };
+}
+
+export function findGraphCycles(
+  graph: GraphArtifact,
+  options: { relations?: string[]; limit?: number; maxDepth?: number } = {}
+): GraphCycleResult {
+  const relationFilter = options.relations?.length ? new Set(options.relations) : null;
+  const limit = Math.max(1, Math.min(options.limit ?? 25, 250));
+  const maxDepth = Math.max(2, Math.min(options.maxDepth ?? 25, 100));
+  const nodes = nodeById(graph);
+  const adjacency = new Map<string, GraphEdge[]>();
+
+  for (const edge of graph.edges) {
+    if (relationFilter && !relationFilter.has(edge.relation)) {
+      continue;
+    }
+    if (!nodes.has(edge.source) || !nodes.has(edge.target)) {
+      continue;
+    }
+    const outgoing = adjacency.get(edge.source) ?? [];
+    outgoing.push(edge);
+    adjacency.set(edge.source, outgoing);
+  }
+
+  for (const [nodeId, edges] of adjacency.entries()) {
+    adjacency.set(
+      nodeId,
+      edges.sort(
+        (left, right) =>
+          left.target.localeCompare(right.target) || left.relation.localeCompare(right.relation) || left.id.localeCompare(right.id)
+      )
+    );
+  }
+
+  const cycles: GraphCycleResult["cycles"] = [];
+  const seenKeys = new Set<string>();
+  const sortedNodeIds = [...nodes.keys()].sort((left, right) => left.localeCompare(right));
+
+  const addCycle = (nodeIds: string[], edges: GraphEdge[]) => {
+    const key = nodeIds.join(">");
+    if (seenKeys.has(key)) {
+      return;
+    }
+    seenKeys.add(key);
+    cycles.push({
+      nodeIds,
+      labels: nodeIds.map((nodeId) => nodes.get(nodeId)?.label ?? nodeId),
+      edgeIds: edges.map((edge) => edge.id),
+      relations: edges.map((edge) => edge.relation)
+    });
+  };
+
+  const visit = (startId: string, currentId: string, pathNodeIds: string[], pathEdges: GraphEdge[], visited: Set<string>) => {
+    if (cycles.length >= limit || pathNodeIds.length > maxDepth) {
+      return;
+    }
+    for (const edge of adjacency.get(currentId) ?? []) {
+      const nextId = edge.target;
+      if (nextId === startId && pathNodeIds.length > 1) {
+        addCycle([...pathNodeIds], [...pathEdges, edge]);
+        if (cycles.length >= limit) return;
+        continue;
+      }
+      if (visited.has(nextId) || nextId.localeCompare(startId) < 0) {
+        continue;
+      }
+      visited.add(nextId);
+      visit(startId, nextId, [...pathNodeIds, nextId], [...pathEdges, edge], visited);
+      visited.delete(nextId);
+      if (cycles.length >= limit) return;
+    }
+  };
+
+  for (const startId of sortedNodeIds) {
+    visit(startId, startId, [startId], [], new Set([startId]));
+    if (cycles.length >= limit) {
+      break;
+    }
+  }
+
+  cycles.sort(
+    (left, right) =>
+      left.labels.join(" > ").localeCompare(right.labels.join(" > ")) || left.nodeIds.join(">").localeCompare(right.nodeIds.join(">"))
+  );
+  const summary = cycles.length
+    ? `Found ${cycles.length} cycle${cycles.length === 1 ? "" : "s"}${cycles.length >= limit ? ` (limited to ${limit})` : ""}.`
+    : "No cycles found.";
+  return { cycles, limit, summary };
 }
 
 /**

@@ -199,7 +199,7 @@ Use `swarmvault source add https://github.com/karpathy/micrograd`, `swarmvault s
 | Record task history | `swarmvault task start "Implement the auth refactor" --target ./src --agent codex` |
 | Keep a conversation over the vault | `swarmvault chat "How should the next agent use this vault?"` |
 | Open health and repair guidance | `swarmvault doctor --repair` |
-| Build graph exports | `swarmvault graph export --report ./exports/report.html`, `swarmvault graph export --obsidian ./exports/graph-vault`, or `swarmvault graph export --neo4j ./exports/graph.cypher` |
+| Build graph exports | `swarmvault graph export --report ./exports/report.html`, `swarmvault graph export --callflow ./exports/callflow.html`, `swarmvault graph export --obsidian ./exports/graph-vault`, or `swarmvault graph export --neo4j ./exports/graph.cypher` |
 | Merge or inspect source/module trees | `swarmvault tree --output ./exports/tree.html` and `swarmvault merge-graphs ./exports/graph.json ./other-graph.json --out ./exports/merged-graph.json` |
 | Push graph data to Neo4j | `swarmvault graph push neo4j --dry-run` |
 
@@ -289,6 +289,17 @@ For cloud-hosted models, add a provider block with your API key:
 
 See the [provider docs](https://www.swarmvault.ai/docs/providers) for optional backends, task routing, and capability-specific configuration examples.
 
+You can also manage provider routing from the CLI without hand-editing JSON:
+
+```bash
+swarmvault provider add router --type openrouter --model openrouter/auto --api-key-env OPENROUTER_API_KEY --capability chat --capability structured --task queryProvider
+swarmvault provider list
+swarmvault provider show router
+swarmvault provider remove router --fallback local
+```
+
+Provider commands preserve unknown `swarmvault.config.json` fields and store secret references through `apiKeyEnv`; they do not accept literal API key values.
+
 ### Voice-first capture (local Whisper)
 
 For audio files (voice memos, meeting recordings, interviews), install whisper.cpp and let SwarmVault drive it locally — no API keys, no network traffic:
@@ -336,12 +347,14 @@ swarmvault install --agent trae             # Trae
 swarmvault install --agent claw             # Claw / OpenClaw skill target
 swarmvault install --agent droid            # Droid / Factory rules target
 swarmvault install --agent kiro             # Kiro IDE + always-on steering
+swarmvault install --agent kilo --hook       # Kilo project rules + plugin
 swarmvault install --agent hermes           # Hermes user-scope skill
 swarmvault install --agent antigravity      # Google Antigravity rules + /swarmvault workflow
 swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
+swarmvault install status --agent kilo --hook
 ```
 
-SwarmVault never writes these project-local rule files during `init`, `quickstart`, `scan`, or `clone` unless you explicitly opt into configured installs. Use `swarmvault install --agent <agent>` for one target at a time, or list agents in `swarmvault.config.json` and run `swarmvault init --install-agent-rules` or `swarmvault quickstart <input> --install-agent-rules` when you want configured targets installed together.
+SwarmVault never writes these project-local rule files during `init`, `quickstart`, `scan`, or `clone` unless you explicitly opt into configured installs. Use `swarmvault install --agent <agent> [--scope project|user]` for one target at a time, or list agents in `swarmvault.config.json` and run `swarmvault init --install-agent-rules` or `swarmvault quickstart <input> --install-agent-rules` when you want configured targets installed together. `install status` reports the files SwarmVault expects for a target without mutating the workspace.
 
 Or expose the vault directly over MCP:
 
@@ -432,7 +445,7 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 
 **Visual + post-ready share kit** - every compile writes `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, and `wiki/graph/share-kit/`; `swarmvault graph share --post` prints concise text, `swarmvault graph share --svg [path]` writes a 1200x630 visual card, and `swarmvault graph share --bundle [dir]` writes markdown, post text, SVG, HTML preview, and JSON metadata for easy posting, linking, or screenshotting.
 
-**Graph blast radius, status, stats, validation, refresh, query filters, tree, merge, clustering, and report export** - `graph blast <target>` traces reverse import impact through module dependencies, `graph status [path]` performs a read-only stale check over graph/report artifacts and tracked repo changes, and `check-update [path]` is the top-level compatibility alias for the same cron-safe status check. `graph stats` prints lightweight counts and relation mix, `graph validate [graph] --strict` checks duplicate ids, dangling references, confidence bounds, and conflicted-edge evidence before export/merge/push workflows, and `graph update [path]` / `graph refresh [path]` runs the code-only repo refresh cycle for graph artifacts with a 25% shrink guard unless `--force` is explicit; `update [path]` is the top-level compatibility alias. `watch [path] --once` can target one repo root without persisting watch config. `graph query` can filter traversal by relation, context group, evidence class, node type, or language, `graph tree` writes an interactive source/module/symbol HTML tree with expand/collapse controls and a node inspector, and `tree` is the top-level alias. `graph merge` combines SwarmVault or node-link JSON graphs into one namespaced artifact, and `merge-graphs` is the top-level alias. `graph cluster [--resolution <n>]` recomputes communities, degrees, god-node flags, and graph report pages from an existing graph without re-ingesting sources, and `cluster-only [vault]` is the top-level compatibility alias. `graph export --report` writes a self-contained HTML report with graph stats, key nodes, communities, and warnings; `graph export --neo4j <path>` is an alias for the Cypher export used before Neo4j imports.
+**Graph blast radius, cycles, status, stats, validation, refresh, query filters, tree, merge, clustering, and report export** - `graph blast <target>` traces reverse import impact through module dependencies, `graph cycles [--relation imports]` finds deterministic directed cycles, `graph status [path]` performs a read-only stale check over graph/report artifacts and tracked repo changes, and `check-update [path]` is the top-level compatibility alias for the same cron-safe status check. `graph stats` prints lightweight counts and relation mix, `graph validate [graph] --strict` checks duplicate ids, dangling references, confidence bounds, and conflicted-edge evidence before export/merge/push workflows, and `graph update [path]` / `graph refresh [path]` runs the code-only repo refresh cycle for graph artifacts with a 25% shrink guard unless `--force` is explicit; `update [path]` is the top-level compatibility alias. `watch [path] --once` can target one repo root without persisting watch config. `graph query` can filter traversal by relation, context group, evidence class, node type, or language, `graph tree` writes an interactive source/module/symbol HTML tree with expand/collapse controls and a node inspector, and `tree` is the top-level alias. `graph merge` combines SwarmVault or node-link JSON graphs into one namespaced artifact, and `merge-graphs` is the top-level alias. `graph cluster [--resolution <n>]` recomputes communities, degrees, god-node flags, and graph report pages from an existing graph without re-ingesting sources, and `cluster-only [vault]` is the top-level compatibility alias. `graph export --report` writes a self-contained HTML report with graph stats, key nodes, communities, and warnings; `graph export --callflow <path>` writes a compact directed relationship HTML view; `graph export --neo4j <path>` is an alias for the Cypher export used before Neo4j imports.
 
 **Graph diff** - `swarmvault diff` compares the current knowledge graph against the last committed version, showing added/removed nodes, edges, and pages so you can see exactly what a compile changed.
 
@@ -444,7 +457,7 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 
 **Optional model providers** - OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Groq, Together, xAI, Cerebras, generic OpenAI-compatible, custom adapters, or the built-in heuristic for offline/local use.
 
-**Agent integrations** - explicitly install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Hermes, Google Antigravity, VS Code Copilot Chat, and the extended skill-bundle roster. `init`, `quickstart`, `scan`, and `clone` leave project-local rule files alone unless you opt into configured installs. Optional graph-first hooks bias supported agents, including Codex, toward the wiki before broad search. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
+**Agent integrations** - explicitly install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Kilo, Hermes, Google Antigravity, VS Code Copilot Chat, Devin, and the extended skill-bundle roster. `init`, `quickstart`, `scan`, and `clone` leave project-local rule files alone unless you opt into configured installs. Optional graph-first hooks bias supported agents, including Codex and Kilo, toward the wiki before broad search. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
 
 **MCP server** - `swarmvault mcp` exposes the vault to any compatible agent client over stdio, including graph stats, graph clustering refresh, community lookup, hyperedges, context-pack, task-ledger, compatibility memory-task, vault doctor, and retrieval health tools. The repository also ships Docker/registry metadata for MCP server registries that validate a stdio container entrypoint.
 
@@ -463,7 +476,7 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 | Source guide | `source guide`, `source add --guide` | Guided walkthrough with approval-bundled updates in `wiki/outputs/source-guides/` |
 | Source session | `source session`, `source add --guide` | Resumable workflow state in `wiki/outputs/source-sessions/` and `state/source-sessions/` |
 
-**External graph sinks** - export to full HTML, lightweight standalone HTML, self-contained report HTML, SVG, GraphML, Cypher, JSON, Obsidian note bundles, or Obsidian canvas, or push the live graph directly into Neo4j over Bolt/Aura with shared-database-safe `vaultId` namespacing.
+**External graph sinks** - export to full HTML, lightweight standalone HTML, self-contained report HTML, directed callflow HTML, SVG, GraphML, Cypher, JSON, Obsidian note bundles, or Obsidian canvas, or push the live graph directly into Neo4j over Bolt/Aura with shared-database-safe `vaultId` namespacing.
 
 **Interactive ingest feedback** - file and directory ingest emits bounded progress on stderr with the active file and processed content size, while JSON, MCP, watch, and CI-style flows stay quiet.
 
@@ -489,6 +502,7 @@ Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know w
 | Claw / OpenClaw | `swarmvault install --agent claw` |
 | Droid | `swarmvault install --agent droid` |
 | Kiro | `swarmvault install --agent kiro` |
+| Kilo | `swarmvault install --agent kilo --hook` |
 | Hermes | `swarmvault install --agent hermes` |
 | Google Antigravity | `swarmvault install --agent antigravity` |
 | VS Code Copilot Chat | `swarmvault install --agent vscode` |
@@ -503,6 +517,7 @@ Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know w
 | Cortex Code | `swarmvault install --agent cortex` |
 | Crush | `swarmvault install --agent crush` |
 | Deep Agents | `swarmvault install --agent deepagents` |
+| Devin | `swarmvault install --agent devin` |
 | Firebender | `swarmvault install --agent firebender` |
 | iFlow CLI | `swarmvault install --agent iflow` |
 | Junie | `swarmvault install --agent junie` |
@@ -525,7 +540,7 @@ Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know w
 | Windsurf | `swarmvault install --agent windsurf` |
 | Zencoder | `swarmvault install --agent zencoder` |
 
-Codex, Claude Code, OpenCode, Gemini CLI, and Copilot also support `--hook` for graph-first context injection. Agents in the extended roster install a project-level skill bundle at the tool's conventional skills directory (e.g. `.cline/skills/swarmvault/SKILL.md`, `.codeium/windsurf/skills/swarmvault/SKILL.md`).
+Codex, Claude Code, OpenCode, Gemini CLI, Copilot, and Kilo also support `--hook` for graph-first context injection. Project-scope installs can also write skill bundles for agents with skill directories, and `--scope user` writes user-level skill files where supported.
 
 <!-- readme-section:worked-examples -->
 ## Worked Examples

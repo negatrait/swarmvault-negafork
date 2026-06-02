@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { initWorkspace } from "./config.js";
-import type { AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
+import type { AgentInstallStatus, AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
 import { ensureDir, fileExists } from "./utils.js";
 
 /**
@@ -139,6 +139,11 @@ type CopilotHookConfig = {
   };
 };
 
+type PluginConfig = {
+  plugins?: unknown;
+  [key: string]: unknown;
+};
+
 const agentFileKinds = {
   agents: "AGENTS.md",
   claude: "CLAUDE.md",
@@ -153,6 +158,7 @@ const agentFileKinds = {
   kiroSteering: ".kiro/steering/swarmvault.md",
   antigravityRules: ".agents/rules/swarmvault.md",
   antigravityWorkflow: ".agents/workflows/swarmvault.md",
+  devinRules: ".windsurf/rules/swarmvault.md",
   vscode: ".github/chatmodes/swarmvault.chatmode.md"
 } as const;
 
@@ -177,6 +183,7 @@ const SKILL_BUNDLE_AGENTS: Record<string, string> = {
   cortex: ".snowflake/cortex/skills",
   crush: ".config/crush/skills",
   deepagents: ".deepagents/agent/skills",
+  devin: ".devin/skills",
   firebender: ".firebender/skills",
   iflow: ".iflow/skills",
   junie: ".junie/skills",
@@ -200,16 +207,60 @@ const SKILL_BUNDLE_AGENTS: Record<string, string> = {
   zencoder: ".zencoder/skills"
 };
 
+const PROJECT_SKILL_TARGETS: Partial<Record<AgentType, string[]>> = {
+  antigravity: [".agents/skills"],
+  amp: [".amp/skills"],
+  codex: [".agents/skills"],
+  copilot: [".copilot/skills"],
+  devin: [".devin/skills"],
+  gemini: [".gemini/skills"],
+  kimi: [".kimi/skills"],
+  opencode: [".opencode/skills"],
+  pi: [".pi/agent/skills"],
+  vscode: [".copilot/skills"]
+};
+
+const USER_SKILL_TARGETS: Partial<Record<AgentType, string>> = {
+  antigravity: path.join(".gemini", "config", "skills"),
+  amp: path.join(".amp", "skills"),
+  codex: path.join(".codex", "skills"),
+  copilot: path.join(".copilot", "skills"),
+  devin: path.join(".config", "devin", "skills"),
+  gemini: path.join(".gemini", "skills"),
+  kimi: path.join(".kimi", "skills"),
+  kilo: path.join(".config", "kilo", "skills"),
+  opencode: path.join(".config", "opencode", "skills"),
+  pi: path.join(".pi", "agent", "skills"),
+  vscode: path.join(".copilot", "skills")
+};
+
 function skillBundleTarget(rootDir: string, agent: AgentType): string | null {
   const relativeSkillsDir = SKILL_BUNDLE_AGENTS[agent];
   if (!relativeSkillsDir) return null;
   return path.join(rootDir, relativeSkillsDir, "swarmvault", "SKILL.md");
 }
 
+function skillBundlePath(baseDir: string, relativeSkillsDir: string): string {
+  return path.join(baseDir, relativeSkillsDir, "swarmvault", "SKILL.md");
+}
+
+function projectSkillTargets(rootDir: string, agent: AgentType): string[] {
+  return (PROJECT_SKILL_TARGETS[agent] ?? []).map((relativeSkillsDir) => skillBundlePath(rootDir, relativeSkillsDir));
+}
+
+function userSkillTarget(agent: AgentType): string | null {
+  const relativeSkillsDir = USER_SKILL_TARGETS[agent];
+  return relativeSkillsDir ? skillBundlePath(os.homedir(), relativeSkillsDir) : null;
+}
+
 const hermesUserSkillRelative = path.join(".hermes", "skills", "swarmvault", "SKILL.md");
 
 function hermesUserSkillPath(): string {
   return path.join(os.homedir(), hermesUserSkillRelative);
+}
+
+function kiloUserCommandPath(): string {
+  return path.join(os.homedir(), ".config", "kilo", "command", "swarmvault.md");
 }
 
 const SWARMVAULT_RULE_BULLETS = [
@@ -323,6 +374,40 @@ function buildAntigravityWorkflowFile(): string {
   ].join("\n");
 }
 
+function buildKiloCommandFile(): string {
+  return [
+    "# /swarmvault",
+    "",
+    "Use SwarmVault's graph-first workflow in the current project.",
+    "",
+    "1. If no vault exists, run `swarmvault init`.",
+    "2. Read `wiki/graph/report.md` before broad source search when it exists.",
+    "3. Prefer `swarmvault graph query`, `swarmvault graph path`, and `swarmvault graph explain` for structure questions.",
+    "4. Run `swarmvault compile` after adding or refreshing sources.",
+    ""
+  ].join("\n");
+}
+
+function buildKiloPluginFile(): string {
+  return [
+    "export default async function SwarmVaultPlugin({ project }) {",
+    "  return {",
+    "    name: 'swarmvault-graph-first',",
+    "    async beforeToolUse(event) {",
+    "      const toolName = event?.tool?.name ?? event?.toolName ?? '';",
+    "      if (!['bash', 'shell', 'terminal', 'search', 'grep', 'glob'].includes(String(toolName).toLowerCase())) return;",
+    "      const root = project?.root ?? process.cwd();",
+    "      return {",
+    "        message: `SwarmVault graph guidance: from $" +
+      "{root}, read wiki/graph/report.md first when it exists, or run swarmvault graph query/path/explain before broad search.`",
+    "      };",
+    "    }",
+    "  };",
+    "}",
+    ""
+  ].join("\n");
+}
+
 function buildVscodeChatmodeFile(): string {
   const frontmatter = YAML.stringify({
     description: "SwarmVault graph-first workflow for VS Code Copilot Chat.",
@@ -355,11 +440,22 @@ function buildCursorRule(): string {
 }
 
 function supportsAgentHook(agent: AgentType): boolean {
-  return agent === "codex" || agent === "claude" || agent === "opencode" || agent === "gemini" || agent === "copilot";
+  return agent === "codex" || agent === "claude" || agent === "opencode" || agent === "gemini" || agent === "copilot" || agent === "kilo";
 }
 
-function primaryTargetPathForAgent(rootDir: string, agent: AgentType): string {
+function installScope(agent: AgentType, options: InstallAgentOptions = {}): "project" | "user" {
+  if (options.scope) return options.scope;
+  return agent === "hermes" ? "user" : "project";
+}
+
+function primaryTargetPathForAgent(rootDir: string, agent: AgentType, options: InstallAgentOptions = {}): string {
+  if (installScope(agent, options) === "user") {
+    if (agent === "hermes") return hermesUserSkillPath();
+    const target = userSkillTarget(agent);
+    if (target) return target;
+  }
   switch (agent) {
+    case "kilo":
     case "codex":
     case "goose":
     case "pi":
@@ -405,6 +501,8 @@ function hookScriptPathForAgent(rootDir: string, agent: AgentType): string | nul
       return path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js");
     case "opencode":
       return path.join(rootDir, ".opencode", "plugins", "swarmvault-graph-first.js");
+    case "kilo":
+      return path.join(rootDir, ".kilo", "plugins", "swarmvault.js");
     case "gemini":
       return path.join(rootDir, ".gemini", "hooks", "swarmvault-graph-first.js");
     case "copilot":
@@ -422,6 +520,10 @@ function hookConfigPathForAgent(rootDir: string, agent: AgentType): string | nul
       return path.join(rootDir, ".claude", "settings.json");
     case "gemini":
       return path.join(rootDir, ".gemini", "settings.json");
+    case "opencode":
+      return path.join(rootDir, ".opencode", "opencode.json");
+    case "kilo":
+      return path.join(rootDir, ".kilo", "kilo.json");
     case "copilot":
       return path.join(rootDir, ".github", "hooks", "swarmvault-graph-first.json");
     default:
@@ -430,7 +532,22 @@ function hookConfigPathForAgent(rootDir: string, agent: AgentType): string | nul
 }
 
 function targetsForAgent(rootDir: string, agent: AgentType, options: InstallAgentOptions = {}): string[] {
-  const targets = [primaryTargetPathForAgent(rootDir, agent)];
+  const scope = installScope(agent, options);
+  const targets = [primaryTargetPathForAgent(rootDir, agent, options)];
+
+  if (scope === "user") {
+    if (agent === "kilo") {
+      targets.push(kiloUserCommandPath());
+    }
+    if (agent === "hermes") {
+      targets.push(path.join(rootDir, agentFileKinds.agents));
+    }
+    return [...new Set(targets)];
+  }
+
+  if (options.scope === "project") {
+    targets.push(...projectSkillTargets(rootDir, agent));
+  }
 
   if (agent === "copilot") {
     targets.push(path.join(rootDir, agentFileKinds.agents));
@@ -454,6 +571,10 @@ function targetsForAgent(rootDir: string, agent: AgentType, options: InstallAgen
 
   if (agent === "antigravity") {
     targets.push(path.join(rootDir, agentFileKinds.antigravityWorkflow));
+  }
+
+  if (agent === "devin") {
+    targets.push(path.join(rootDir, agentFileKinds.devinRules));
   }
 
   if (options.hook && supportsAgentHook(agent)) {
@@ -539,6 +660,102 @@ async function readJsonWithWarnings<T extends object>(filePath: string, fallback
       warnings: [`Could not parse ${label}. Left the existing file unchanged.`]
     };
   }
+}
+
+function stripJsonComments(source: string): string {
+  let output = "";
+  let inString = false;
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const current = source[index] ?? "";
+    const next = source[index + 1] ?? "";
+
+    if (inLineComment) {
+      if (current === "\n" || current === "\r") {
+        inLineComment = false;
+        output += current;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (current === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      } else if (current === "\n" || current === "\r") {
+        output += current;
+      }
+      continue;
+    }
+
+    if (inString) {
+      output += current;
+      if (escaped) {
+        escaped = false;
+      } else if (current === "\\") {
+        escaped = true;
+      } else if (current === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (current === '"') {
+      inString = true;
+      output += current;
+      continue;
+    }
+
+    if (current === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (current === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    output += current;
+  }
+
+  return output;
+}
+
+async function readJsonOrJsoncWithWarnings<T extends object>(
+  jsonPath: string,
+  jsoncPath: string,
+  fallback: T,
+  label: string
+): Promise<JsonWarningResult<T>> {
+  if (await fileExists(jsonPath)) {
+    return readJsonWithWarnings(jsonPath, fallback, label);
+  }
+  if (!(await fileExists(jsoncPath))) {
+    return { data: fallback, warnings: [] };
+  }
+  try {
+    const parsed = JSON.parse(stripJsonComments(await fs.readFile(jsoncPath, "utf8"))) as T;
+    return { data: parsed, warnings: [] };
+  } catch {
+    return {
+      data: fallback,
+      warnings: [`Could not parse ${label}. Left the existing file unchanged.`]
+    };
+  }
+}
+
+function withPluginEntry(config: PluginConfig, pluginEntry: string): PluginConfig {
+  const existing = Array.isArray(config.plugins) ? config.plugins.filter((entry): entry is string => typeof entry === "string") : [];
+  return {
+    ...config,
+    plugins: existing.includes(pluginEntry) ? existing : [...existing, pluginEntry]
+  };
 }
 
 async function installClaudeHook(rootDir: string): Promise<{ path: string; warnings: string[] }> {
@@ -736,8 +953,32 @@ async function installCopilotHook(rootDir: string): Promise<{ paths: string[]; w
 
 async function installOpenCodeHook(rootDir: string): Promise<{ paths: string[]; warnings: string[] }> {
   const pluginPath = path.join(rootDir, ".opencode", "plugins", "swarmvault-graph-first.js");
+  const configPath = path.join(rootDir, ".opencode", "opencode.json");
   await writeOwnedFile(pluginPath, await readBuiltHook("opencode.js"));
-  return { paths: [pluginPath], warnings: [] };
+  const { data: config, warnings } = await readJsonWithWarnings<PluginConfig>(configPath, {}, ".opencode/opencode.json");
+  if (warnings.length > 0 && (await fileExists(configPath))) {
+    return { paths: [pluginPath, configPath], warnings };
+  }
+  await writeOwnedFile(configPath, `${JSON.stringify(withPluginEntry(config, "./plugins/swarmvault-graph-first.js"), null, 2)}\n`);
+  return { paths: [pluginPath, configPath], warnings: [] };
+}
+
+async function installKiloHook(rootDir: string): Promise<{ paths: string[]; warnings: string[] }> {
+  const pluginPath = path.join(rootDir, ".kilo", "plugins", "swarmvault.js");
+  const configPath = path.join(rootDir, ".kilo", "kilo.json");
+  const jsoncPath = path.join(rootDir, ".kilo", "kilo.jsonc");
+  await writeOwnedFile(pluginPath, buildKiloPluginFile());
+  const { data: config, warnings } = await readJsonOrJsoncWithWarnings<PluginConfig>(
+    configPath,
+    jsoncPath,
+    {},
+    ".kilo/kilo.json or .kilo/kilo.jsonc"
+  );
+  if (warnings.length > 0 && ((await fileExists(configPath)) || (await fileExists(jsoncPath)))) {
+    return { paths: [pluginPath, configPath], warnings };
+  }
+  await writeOwnedFile(configPath, `${JSON.stringify(withPluginEntry(config, "./plugins/swarmvault.js"), null, 2)}\n`);
+  return { paths: [pluginPath, configPath], warnings: [] };
 }
 
 function stableKeyForAgent(rootDir: string, agent: AgentType): string {
@@ -752,10 +993,30 @@ function stableKeyForAgent(rootDir: string, agent: AgentType): string {
 
 export async function installAgent(rootDir: string, agent: AgentType, options: InstallAgentOptions = {}): Promise<InstallAgentResult> {
   await initWorkspace(rootDir);
-  const target = primaryTargetPathForAgent(rootDir, agent);
+  const scope = installScope(agent, options);
+  const target = primaryTargetPathForAgent(rootDir, agent, options);
   const warnings: string[] = [];
 
+  if (scope === "user") {
+    if (agent === "hermes") {
+      await upsertManagedBlock(path.join(rootDir, agentFileKinds.agents), buildManagedBlock("agents"));
+      await writeOwnedFile(hermesUserSkillPath(), buildStandaloneSkillFile());
+    } else {
+      const userTarget = userSkillTarget(agent);
+      if (!userTarget) {
+        throw new Error(`User-scope install is not supported for agent ${String(agent)}`);
+      }
+      await writeOwnedFile(userTarget, buildStandaloneSkillFile());
+      if (agent === "kilo") {
+        await writeOwnedFile(kiloUserCommandPath(), buildKiloCommandFile());
+      }
+    }
+    const targets = targetsForAgent(rootDir, agent, options);
+    return warnings.length > 0 ? { agent, target, targets, warnings } : { agent, target, targets };
+  }
+
   switch (agent) {
+    case "kilo":
     case "codex":
     case "goose":
     case "pi":
@@ -818,6 +1079,16 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
     warnings.push(...aiderResult.warnings);
   }
 
+  if (options.scope === "project") {
+    for (const skillTarget of projectSkillTargets(rootDir, agent)) {
+      await writeOwnedFile(skillTarget, buildStandaloneSkillFile());
+    }
+  }
+
+  if (agent === "devin") {
+    await writeOwnedFile(path.join(rootDir, agentFileKinds.devinRules), buildManagedBlock("devinRules"));
+  }
+
   if (options.hook && supportsAgentHook(agent)) {
     if (agent === "codex") {
       const result = await installCodexHook(rootDir);
@@ -829,6 +1100,10 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
     }
     if (agent === "opencode") {
       const result = await installOpenCodeHook(rootDir);
+      warnings.push(...result.warnings);
+    }
+    if (agent === "kilo") {
+      const result = await installKiloHook(rootDir);
       warnings.push(...result.warnings);
     }
     if (agent === "gemini") {
@@ -843,6 +1118,29 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
 
   const targets = targetsForAgent(rootDir, agent, options);
   return warnings.length > 0 ? { agent, target, targets, warnings } : { agent, target, targets };
+}
+
+export async function getAgentInstallStatus(
+  rootDir: string,
+  agent: AgentType,
+  options: InstallAgentOptions = {}
+): Promise<AgentInstallStatus> {
+  const target = primaryTargetPathForAgent(rootDir, agent, options);
+  const targets = targetsForAgent(rootDir, agent, options);
+  const targetStatuses = await Promise.all(
+    targets.map(async (targetPath) => ({
+      path: targetPath,
+      exists: await fileExists(targetPath)
+    }))
+  );
+  return {
+    agent,
+    scope: installScope(agent, options),
+    hook: options.hook ?? false,
+    target,
+    targets: targetStatuses,
+    installed: targetStatuses.length > 0 && targetStatuses.every((entry) => entry.exists)
+  };
 }
 
 export async function installConfiguredAgents(rootDir: string): Promise<InstallAgentResult[]> {

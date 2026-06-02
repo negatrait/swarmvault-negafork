@@ -215,6 +215,7 @@ The engine supports:
 - `together`
 - `xai`
 - `cerebras`
+- `local-whisper`
 - `openai-compatible`
 - `custom`
 
@@ -228,6 +229,7 @@ Providers are capability-driven. Each provider declares support for features suc
 - `streaming`
 - `local`
 - `image_generation`
+- `audio`
 
 This matters because many "OpenAI-compatible" backends only implement part of the OpenAI surface.
 
@@ -271,6 +273,7 @@ This matters because many "OpenAI-compatible" backends only implement part of th
 - `queryGraphVault(rootDir, question, { traversal, budget })` runs deterministic local graph search, preferring semantic seed matches from `tasks.embeddingProvider` when configured and falling back to lexical search plus matching group patterns otherwise
 - `pathGraphVault(rootDir, from, to)` returns the shortest graph path between two targets
 - `explainGraphVault(rootDir, target)` returns node, community, neighbor, provenance, and group-pattern details
+- `findGraphCycles(graph, { relations, limit, maxDepth })` returns deterministic directed cycles, commonly used for import or call-loop inspection
 - `listGraphHyperedges(rootDir, target?, limit?)` returns graph hyperedges globally or for a specific node/page target
 - `listGodNodes(rootDir, limit)` returns the most connected bridge-heavy graph nodes
 - `buildGraphShareArtifact(...)`, `renderGraphShareMarkdown(...)`, `renderGraphShareSvg(...)`, `renderGraphSharePreviewHtml(...)`, and `renderGraphShareBundleFiles(...)` produce the post-ready text, 1200x630 visual card, self-contained HTML preview, and portable share kit used by `wiki/graph/share-card.md`, `wiki/graph/share-card.svg`, `wiki/graph/share-kit/`, and the CLI `graph share` command
@@ -289,7 +292,9 @@ This matters because many "OpenAI-compatible" backends only implement part of th
 - large ingest and compile passes emit low-noise progress on TTYs, bound source-analysis concurrency, and use sparse graph co-occurrence projection so dense note sets do not create unbounded pairwise graph work
 - JSON state writes are atomic, and JSON parse failures include the exact state file path that failed to parse
 - `installGitHooks(rootDir)`, `uninstallGitHooks(rootDir)`, and `getGitHookStatus(rootDir)` manage local `post-commit` and `post-checkout` hook blocks for the nearest git repository
-- `installAgent(rootDir, agent, { hook })` writes agent instructions and returns the primary `target`, all touched `targets`, and optional merge warnings for agents such as Aider
+- `installAgent(rootDir, agent, { hook, scope })` writes agent instructions and returns the primary `target`, all touched `targets`, and optional merge warnings for agents such as Aider and Kilo
+- `getAgentInstallStatus(rootDir, agent, { scope })` reports expected install targets, presence, and managed-block status
+- `addProviderConfig`, `listProviderConfigEntries`, `getProviderConfigEntry`, and `removeProviderConfig` manage named provider entries and task routing in `swarmvault.config.json`
 - `lintVault(rootDir, options)` runs structural lint, optional deep lint, optional contradiction-only filtering through `{ conflicts: true }`, and optional web-augmented evidence gathering
 - `listSchedules(rootDir)`, `runSchedule(rootDir, jobId)`, and `serveSchedules(rootDir)` manage recurring local jobs from config
 - compile, query, explore, lint, and watch also write canonical markdown session artifacts to `state/sessions/`

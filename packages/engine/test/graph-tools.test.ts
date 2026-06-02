@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { graphStats, queryGraph, shortestGraphPath, validateGraphArtifact } from "../src/graph-tools.js";
+import { findGraphCycles, graphStats, queryGraph, shortestGraphPath, validateGraphArtifact } from "../src/graph-tools.js";
 import type { GraphArtifact } from "../src/types.js";
 
 function nodeId(prefix: string, id: string): string {
@@ -252,6 +252,78 @@ describe("shortestGraphPath", () => {
 
     expect(result.found).toBe(false);
     expect(result.nodeIds).toEqual([]);
+  });
+});
+
+describe("findGraphCycles", () => {
+  it("finds deterministic import cycles with node labels and edge ids", () => {
+    const graph: GraphArtifact = {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      nodes: [
+        { id: "module:a", type: "module", label: "A", sourceIds: [], projectIds: [] },
+        { id: "module:b", type: "module", label: "B", sourceIds: [], projectIds: [] },
+        { id: "module:c", type: "module", label: "C", sourceIds: [], projectIds: [] },
+        { id: "module:d", type: "module", label: "D", sourceIds: [], projectIds: [] }
+      ],
+      edges: [
+        {
+          id: "a-imports-b",
+          source: "module:a",
+          target: "module:b",
+          relation: "imports",
+          status: "extracted",
+          evidenceClass: "extracted",
+          confidence: 1,
+          provenance: []
+        },
+        {
+          id: "b-imports-c",
+          source: "module:b",
+          target: "module:c",
+          relation: "imports",
+          status: "extracted",
+          evidenceClass: "extracted",
+          confidence: 1,
+          provenance: []
+        },
+        {
+          id: "c-imports-a",
+          source: "module:c",
+          target: "module:a",
+          relation: "imports",
+          status: "extracted",
+          evidenceClass: "extracted",
+          confidence: 1,
+          provenance: []
+        },
+        {
+          id: "c-imports-d",
+          source: "module:c",
+          target: "module:d",
+          relation: "imports",
+          status: "extracted",
+          evidenceClass: "extracted",
+          confidence: 1,
+          provenance: []
+        }
+      ],
+      hyperedges: [],
+      communities: [],
+      sources: [],
+      pages: []
+    };
+
+    const result = findGraphCycles(graph, { relations: ["imports"] });
+
+    expect(result.summary).toBe("Found 1 cycle.");
+    expect(result.cycles).toEqual([
+      {
+        nodeIds: ["module:a", "module:b", "module:c"],
+        labels: ["A", "B", "C"],
+        edgeIds: ["a-imports-b", "b-imports-c", "c-imports-a"],
+        relations: ["imports", "imports", "imports"]
+      }
+    ]);
   });
 });
 

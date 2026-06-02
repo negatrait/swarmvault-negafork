@@ -549,6 +549,82 @@ function renderJson(graph: GraphArtifact): string {
   return JSON.stringify(payload, null, 2);
 }
 
+function renderCallflowHtml(graph: GraphArtifact): string {
+  const nodes = graphNodeById(graph);
+  const rows = [...graph.edges]
+    .filter((edge) => nodes.has(edge.source) && nodes.has(edge.target))
+    .sort((left, right) => {
+      const leftSource = nodes.get(left.source)?.label ?? left.source;
+      const rightSource = nodes.get(right.source)?.label ?? right.source;
+      const leftTarget = nodes.get(left.target)?.label ?? left.target;
+      const rightTarget = nodes.get(right.target)?.label ?? right.target;
+      return (
+        leftSource.localeCompare(rightSource) ||
+        leftTarget.localeCompare(rightTarget) ||
+        left.relation.localeCompare(right.relation) ||
+        left.id.localeCompare(right.id)
+      );
+    })
+    .map((edge) => {
+      const source = nodes.get(edge.source);
+      const target = nodes.get(edge.target);
+      return [
+        "<tr>",
+        `<td><span class="node-type">${xmlEscape(source?.type ?? "node")}</span>${xmlEscape(source?.label ?? edge.source)}<small>${xmlEscape(edge.source)}</small></td>`,
+        `<td class="relation">${xmlEscape(edge.relation)}</td>`,
+        `<td><span class="node-type">${xmlEscape(target?.type ?? "node")}</span>${xmlEscape(target?.label ?? edge.target)}<small>${xmlEscape(edge.target)}</small></td>`,
+        `<td>${xmlEscape(edge.evidenceClass)}</td>`,
+        `<td>${edge.confidence.toFixed(2)}</td>`,
+        "</tr>"
+      ].join("");
+    })
+    .join("\n");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SwarmVault Callflow</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f8fafc; color: #0f172a; }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0; }
+    p { margin: 0 0 24px; color: #475569; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dbe3ee; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+    th { background: #eaf0f7; font-size: 12px; text-transform: uppercase; color: #334155; }
+    small { display: block; margin-top: 3px; color: #64748b; font-size: 11px; word-break: break-all; }
+    .relation { font-weight: 700; color: #0f766e; white-space: nowrap; }
+    .node-type { display: inline-block; min-width: 54px; margin-right: 8px; color: #475569; font-size: 11px; text-transform: uppercase; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #020617; color: #e2e8f0; }
+      p, small, .node-type { color: #94a3b8; }
+      table { background: #0f172a; border-color: #334155; }
+      th { background: #1e293b; color: #cbd5e1; }
+      th, td { border-color: #1e293b; }
+      .relation { color: #5eead4; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SwarmVault Callflow</h1>
+    <p>${graph.nodes.length} nodes, ${graph.edges.length} directed relationships, generated ${xmlEscape(graph.generatedAt)}.</p>
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Relation</th><th>Target</th><th>Evidence</th><th>Confidence</th></tr>
+      </thead>
+      <tbody>
+${rows || '<tr><td colspan="5">No directed relationships found.</td></tr>'}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>`;
+}
+
 export function renderHtmlStandalone(graph: GraphArtifact): string {
   const communities = sortedCommunities(graph);
 
@@ -1518,11 +1594,13 @@ export async function exportGraphFormat(
       ? renderHtmlStandalone(graph)
       : format === "json"
         ? renderJson(graph)
-        : format === "svg"
-          ? renderSvg(graph)
-          : format === "graphml"
-            ? renderGraphMl(graph)
-            : renderCypher(graph);
+        : format === "callflow"
+          ? renderCallflowHtml(graph)
+          : format === "svg"
+            ? renderSvg(graph)
+            : format === "graphml"
+              ? renderGraphMl(graph)
+              : renderCypher(graph);
   const resolvedPath = await writeGraphExport(outputPath, rendered);
   return { format, outputPath: resolvedPath };
 }

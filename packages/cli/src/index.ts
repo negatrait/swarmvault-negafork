@@ -7,10 +7,14 @@ import { createInterface } from "node:readline/promises";
 import type {
   AgentMemoryResumeFormat,
   AgentMemoryTaskStatus,
+  AgentType,
   ContextPackFormat,
   GraphArtifact,
   GraphQueryFilters,
   GuidedSourceSessionQuestion,
+  ProviderCapability,
+  ProviderTaskKey,
+  ProviderType,
   ResolvedPaths,
   SourceClass
 } from "@swarmvaultai/engine";
@@ -18,6 +22,7 @@ import {
   acceptApproval,
   addInput,
   addManagedSource,
+  addProviderConfig,
   addWatchedRoot,
   archiveCandidate,
   askChatSession,
@@ -45,9 +50,12 @@ import {
   exportGraphTree,
   exportObsidianCanvas,
   exportObsidianVault,
+  findGraphCycles,
   finishMemoryTask,
+  getAgentInstallStatus,
   getGitHookStatus,
   getGraphStatus,
+  getProviderConfigEntry,
   getRetrievalStatus,
   getWatchStatus,
   graphDiff,
@@ -69,6 +77,7 @@ import {
   listManagedSourceRecords,
   listManifests,
   listMemoryTasks,
+  listProviderConfigEntries,
   listSchedules,
   listWatchedRoots,
   loadVaultConfig,
@@ -88,6 +97,7 @@ import {
   registerLocalWhisperProvider,
   rejectApproval,
   reloadManagedSources,
+  removeProviderConfig,
   removeWatchedRoot,
   renderContextPackLlms,
   renderContextPackMarkdown,
@@ -141,9 +151,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.15.0";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.16.0";
   } catch {
-    return "3.15.0";
+    return "3.16.0";
   }
 }
 
@@ -151,6 +161,66 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const providerTypes: ProviderType[] = [
+  "heuristic",
+  "openai",
+  "ollama",
+  "anthropic",
+  "gemini",
+  "openai-compatible",
+  "openrouter",
+  "groq",
+  "together",
+  "xai",
+  "cerebras",
+  "local-whisper",
+  "custom"
+];
+
+const providerCapabilities: ProviderCapability[] = [
+  "responses",
+  "chat",
+  "structured",
+  "tools",
+  "vision",
+  "embeddings",
+  "streaming",
+  "local",
+  "image_generation",
+  "audio"
+];
+
+const providerTaskKeys: ProviderTaskKey[] = [
+  "compileProvider",
+  "queryProvider",
+  "lintProvider",
+  "visionProvider",
+  "imageProvider",
+  "embeddingProvider",
+  "audioProvider"
+];
+
+function parseProviderType(value: string): ProviderType {
+  if (providerTypes.includes(value as ProviderType)) {
+    return value as ProviderType;
+  }
+  throw new Error(`Unknown provider type "${value}". Use one of: ${providerTypes.join(", ")}.`);
+}
+
+function parseProviderCapability(value: string): ProviderCapability {
+  if (providerCapabilities.includes(value as ProviderCapability)) {
+    return value as ProviderCapability;
+  }
+  throw new Error(`Unknown provider capability "${value}". Use one of: ${providerCapabilities.join(", ")}.`);
+}
+
+function parseProviderTask(value: string): ProviderTaskKey {
+  if (providerTaskKeys.includes(value as ProviderTaskKey)) {
+    return value as ProviderTaskKey;
+  }
+  throw new Error(`Unknown provider task "${value}". Use one of: ${providerTaskKeys.join(", ")}.`);
 }
 
 function parsePositiveNumber(value: string | undefined): number | undefined {
@@ -2385,7 +2455,7 @@ graph
 graph
   .command("export")
   .description(
-    "Export the graph as HTML, report, SVG, GraphML, Cypher, JSON, Obsidian vault, or Obsidian canvas. Combine flags to write multiple formats in one run."
+    "Export the graph as HTML, report, SVG, GraphML, Cypher, JSON, callflow HTML, Obsidian vault, or Obsidian canvas. Combine flags to write multiple formats in one run."
   )
   .option("--html <output>", "Output HTML file path")
   .option("--html-standalone <output>", "Output lightweight standalone HTML file path (vis.js, no build tooling)")
@@ -2395,6 +2465,7 @@ graph
   .option("--cypher <output>", "Output Cypher file path")
   .option("--neo4j <output>", "Compatibility alias for --cypher, writing a Neo4j Cypher import file")
   .option("--json <output>", "Output JSON file path")
+  .option("--callflow <output>", "Output directed callflow HTML file path")
   .option("--obsidian <output>", "Output Obsidian vault directory path")
   .option("--canvas <output>", "Output Obsidian canvas file path")
   .option("--full", "Include the full graph in HTML export (default; queries traverse complete graph)", true)
@@ -2409,6 +2480,7 @@ graph
       cypher?: string;
       neo4j?: string;
       json?: string;
+      callflow?: string;
       obsidian?: string;
       canvas?: string;
       full?: boolean;
@@ -2424,13 +2496,14 @@ graph
         options.cypher ? ({ format: "cypher", outputPath: options.cypher } as const) : null,
         options.neo4j ? ({ format: "cypher", outputPath: options.neo4j } as const) : null,
         options.json ? ({ format: "json", outputPath: options.json } as const) : null,
+        options.callflow ? ({ format: "callflow", outputPath: options.callflow } as const) : null,
         options.obsidian ? ({ format: "obsidian", outputPath: options.obsidian } as const) : null,
         options.canvas ? ({ format: "canvas", outputPath: options.canvas } as const) : null
       ].filter((target): target is NonNullable<typeof target> => Boolean(target));
 
       if (targets.length === 0) {
         throw new Error(
-          "Pass at least one of --html, --html-standalone, --report, --svg, --graphml, --cypher, --neo4j, --json, --obsidian, or --canvas."
+          "Pass at least one of --html, --html-standalone, --report, --svg, --graphml, --cypher, --neo4j, --json, --callflow, --obsidian, or --canvas."
         );
       }
 
@@ -2623,6 +2696,31 @@ graph
     log(result.summary);
     for (const mod of result.affectedModules) {
       log(`  ${"  ".repeat(mod.depth - 1)}${mod.label} (depth ${mod.depth})`);
+    }
+  });
+
+graph
+  .command("cycles")
+  .description("Find directed cycles in the compiled graph, defaulting to import edges.")
+  .option("--relation <name>", "Relation name to follow (repeatable; default: imports)", collectRepeated, [])
+  .option("--limit <n>", "Maximum cycles to report", "25")
+  .option("--max-depth <n>", "Maximum cycle depth", "25")
+  .action(async (options: { relation?: string[]; limit?: string; maxDepth?: string }) => {
+    const { paths } = await loadVaultConfig(process.cwd());
+    const raw = await readFile(paths.graphPath, "utf-8");
+    const graphArtifact: GraphArtifact = JSON.parse(raw);
+    const result = findGraphCycles(graphArtifact, {
+      relations: options.relation?.length ? options.relation : ["imports"],
+      limit: parsePositiveInt(options.limit, 25),
+      maxDepth: parsePositiveInt(options.maxDepth, 25)
+    });
+    if (isJson()) {
+      emitJson(result);
+      return;
+    }
+    log(result.summary);
+    for (const cycle of result.cycles) {
+      log(`- ${cycle.labels.join(" -> ")} -> ${cycle.labels[0]} (${cycle.relations.join(", ")})`);
     }
   });
 
@@ -2870,6 +2968,134 @@ provider
       log(`Set tasks.audioProvider = "local-whisper".`);
     } else if (registration.previousAudioProvider && registration.previousAudioProvider !== "local-whisper") {
       log(`Left tasks.audioProvider = "${registration.previousAudioProvider}" untouched (use --set-audio-provider to override).`);
+    }
+  });
+
+provider
+  .command("add")
+  .description("Add or update a named provider in swarmvault.config.json.")
+  .argument("<id>", "Provider id")
+  .requiredOption("--type <type>", `Provider type: ${providerTypes.join(", ")}`)
+  .requiredOption("--model <model>", "Provider model name")
+  .option("--base-url <url>", "OpenAI-compatible base URL")
+  .option("--api-key-env <name>", "Environment variable that holds the provider API key")
+  .option("--capability <capability>", `Provider capability (${providerCapabilities.join(", ")})`, collectRepeated, [])
+  .option("--task <task>", `Assign provider to task (${providerTaskKeys.join(", ")})`, collectRepeated, [])
+  .option("--api-style <style>", "OpenAI-compatible API style: responses or chat")
+  .option("--module <path>", "Custom provider module path")
+  .option("--binary-path <path>", "Local provider binary path")
+  .option("--model-path <path>", "Local model file path")
+  .option("--threads <n>", "Local provider thread count")
+  .action(
+    async (
+      id: string,
+      options: {
+        type: string;
+        model: string;
+        baseUrl?: string;
+        apiKeyEnv?: string;
+        capability?: string[];
+        task?: string[];
+        apiStyle?: string;
+        module?: string;
+        binaryPath?: string;
+        modelPath?: string;
+        threads?: string;
+      }
+    ) => {
+      const apiStyle = options.apiStyle as "responses" | "chat" | undefined;
+      if (apiStyle && apiStyle !== "responses" && apiStyle !== "chat") {
+        throw new Error("--api-style must be responses or chat.");
+      }
+      const threads = options.threads ? parsePositiveInt(options.threads, 0) || undefined : undefined;
+      const result = await addProviderConfig({
+        rootDir: process.cwd(),
+        providerId: id,
+        provider: {
+          type: parseProviderType(options.type),
+          model: options.model,
+          baseUrl: options.baseUrl,
+          apiKeyEnv: options.apiKeyEnv,
+          capabilities: options.capability?.map(parseProviderCapability),
+          apiStyle,
+          module: options.module,
+          binaryPath: options.binaryPath,
+          modelPath: options.modelPath,
+          threads
+        },
+        tasks: options.task?.map(parseProviderTask)
+      });
+      if (isJson()) {
+        emitJson(result);
+        return;
+      }
+      log(`${result.added ? "Added" : result.updated ? "Updated" : "Kept"} provider ${result.providerId} in ${result.configPath}.`);
+      if (result.updatedTasks.length) {
+        log(`Assigned tasks: ${result.updatedTasks.join(", ")}`);
+      }
+    }
+  );
+
+provider
+  .command("list")
+  .description("List configured providers and task assignments.")
+  .action(async () => {
+    const entries = await listProviderConfigEntries(process.cwd());
+    if (isJson()) {
+      emitJson(entries);
+      return;
+    }
+    if (!entries.length) {
+      log("No providers configured.");
+      return;
+    }
+    for (const entry of entries) {
+      const tasks = entry.assignedTasks.length ? ` tasks=${entry.assignedTasks.join(",")}` : "";
+      const key = entry.apiKeyEnv ? ` key=${entry.apiKeyEnv}` : "";
+      log(`${entry.id} type=${entry.type} model=${entry.model}${key}${tasks}`);
+    }
+  });
+
+provider
+  .command("show")
+  .description("Show one configured provider.")
+  .argument("<id>", "Provider id")
+  .action(async (id: string) => {
+    const entry = await getProviderConfigEntry(process.cwd(), id);
+    if (!entry) {
+      throw new Error(`Provider ${id} is not configured.`);
+    }
+    if (isJson()) {
+      emitJson(entry);
+      return;
+    }
+    log(`${entry.id}`);
+    log(`type=${entry.type}`);
+    log(`model=${entry.model}`);
+    if (entry.baseUrl) log(`baseUrl=${entry.baseUrl}`);
+    if (entry.apiKeyEnv) log(`apiKeyEnv=${entry.apiKeyEnv}`);
+    if (entry.capabilities.length) log(`capabilities=${entry.capabilities.join(",")}`);
+    if (entry.assignedTasks.length) log(`tasks=${entry.assignedTasks.join(",")}`);
+  });
+
+provider
+  .command("remove")
+  .description("Remove a configured provider and reassign its tasks to a fallback provider.")
+  .argument("<id>", "Provider id")
+  .option("--fallback <id>", "Fallback provider for tasks currently assigned to the removed provider")
+  .action(async (id: string, options: { fallback?: string }) => {
+    const result = await removeProviderConfig({
+      rootDir: process.cwd(),
+      providerId: id,
+      fallbackProviderId: options.fallback
+    });
+    if (isJson()) {
+      emitJson(result);
+      return;
+    }
+    log(`${result.removed ? "Removed" : "No provider named"} ${id}.`);
+    if (result.updatedTasks.length) {
+      log(`Reassigned tasks: ${result.updatedTasks.join(", ")}`);
     }
   });
 
@@ -3193,85 +3419,56 @@ program
     });
   });
 
-program
-  .command("install")
-  .description("Install SwarmVault instructions for an agent in the current project.")
-  .requiredOption(
+const install = program.command("install").description("Install SwarmVault instructions for an agent in the current project.");
+
+install
+  .command("status")
+  .description("Show whether SwarmVault instructions are installed for an agent.")
+  .requiredOption("--agent <agent>", "Agent name")
+  .option("--hook", "Include hook/plugin targets in the status check", false)
+  .option("--scope <scope>", "Install scope to inspect: project or user", "project")
+  .action(async (options: { agent: AgentType; hook?: boolean; scope?: string }) => {
+    const scope = options.scope === "user" ? "user" : "project";
+    const result = await getAgentInstallStatus(process.cwd(), options.agent, { hook: options.hook ?? false, scope });
+    if (isJson()) {
+      emitJson(result);
+      return;
+    }
+    log(`${result.agent} ${result.installed ? "installed" : "not installed"} (${result.scope}${result.hook ? ", hook" : ""})`);
+    for (const target of result.targets) {
+      log(`${target.exists ? "ok" : "missing"} ${target.path}`);
+    }
+  });
+
+install
+  .option(
     "--agent <agent>",
-    "claude, codex, cursor, gemini, goose, opencode, copilot, aider, droid, pi, trae, claw, kiro, hermes, antigravity, vscode, amp, augment, adal, bob, cline, codebuddy, command-code, continue, cortex, crush, deepagents, firebender, iflow, junie, kilo-code, kimi, kode, mcpjam, mistral-vibe, mux, neovate, openclaw, openhands, pochi, qoder, qwen-code, replit, roo-code, trae-cn, warp, windsurf, or zencoder"
+    "claude, codex, cursor, gemini, goose, opencode, copilot, aider, droid, pi, trae, claw, kiro, kilo, hermes, antigravity, vscode, amp, augment, adal, bob, cline, codebuddy, command-code, continue, cortex, crush, deepagents, devin, firebender, iflow, junie, kilo-code, kimi, kode, mcpjam, mistral-vibe, mux, neovate, openclaw, openhands, pochi, qoder, qwen-code, replit, roo-code, trae-cn, warp, windsurf, or zencoder"
   )
   .option("--hook", "Also install hook/plugin guidance when the target agent supports it", false)
-  .action(
-    async (options: {
-      agent:
-        | "codex"
-        | "claude"
-        | "cursor"
-        | "goose"
-        | "pi"
-        | "gemini"
-        | "opencode"
-        | "aider"
-        | "copilot"
-        | "trae"
-        | "claw"
-        | "droid"
-        | "kiro"
-        | "hermes"
-        | "antigravity"
-        | "vscode"
-        | "amp"
-        | "augment"
-        | "adal"
-        | "bob"
-        | "cline"
-        | "codebuddy"
-        | "command-code"
-        | "continue"
-        | "cortex"
-        | "crush"
-        | "deepagents"
-        | "firebender"
-        | "iflow"
-        | "junie"
-        | "kilo-code"
-        | "kimi"
-        | "kode"
-        | "mcpjam"
-        | "mistral-vibe"
-        | "mux"
-        | "neovate"
-        | "openclaw"
-        | "openhands"
-        | "pochi"
-        | "qoder"
-        | "qwen-code"
-        | "replit"
-        | "roo-code"
-        | "trae-cn"
-        | "warp"
-        | "windsurf"
-        | "zencoder";
-      hook?: boolean;
-    }) => {
-      const hookCapableAgents = new Set(["codex", "claude", "opencode", "gemini", "copilot"]);
-      if (options.hook && !hookCapableAgents.has(options.agent)) {
-        throw new Error("--hook is only supported for --agent codex, claude, opencode, gemini, or copilot");
+  .option("--scope <scope>", "Install scope: project or user", "project")
+  .action(async (options: { agent?: AgentType; hook?: boolean; scope?: string }) => {
+    if (!options.agent) {
+      throw new Error("Specify --agent <agent>.");
+    }
+    const hookCapableAgents = new Set(["codex", "claude", "opencode", "gemini", "copilot", "kilo"]);
+    if (options.hook && !hookCapableAgents.has(options.agent)) {
+      throw new Error("--hook is only supported for --agent codex, claude, opencode, gemini, copilot, or kilo");
+    }
+    const scope = options.scope === "user" ? "user" : "project";
+    const result = await installAgent(process.cwd(), options.agent, { hook: options.hook ?? false, scope });
+    if (isJson()) {
+      emitJson({ ...result, hook: options.hook ?? false, scope });
+    } else {
+      log(`Installed rules into ${result.target}`);
+      if (result.targets.length > 1) {
+        log(`Also wrote: ${result.targets.filter((entry) => entry !== result.target).join(", ")}`);
       }
-      const result = await installAgent(process.cwd(), options.agent, { hook: options.hook ?? false });
-      if (isJson()) {
-        emitJson({ ...result, hook: options.hook ?? false });
-      } else {
-        log(`Installed rules into ${result.target}`);
-        if (result.targets.length > 1) {
-          log(`Also wrote: ${result.targets.filter((entry) => entry !== result.target).join(", ")}`);
-        }
-        for (const warning of result.warnings ?? []) {
-          emitNotice(warning);
-        }
+      for (const warning of result.warnings ?? []) {
+        emitNotice(warning);
       }
     }
-  );
+  });
 
 program
   .command("demo")

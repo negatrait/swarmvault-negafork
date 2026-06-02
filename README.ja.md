@@ -199,7 +199,7 @@ swarmvault graph serve
 | task history を記録 | `swarmvault task start "Implement the auth refactor" --target ./src --agent codex` |
 | vault 上の会話を保存 | `swarmvault chat "How should the next agent use this vault?"` |
 | health と repair guidance を見る | `swarmvault doctor --repair` |
-| graph exports を作る | `swarmvault graph export --report ./exports/report.html`、`swarmvault graph export --obsidian ./exports/graph-vault`、`swarmvault graph export --neo4j ./exports/graph.cypher` |
+| graph exports を作る | `swarmvault graph export --report ./exports/report.html`、`swarmvault graph export --callflow ./exports/callflow.html`、`swarmvault graph export --obsidian ./exports/graph-vault`、`swarmvault graph export --neo4j ./exports/graph.cypher` |
 | source/module tree を見る、または merge | `swarmvault tree --output ./exports/tree.html` と `swarmvault merge-graphs ./exports/graph.json ./other-graph.json --out ./exports/merged-graph.json` |
 | graph data を Neo4j に送る | `swarmvault graph push neo4j --dry-run` |
 
@@ -291,7 +291,16 @@ embedding 対応 provider が利用できる場合、SwarmVault は既定で sem
 }
 ```
 
-他の任意バックエンド、タスクの振り分け、能力ごとの設定例は [provider docs](https://www.swarmvault.ai/docs/providers) を参照してください。
+他の任意バックエンド、タスクの振り分け、能力ごとの設定例は [provider docs](https://www.swarmvault.ai/docs/providers) を参照してください。CLI から provider routing を管理することもできます:
+
+```bash
+swarmvault provider add router --type openrouter --model openrouter/auto --api-key-env OPENROUTER_API_KEY --capability chat --capability structured --task queryProvider
+swarmvault provider list
+swarmvault provider show router
+swarmvault provider remove router --fallback local
+```
+
+これらのコマンドは `swarmvault.config.json` の未知のフィールドを保持し、secret は `apiKeyEnv` で参照します。平文 API key は受け付けません。
 
 ### 音声ファースト取り込み（ローカル Whisper）
 
@@ -340,10 +349,14 @@ swarmvault install --agent trae             # Trae
 swarmvault install --agent claw             # Claw / OpenClaw skill target
 swarmvault install --agent droid            # Droid / Factory rules target
 swarmvault install --agent kiro             # Kiro IDE + 常時 steering
+swarmvault install --agent kilo --hook       # Kilo project rules + plugin
 swarmvault install --agent hermes           # Hermes ユーザースコープ skill
 swarmvault install --agent antigravity      # Google Antigravity ルール + /swarmvault ワークフロー
 swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
+swarmvault install status --agent kilo --hook
 ```
+
+`swarmvault install --agent <agent> [--scope project|user]` で project scope または user scope を選べます。`swarmvault install status --agent <agent>` は対象ファイルの存在を read-only で報告します。
 
 最小構成の LLM-Wiki スターターが欲しい場合は `swarmvault init --lite` を使ってください。`raw/`、`wiki/`、`wiki/index.md`、`wiki/log.md`、`swarmvault.schema.md` だけを作成し、設定ファイルや state、エージェントインストールは生成しません。エージェントが wiki を直接メンテナンスします。グラフ・検索・approval のフルツールチェーンが必要になったら後から `swarmvault init` でアップグレードできます。
 
@@ -434,7 +447,7 @@ clawhub install swarmvault
 
 **ビジュアル + 投稿しやすい share kit** - すべての compile が `wiki/graph/share-card.md`、`wiki/graph/share-card.svg`、`wiki/graph/share-kit/` を生成します。`swarmvault graph share --post` は短いテキストを出力し、`swarmvault graph share --svg [path]` は 1200x630 のビジュアルカードを書き出し、`swarmvault graph share --bundle [dir]` は markdown、投稿テキスト、SVG、HTML preview、JSON metadata を書き出して、投稿、リンク共有、スクリーンショットに使いやすくします。
 
-**graph blast radius、status、stats、validation、refresh、query filters、tree、merge、clustering、report export** - `graph blast <target>` は module dependency の reverse import をたどって変更影響範囲を示し、`graph status [path]` は graph/report artifacts と tracked repo changes の stale 状態を read-only で確認します。`check-update [path]` は同じ cron-safe status check の top-level compatibility alias です。`graph stats` は軽量な counts と relation mix を出力し、`graph validate [graph] --strict` は export/merge/push workflow の前に duplicate id、dangling reference、confidence range、conflicted-edge evidence を検査します。`graph update [path]` / `graph refresh [path]` は graph artifacts 向けに code-only repo refresh cycle を実行し、node/edge が 25% を超えて減る場合は明示的な `--force` がない限り停止します。`update [path]` は top-level compatibility alias です。`watch [path] --once` は watch config に保存せずに 1 つの repo root を対象にできます。`graph query` は relation、context group、evidence class、node type、language で traversal を絞り込めます。`graph tree` は expand/collapse controls と node inspector 付きの interactive source/module/symbol HTML tree を書き出し、`tree` は top-level alias です。`graph merge` は SwarmVault または node-link JSON graph を namespace 付きの 1 つの artifact に統合し、`merge-graphs` は top-level alias です。`graph cluster [--resolution <n>]` は再 ingest なしで既存 graph から communities、degree、god-node flags、graph report pages を再計算し、`cluster-only [vault]` は top-level compatibility alias です。`graph export --report` は統計、主要ノード、コミュニティ、warning を含む self-contained HTML report を出力します。`graph export --neo4j <path>` は Neo4j import 前に使う Cypher export alias です。
+**graph blast radius、cycles、status、stats、validation、refresh、query filters、tree、merge、clustering、report export** - `graph blast <target>` は module dependency の reverse import をたどって変更影響範囲を示し、`graph cycles [--relation imports]` は決定的な directed cycle を検出し、`graph status [path]` は graph/report artifacts と tracked repo changes の stale 状態を read-only で確認します。`check-update [path]` は同じ cron-safe status check の top-level compatibility alias です。`graph stats` は軽量な counts と relation mix を出力し、`graph validate [graph] --strict` は export/merge/push workflow の前に duplicate id、dangling reference、confidence range、conflicted-edge evidence を検査します。`graph update [path]` / `graph refresh [path]` は graph artifacts 向けに code-only repo refresh cycle を実行し、node/edge が 25% を超えて減る場合は明示的な `--force` がない限り停止します。`update [path]` は top-level compatibility alias です。`watch [path] --once` は watch config に保存せずに 1 つの repo root を対象にできます。`graph query` は relation、context group、evidence class、node type、language で traversal を絞り込めます。`graph tree` は expand/collapse controls と node inspector 付きの interactive source/module/symbol HTML tree を書き出し、`tree` は top-level alias です。`graph merge` は SwarmVault または node-link JSON graph を namespace 付きの 1 つの artifact に統合し、`merge-graphs` は top-level alias です。`graph cluster [--resolution <n>]` は再 ingest なしで既存 graph から communities、degree、god-node flags、graph report pages を再計算し、`cluster-only [vault]` は top-level compatibility alias です。`graph export --report` は統計、主要ノード、コミュニティ、warning を含む self-contained HTML report を出力します。`graph export --callflow <path>` は compact な directed relationship HTML view を書き出します。`graph export --neo4j <path>` は Neo4j import 前に使う Cypher export alias です。
 
 **グラフ diff** - `swarmvault diff` は現在のナレッジグラフを最後にコミットされたバージョンと比較し、追加/削除されたノード、エッジ、ページを表示して、compile で何が変わったかを正確に確認できます。
 
@@ -446,7 +459,7 @@ clawhub install swarmvault
 
 **任意のモデルプロバイダー** - OpenAI、Anthropic、Gemini、Ollama、OpenRouter、Groq、Together、xAI、Cerebras、汎用 OpenAI-compatible、custom adapters、そしてオフライン/ローカル既定の heuristic を使えます。
 
-**Agent integration** - Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Hermes、Google Antigravity、VS Code Copilot Chat、および extended skill-bundle roster 用の規則を明示的にインストールします。`init`、`quickstart`、`scan`、`clone` は、設定済みインストールを選ばない限りプロジェクトローカル rule files を書きません。任意の graph-first hooks により、Codex を含む対応エージェントは広い検索の前に wiki を優先します。Antigravity は `.agents/rules/` と `.agents/workflows/` にインストールされ、再インストール時に古い fully managed `.agent/` files をクリーンアップします。
+**Agent integration** - Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Kilo、Hermes、Google Antigravity、VS Code Copilot Chat、Devin、および extended skill-bundle roster 用の規則を明示的にインストールします。`init`、`quickstart`、`scan`、`clone` は、設定済みインストールを選ばない限りプロジェクトローカル rule files を書きません。任意の graph-first hooks により、Codex と Kilo を含む対応エージェントは広い検索の前に wiki を優先します。Antigravity は `.agents/rules/` と `.agents/workflows/` にインストールされ、再インストール時に古い fully managed `.agent/` files をクリーンアップします。
 
 **MCP server** - `swarmvault mcp` は graph stats、graph clustering refresh、community lookup、hyperedges、context-pack、task-ledger、互換 memory-task、vault doctor、retrieval health tools を含むボルト操作を stdio 経由で互換エージェントクライアントへ公開します。リポジトリには、stdio container entrypoint を検証する MCP server registry 向けの Docker/registry metadata も含まれます。
 
@@ -465,7 +478,7 @@ clawhub install swarmvault
 | Source guide | `source guide`、`source add --guide` | approval-bundled 更新を伴うガイド付きウォークスルー。`wiki/outputs/source-guides/` に出力 |
 | Source session | `source session`、`source add --guide` | 再開可能なワークフロー状態。`wiki/outputs/source-sessions/` と `state/source-sessions/` に保存 |
 
-**外部グラフ連携** - 完全版 HTML、軽量 standalone HTML、self-contained report HTML、SVG、GraphML、Cypher、JSON、Obsidian note bundle、Obsidian canvas にエクスポートでき、Bolt/Aura 経由で Neo4j へライブグラフを直接 push することもできます。共有 DB 上でも `vaultId` により安全に名前空間分離されます。
+**外部グラフ連携** - 完全版 HTML、軽量 standalone HTML、self-contained report HTML、directed callflow HTML、SVG、GraphML、Cypher、JSON、Obsidian note bundle、Obsidian canvas にエクスポートでき、Bolt/Aura 経由で Neo4j へライブグラフを直接 push することもできます。共有 DB 上でも `vaultId` により安全に名前空間分離されます。
 
 **インタラクティブ ingest フィードバック** - file と directory ingest は stderr に境界付きの進捗、現在の file、処理済み content size を表示します。JSON、MCP、watch、CI 風の flow は静かなままです。
 
@@ -491,6 +504,7 @@ clawhub install swarmvault
 | Claw / OpenClaw | `swarmvault install --agent claw` |
 | Droid | `swarmvault install --agent droid` |
 | Kiro | `swarmvault install --agent kiro` |
+| Kilo | `swarmvault install --agent kilo --hook` |
 | Hermes | `swarmvault install --agent hermes` |
 | Google Antigravity | `swarmvault install --agent antigravity` |
 | VS Code Copilot Chat | `swarmvault install --agent vscode` |
@@ -505,6 +519,7 @@ clawhub install swarmvault
 | Cortex Code | `swarmvault install --agent cortex` |
 | Crush | `swarmvault install --agent crush` |
 | Deep Agents | `swarmvault install --agent deepagents` |
+| Devin | `swarmvault install --agent devin` |
 | Firebender | `swarmvault install --agent firebender` |
 | iFlow CLI | `swarmvault install --agent iflow` |
 | Junie | `swarmvault install --agent junie` |
@@ -527,7 +542,7 @@ clawhub install swarmvault
 | Windsurf | `swarmvault install --agent windsurf` |
 | Zencoder | `swarmvault install --agent zencoder` |
 
-Codex、Claude Code、OpenCode、Gemini CLI、Copilot は `--hook` にも対応しており、graph-first の文脈注入ができます。拡張ロスターのエージェントは、対象ツールが規定する skills ディレクトリにプロジェクト単位の skill バンドルを書き込みます（例: `.cline/skills/swarmvault/SKILL.md`、`.codeium/windsurf/skills/swarmvault/SKILL.md`）。
+Codex、Claude Code、OpenCode、Gemini CLI、Copilot、Kilo は `--hook` にも対応しており、graph-first の文脈注入ができます。Project-scope installs は skills directory を持つ agent に skill bundle を書けます。`--scope user` は対応する user-level skill files を書きます。
 
 <!-- readme-section:worked-examples -->
 ## 実例

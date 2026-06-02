@@ -46,6 +46,7 @@ const SURFACE_MANIFEST = {
   "graph blast": "behavior",
   "graph cluster": "behavior",
   "graph clusters": "alias",
+  "graph cycles": "behavior",
   "graph explain": "behavior",
   "graph export": "behavior",
   "graph god-nodes": "behavior",
@@ -72,6 +73,7 @@ const SURFACE_MANIFEST = {
   ingest: "behavior",
   init: "behavior",
   install: "behavior",
+  "install status": "behavior",
   lint: "behavior",
   "merge-graphs": "behavior",
   mcp: "long-running",
@@ -85,7 +87,11 @@ const SURFACE_MANIFEST = {
   migrate: "behavior",
   next: "behavior",
   provider: "help",
+  "provider add": "behavior",
+  "provider list": "behavior",
+  "provider remove": "behavior",
   "provider setup": "behavior",
+  "provider show": "behavior",
   quickstart: "behavior",
   query: "behavior",
   retrieval: "help",
@@ -422,6 +428,9 @@ async function runBehaviorSmoke() {
   await runJsonCheck(["graph", "stats"], workspaceDir, "graph stats", (result) => {
     assert.ok(result.counts?.nodes > 0, "graph stats did not report graph nodes");
   });
+  await runJsonCheck(["graph", "cycles"], workspaceDir, "graph cycles", (result) => {
+    assert.ok(Array.isArray(result.cycles), "graph cycles did not return cycle entries");
+  });
   await runJsonCheck(["graph", "validate"], workspaceDir, "graph validate", (result) => {
     assert.equal(result.ok, true, "graph validate did not accept the compiled graph");
   });
@@ -445,6 +454,9 @@ async function runBehaviorSmoke() {
   });
   await runJsonCheck(["graph", "export", "--svg", path.join(workspaceDir, "exports", "graph.svg")], workspaceDir, "graph export", (result) => {
     assert.equal(result.format, "svg", "graph export did not report svg output");
+  });
+  await runJsonCheck(["graph", "export", "--callflow", path.join(workspaceDir, "exports", "callflow.html")], workspaceDir, "graph export callflow", (result) => {
+    assert.equal(result.format, "callflow", "graph export --callflow did not report callflow output");
   });
   await runJsonCheck(["graph", "export", "--neo4j", path.join(workspaceDir, "exports", "graph.cypher")], workspaceDir, "graph export --neo4j", (result) => {
     assert.equal(result.format, "cypher", "graph export --neo4j did not report cypher output");
@@ -514,6 +526,46 @@ async function runBehaviorSmoke() {
   await runJsonCheck(["provider", "setup", "--local-whisper"], workspaceDir, "provider setup", (result) => {
     assert.equal(result.apply, false, "provider setup JSON status did not report apply=false");
   });
+  await runJsonCheck(
+    [
+      "provider",
+      "add",
+      "surface",
+      "--type",
+      "openai",
+      "--model",
+      "gpt-4o-mini",
+      "--api-key-env",
+      "SURFACE_API_KEY",
+      "--capability",
+      "chat",
+      "--task",
+      "queryProvider"
+    ],
+    workspaceDir,
+    "provider add",
+    (result) => {
+      assert.equal(result.providerId, "surface", "provider add did not return the created provider id");
+      assert.ok(result.updatedTasks.includes("queryProvider"), "provider add did not report the requested task assignment");
+    }
+  );
+  await runJsonCheck(["provider", "show", "surface"], workspaceDir, "provider show", (result) => {
+    assert.equal(result.id, "surface", "provider show returned the wrong provider");
+  });
+  await runJsonCheck(["provider", "list"], workspaceDir, "provider list", (result) => {
+    assert.ok(result.some((entry) => entry.id === "surface"), "provider list did not include the added provider");
+  });
+  await runJsonCheck(["provider", "remove", "surface", "--fallback", "local"], workspaceDir, "provider remove", (result) => {
+    assert.equal(result.removed, true, "provider remove did not remove the provider");
+    assert.ok(result.updatedTasks.includes("queryProvider"), "provider remove did not report the reassigned task fallback");
+  });
+  await runJsonCheck(["provider", "list"], workspaceDir, "provider list after remove", (result) => {
+    assert.ok(!result.some((entry) => entry.id === "surface"), "provider list still included the removed provider");
+    assert.ok(
+      result.some((entry) => entry.id === "local" && entry.assignedTasks.includes("queryProvider")),
+      "provider remove did not reassign the task fallback"
+    );
+  });
 
   const managedDir = path.join(workspaceDir, "managed-source");
   await fs.mkdir(managedDir, { recursive: true });
@@ -575,6 +627,10 @@ async function runBehaviorSmoke() {
   });
   await runJsonCheck(["install", "--agent", "codex"], workspaceDir, "install", (result) => {
     assert.equal(result.agent, "codex", "install did not return the requested agent");
+  });
+  await runJsonCheck(["install", "status", "--agent", "codex"], workspaceDir, "install status", (result) => {
+    assert.equal(result.agent, "codex", "install status did not return the requested agent");
+    assert.ok(result.targets.some((entry) => entry.path.endsWith("AGENTS.md")), "install status did not include AGENTS.md");
   });
 
   const scanDir = await makeTempDir("swarmvault-cli-surface-scan-");

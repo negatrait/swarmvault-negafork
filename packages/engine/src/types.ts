@@ -60,9 +60,11 @@ export const agentTypeSchema = z.enum([
   "cortex",
   "crush",
   "deepagents",
+  "devin",
   "firebender",
   "iflow",
   "junie",
+  "kilo",
   "kilo-code",
   "kimi",
   "kode",
@@ -117,7 +119,17 @@ export type ContextPackItemKind = "page" | "node" | "edge" | "hyperedge";
 export type AgentMemoryTaskStatus = "active" | "blocked" | "completed" | "archived";
 export type AgentMemoryResumeFormat = "markdown" | "json" | "llms";
 export type OutputAssetRole = "primary" | "preview" | "manifest" | "poster";
-export type GraphExportFormat = "html" | "html-standalone" | "report" | "svg" | "graphml" | "cypher" | "json" | "obsidian" | "canvas";
+export type GraphExportFormat =
+  | "html"
+  | "html-standalone"
+  | "report"
+  | "svg"
+  | "graphml"
+  | "cypher"
+  | "json"
+  | "callflow"
+  | "obsidian"
+  | "canvas";
 export type PageStatus = "draft" | "candidate" | "active" | "blocked" | "completed" | "archived";
 export type PageManager = "system" | "human";
 export type ApprovalEntryStatus = "pending" | "accepted" | "rejected";
@@ -1202,6 +1214,19 @@ export interface GraphPathResult {
   summary: string;
 }
 
+export interface GraphCycle {
+  nodeIds: string[];
+  labels: string[];
+  edgeIds: string[];
+  relations: string[];
+}
+
+export interface GraphCycleResult {
+  cycles: GraphCycle[];
+  limit: number;
+  summary: string;
+}
+
 export interface GraphExplainNeighbor {
   nodeId: string;
   label: string;
@@ -1891,6 +1916,7 @@ export interface WatchController {
 
 export interface InstallAgentOptions {
   hook?: boolean;
+  scope?: "project" | "user";
 }
 
 export interface InstallAgentResult {
@@ -1898,6 +1924,61 @@ export interface InstallAgentResult {
   target: string;
   targets: string[];
   warnings?: string[];
+}
+
+export interface AgentInstallTargetStatus {
+  path: string;
+  exists: boolean;
+}
+
+export interface AgentInstallStatus {
+  agent: AgentType;
+  scope: "project" | "user";
+  hook: boolean;
+  installed: boolean;
+  target: string;
+  targets: AgentInstallTargetStatus[];
+}
+
+export type ProviderTaskKey = keyof VaultConfig["tasks"];
+
+export interface ProviderConfigEntry {
+  id: string;
+  type: ProviderType;
+  model: string;
+  baseUrl?: string;
+  apiKeyEnv?: string;
+  capabilities: ProviderCapability[];
+  assignedTasks: ProviderTaskKey[];
+  provider: ProviderConfig;
+}
+
+export interface ProviderConfigAddOptions {
+  rootDir: string;
+  providerId: string;
+  provider: ProviderConfig;
+  tasks?: ProviderTaskKey[];
+}
+
+export interface ProviderConfigAddResult {
+  providerId: string;
+  configPath: string;
+  added: boolean;
+  updated: boolean;
+  updatedTasks: ProviderTaskKey[];
+}
+
+export interface ProviderConfigRemoveOptions {
+  rootDir: string;
+  providerId: string;
+  fallbackProviderId?: string;
+}
+
+export interface ProviderConfigRemoveResult {
+  providerId: string;
+  configPath: string;
+  removed: boolean;
+  updatedTasks: ProviderTaskKey[];
 }
 
 export interface ManagedSourceAddOptions {

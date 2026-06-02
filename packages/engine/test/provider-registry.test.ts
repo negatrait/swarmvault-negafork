@@ -1,7 +1,14 @@
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createProvider } from "../src/index.js";
+import {
+  addProviderConfig,
+  createProvider,
+  getProviderConfigEntry,
+  listProviderConfigEntries,
+  removeProviderConfig
+} from "../src/index.js";
 import { LocalWhisperProviderAdapter } from "../src/providers/local-whisper.js";
 import type { ProviderConfig } from "../src/types.js";
 
@@ -85,5 +92,89 @@ describe("provider registry", () => {
     expect(provider.capabilities.has("chat")).toBe(false);
     expect(provider.capabilities.has("structured")).toBe(false);
     expect(provider.capabilities.has("embeddings")).toBe(false);
+  });
+
+  it("adds, lists, shows, and removes provider config without dropping unknown config fields", async () => {
+    const rootDir = path.join(os.tmpdir(), `swarmvault-provider-config-${process.pid}-${Date.now()}`);
+    const configPath = path.join(rootDir, "swarmvault.config.json");
+    await fs.mkdir(rootDir, { recursive: true });
+    await fs.writeFile(
+      configPath,
+      `${JSON.stringify(
+        {
+          workspace: { rawDir: "raw", wikiDir: "wiki", stateDir: "state", agentDir: "agent", inboxDir: "inbox" },
+          providers: {
+            local: {
+              type: "heuristic",
+              model: "heuristic-v1",
+              capabilities: ["chat", "structured", "vision", "local"]
+            }
+          },
+          tasks: {
+            compileProvider: "local",
+            queryProvider: "local",
+            lintProvider: "local",
+            visionProvider: "local"
+          },
+          viewer: { port: 4123 },
+          profile: {
+            presets: [],
+            dashboardPack: "default",
+            guidedSessionMode: "insights_only",
+            dataviewBlocks: false,
+            guidedIngestDefault: false,
+            deepLintDefault: false
+          },
+          agents: [],
+          customBlock: { preserve: true }
+        },
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const added = await addProviderConfig({
+      rootDir,
+      providerId: "router",
+      provider: {
+        type: "openrouter",
+        model: "openrouter/test",
+        apiKeyEnv: "OPENROUTER_API_KEY",
+        capabilities: ["chat", "structured"]
+      },
+      tasks: ["queryProvider", "compileProvider"]
+    });
+    expect(added.providerId).toBe("router");
+    expect(added.added).toBe(true);
+    expect(added.updatedTasks).toEqual(["queryProvider", "compileProvider"]);
+
+    const rawAfterAdd = JSON.parse(await fs.readFile(configPath, "utf8")) as {
+      customBlock?: { preserve?: boolean };
+      tasks?: Record<string, string>;
+    };
+    expect(rawAfterAdd.customBlock?.preserve).toBe(true);
+    expect(rawAfterAdd.tasks?.queryProvider).toBe("router");
+    expect(rawAfterAdd.tasks?.compileProvider).toBe("router");
+
+    const listed = await listProviderConfigEntries(rootDir);
+    expect(listed.map((entry) => entry.id)).toContain("router");
+    expect(listed.find((entry) => entry.id === "router")?.apiKeyEnv).toBe("OPENROUTER_API_KEY");
+
+    const shown = await getProviderConfigEntry(rootDir, "router");
+    expect(shown?.provider.model).toBe("openrouter/test");
+
+    const removed = await removeProviderConfig({ rootDir, providerId: "router" });
+    expect(removed.removed).toBe(true);
+    expect(removed.updatedTasks).toEqual(["compileProvider", "queryProvider"]);
+    const rawAfterRemove = JSON.parse(await fs.readFile(configPath, "utf8")) as {
+      customBlock?: { preserve?: boolean };
+      tasks?: Record<string, string>;
+      providers?: Record<string, unknown>;
+    };
+    expect(rawAfterRemove.customBlock?.preserve).toBe(true);
+    expect(rawAfterRemove.providers?.router).toBeUndefined();
+    expect(rawAfterRemove.tasks?.compileProvider).toBe("local");
+    expect(rawAfterRemove.tasks?.queryProvider).toBe("local");
   });
 });

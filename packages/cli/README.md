@@ -672,7 +672,15 @@ Trace the reverse-import blast radius of changing a file or module.
 - follows reverse `imports` edges through the compiled graph
 - reports affected modules by depth so you can estimate downstream impact before editing
 
-### `swarmvault graph export --html|--html-standalone|--report|--svg|--graphml|--cypher|--json|--obsidian|--canvas <output>`
+### `swarmvault graph cycles [--relation <name>] [--limit <n>] [--max-depth <n>]`
+
+Find deterministic directed cycles in the compiled graph.
+
+- defaults to `imports` edges for module cycle checks
+- accepts repeated `--relation` flags to inspect other directed relationships
+- supports global `--json` for automation
+
+### `swarmvault graph export --html|--html-standalone|--report|--svg|--graphml|--cypher|--json|--callflow|--obsidian|--canvas <output>`
 
 Export the current graph as one or more shareable formats:
 
@@ -683,6 +691,7 @@ Export the current graph as one or more shareable formats:
 - `--graphml` for graph-tool interoperability
 - `--cypher` for Neo4j-style import scripts
 - `--json` for a deterministic machine-readable graph package
+- `--callflow` for compact directed relationship HTML
 - `--obsidian` for an Obsidian-friendly markdown vault that preserves wiki folders, appends graph connections, emits orphan-node stubs and community notes, copies assets, and writes a minimal `.obsidian/` config
 - `--canvas` for an Obsidian canvas grouped by community
 
@@ -713,11 +722,11 @@ Defaults:
 - namespaces every remote record by `vaultId` so multiple vaults can safely share one Neo4j database
 - upserts current graph records and does not prune stale remote data yet
 
-### `swarmvault install --agent <agent>`
+### `swarmvault install --agent <agent> [--scope project|user]`
 
 Install agent-specific rules into the current project so an agent understands the SwarmVault workspace contract and workflow.
 
-`init`, `quickstart`, `scan`, and `clone` do not write project-local agent rule files by default. Run `swarmvault install --agent <agent>` for one target at a time, or list targets in `swarmvault.config.json` and pass `--install-agent-rules` to `init`, `quickstart`, `scan`, or `clone` when you intentionally want configured targets installed together.
+`init`, `quickstart`, `scan`, and `clone` do not write project-local agent rule files by default. Run `swarmvault install --agent <agent> --scope project` for one target at a time, use `--scope user` for supported user-scope skill installs, or list targets in `swarmvault.config.json` and pass `--install-agent-rules` to `init`, `quickstart`, `scan`, or `clone` when you intentionally want configured targets installed together.
 
 Hook-capable installs:
 
@@ -727,6 +736,7 @@ swarmvault install --agent claude --hook
 swarmvault install --agent gemini --hook
 swarmvault install --agent opencode --hook
 swarmvault install --agent copilot --hook
+swarmvault install --agent kilo --hook
 ```
 
 Agent target mapping:
@@ -741,9 +751,13 @@ Agent target mapping:
 - `claw` writes `.claw/skills/swarmvault/SKILL.md`
 - `droid` writes `.factory/rules/swarmvault.md`
 - `kiro` writes `.kiro/skills/swarmvault/SKILL.md` and `.kiro/steering/swarmvault.md`
+- `kilo` project-scope writes `AGENTS.md`; with `--hook`, it also writes `.kilo/plugins/swarmvault.js` and `.kilo/kilo.json` while preserving an existing `.kilo/kilo.jsonc`
 - `hermes` writes `~/.hermes/skills/swarmvault/SKILL.md` plus `AGENTS.md`
 - `antigravity` writes `.agents/rules/swarmvault.md` and `.agents/workflows/swarmvault.md`, and removes older fully managed `.agent/` files during reinstall
 - `vscode` writes `.github/chatmodes/swarmvault.chatmode.md` plus `.github/copilot-instructions.md`
+- `devin` writes `.devin/skills/swarmvault/SKILL.md` plus `.windsurf/rules/swarmvault.md`
+
+`swarmvault install status --agent <agent> [--scope project|user] [--hook]` reports the expected install paths and whether they exist without writing files.
 
 SwarmVault only owns the managed block inside shared markdown rule files. It keeps the SwarmVault block aligned across targets while preserving any user-owned text before or after the block, so `AGENTS.md` and `CLAUDE.md` do not need to be byte-identical.
 
@@ -754,6 +768,7 @@ Hook semantics:
 - `gemini --hook` writes `.gemini/settings.json` plus `.gemini/hooks/swarmvault-graph-first.js` and stays advisory/model-visible
 - `opencode --hook` writes `.opencode/plugins/swarmvault-graph-first.js` and stays advisory/log-only
 - `copilot --hook` writes `.github/hooks/swarmvault-graph-first.json` plus `.github/hooks/swarmvault-graph-first.js` and remains decision-based rather than advisory
+- `kilo --hook` writes `.kilo/plugins/swarmvault.js` and registers it in `.kilo/kilo.json`
 
 `aider` is intentionally file/config-based in this release rather than hook-based.
 
@@ -774,6 +789,17 @@ npm install -g @swarmvaultai/cli
 ## Provider Configuration
 
 SwarmVault defaults to a local `heuristic` provider so the CLI works without API keys, but real vaults will usually point at an actual model provider.
+
+CLI registry commands:
+
+```bash
+swarmvault provider add router --type openrouter --model openrouter/auto --api-key-env OPENROUTER_API_KEY --capability chat --capability structured --task queryProvider
+swarmvault provider list
+swarmvault provider show router
+swarmvault provider remove router --fallback local
+```
+
+`provider add|remove` preserves unrelated config fields and stores secret references through `apiKeyEnv`, not literal API key values.
 
 Example:
 

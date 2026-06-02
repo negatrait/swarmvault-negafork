@@ -187,10 +187,12 @@ Run `swarmvault compile` after creating or updating tasks when you want task and
 Re-run the relevant install command in the project root:
 
 ```bash
+swarmvault install status --agent codex --hook
 swarmvault install --agent claude --hook
 swarmvault install --agent gemini --hook
 swarmvault install --agent opencode --hook
 swarmvault install --agent copilot --hook
+swarmvault install --agent kilo --hook
 ```
 
 For Aider:

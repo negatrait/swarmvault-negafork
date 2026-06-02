@@ -87,6 +87,7 @@ swarmvault graph blast ./src/index.ts
 swarmvault graph status ./src
 swarmvault check-update ./src
 swarmvault graph stats
+swarmvault graph cycles
 swarmvault graph validate --strict
 swarmvault graph cluster
 swarmvault cluster-only
@@ -103,6 +104,7 @@ swarmvault graph export --html ./graph.html
 swarmvault graph export --report ./graph-report.html
 swarmvault graph export --html ./graph.html --full
 swarmvault graph export --html-standalone ./graph-standalone.html
+swarmvault graph export --callflow ./callflow.html
 swarmvault graph export --json ./graph.json --canvas ./graph.canvas
 swarmvault graph export --obsidian ./graph-vault
 swarmvault graph export --neo4j ./graph.cypher
@@ -110,6 +112,16 @@ swarmvault export ai --out ./exports/ai
 swarmvault export ai --out ./exports/ai --no-page-siblings
 swarmvault graph push neo4j --dry-run
 swarmvault mcp
+```
+
+## Providers
+
+```bash
+swarmvault provider add router --type openrouter --model openrouter/auto --api-key-env OPENROUTER_API_KEY --capability chat --capability structured --task queryProvider
+swarmvault provider list
+swarmvault provider show router
+swarmvault provider remove router --fallback local
+swarmvault provider setup --local-whisper --apply
 ```
 
 ## Automation
@@ -142,4 +154,7 @@ swarmvault install --agent copilot --hook
 swarmvault install --agent trae
 swarmvault install --agent claw
 swarmvault install --agent droid
+swarmvault install --agent kilo --hook
+swarmvault install --agent devin
+swarmvault install status --agent kilo --hook
 ```

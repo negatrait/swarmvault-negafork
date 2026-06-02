@@ -19,6 +19,7 @@ import {
   explainGraphVault,
   exploreVault,
   exportGraphFormat,
+  getAgentInstallStatus,
   getGitHookStatus,
   getGraphCommunityVault,
   getWatchStatus,
@@ -668,6 +669,90 @@ describe("swarmvault workflow", () => {
     expect(vscodeInstructions).toContain("swarmvault:managed:start");
     expect(vscodeInstructions).toContain("Read `wiki/graph/report.md` before broad file searching");
     expect(vscodeInstructions).toContain("architecture, structure, relationship");
+  });
+
+  it("installs first-class kilo project hooks while preserving JSONC config sources", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    await fs.mkdir(path.join(rootDir, ".kilo"), { recursive: true });
+    await fs.writeFile(
+      path.join(rootDir, ".kilo", "kilo.jsonc"),
+      ["{", "  // keep existing project plugins", '  "plugins": ["./plugins/existing.js"],', '  "theme": "dark"', "}"].join("\n"),
+      "utf8"
+    );
+
+    const before = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true });
+    expect(before.installed).toBe(false);
+
+    const kiloTarget = await installAgent(rootDir, "kilo", { scope: "project", hook: true });
+    expect(kiloTarget.target).toBe(path.join(rootDir, "AGENTS.md"));
+    expect(kiloTarget.targets).toContain(path.join(rootDir, ".kilo", "plugins", "swarmvault.js"));
+    expect(kiloTarget.targets).toContain(path.join(rootDir, ".kilo", "kilo.json"));
+
+    const projectConfig = JSON.parse(await fs.readFile(path.join(rootDir, ".kilo", "kilo.json"), "utf8")) as {
+      plugins?: string[];
+      theme?: string;
+    };
+    expect(projectConfig.plugins).toEqual(["./plugins/existing.js", "./plugins/swarmvault.js"]);
+    expect(projectConfig.theme).toBe("dark");
+    expect(await fs.readFile(path.join(rootDir, ".kilo", "kilo.jsonc"), "utf8")).toContain("// keep existing project plugins");
+    expect(await fs.readFile(path.join(rootDir, ".kilo", "plugins", "swarmvault.js"), "utf8")).toContain("swarmvault graph");
+
+    const after = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true });
+    expect(after.installed).toBe(true);
+    expect(after.targets.every((entry) => entry.exists)).toBe(true);
+  });
+
+  it("installs kilo user-scope skill and command under the agent home config", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), "swarmvault-kilo-home-"));
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    try {
+      const result = await installAgent(rootDir, "kilo", { scope: "user" });
+      const skillPath = path.join(fakeHome, ".config", "kilo", "skills", "swarmvault", "SKILL.md");
+      const commandPath = path.join(fakeHome, ".config", "kilo", "command", "swarmvault.md");
+      expect(result.target).toBe(skillPath);
+      expect(result.targets).toContain(commandPath);
+
+      const skill = matter(await fs.readFile(skillPath, "utf8"));
+      expect(skill.data.name).toBe("swarmvault");
+      expect(skill.content).toContain("SwarmVault compiles curated sources");
+      expect(await fs.readFile(commandPath, "utf8")).toContain("# /swarmvault");
+    } finally {
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
+      await fs.rm(fakeHome, { recursive: true, force: true });
+    }
+  });
+
+  it("installs project skill bundles for agents that expose skill directories", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+
+    const cases: Array<{ agent: Parameters<typeof installAgent>[1]; expected: string[] }> = [
+      { agent: "codex", expected: [".agents", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "opencode", expected: [".opencode", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "gemini", expected: [".gemini", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "copilot", expected: [".copilot", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "vscode", expected: [".copilot", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "pi", expected: [".pi", "agent", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "kimi", expected: [".kimi", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "amp", expected: [".amp", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "antigravity", expected: [".agents", "skills", "swarmvault", "SKILL.md"] },
+      { agent: "devin", expected: [".devin", "skills", "swarmvault", "SKILL.md"] }
+    ];
+
+    for (const { agent, expected } of cases) {
+      const result = await installAgent(rootDir, agent, { scope: "project" });
+      const expectedPath = path.join(rootDir, ...expected);
+      expect(result.targets).toContain(expectedPath);
+      const skill = matter(await fs.readFile(expectedPath, "utf8"));
+      expect(skill.data.name).toBe("swarmvault");
+    }
   });
 
   it("installs skill bundles for the extended coding-agent roster", async () => {

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 3.16.0
+
+- Added first-class `kilo` and `devin` agent install targets, project/user install scope selection, `swarmvault install status`, Kilo plugin registration with JSONC source preservation, and project skill-bundle outputs for Codex, OpenCode, Gemini, Copilot, VS Code, Pi, Kimi, Amp, Antigravity, and Devin.
+- Added `swarmvault provider add|list|show|remove` for explicit provider registry management, task assignment, capability metadata, and raw config preservation without storing literal API secrets.
+- Added `swarmvault graph cycles` for deterministic directed cycle detection and `swarmvault graph export --callflow` for compact directed relationship HTML exports.
+- Extended engine and CLI coverage for agent install parity, provider config persistence, graph cycle detection, and callflow export.
+- Updated OSS docs, localized READMEs, site docs, spec notes, and the published ClawHub skill bundle for the new release-facing workflows.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, and ClawHub skill metadata to `3.16.0`.
+
 ## 3.15.0
 
 - Fixed `quickstart`, `scan`, and `clone` so local file inputs such as PDFs work directly instead of failing with directory-only path handling.
