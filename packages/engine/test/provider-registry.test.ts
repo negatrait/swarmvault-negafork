@@ -167,6 +167,9 @@ describe("provider registry", () => {
     const removed = await removeProviderConfig({ rootDir, providerId: "router" });
     expect(removed.removed).toBe(true);
     expect(removed.updatedTasks).toEqual(["compileProvider", "queryProvider"]);
+    expect(removed.reassignedTasks).toEqual(["compileProvider", "queryProvider"]);
+    expect(removed.clearedTasks).toEqual([]);
+    expect(removed.fallbackProviderId).toBe("local");
     const rawAfterRemove = JSON.parse(await fs.readFile(configPath, "utf8")) as {
       customBlock?: { preserve?: boolean };
       tasks?: Record<string, string>;
@@ -176,5 +179,88 @@ describe("provider registry", () => {
     expect(rawAfterRemove.providers?.router).toBeUndefined();
     expect(rawAfterRemove.tasks?.compileProvider).toBe("local");
     expect(rawAfterRemove.tasks?.queryProvider).toBe("local");
+  });
+
+  it("rejects explicit fallback providers that are not configured", async () => {
+    const rootDir = path.join(os.tmpdir(), `swarmvault-provider-fallback-${process.pid}-${Date.now()}`);
+    await fs.mkdir(rootDir, { recursive: true });
+    await addProviderConfig({
+      rootDir,
+      providerId: "router",
+      provider: { type: "openrouter", model: "openrouter/test", apiKeyEnv: "OPENROUTER_API_KEY" },
+      tasks: ["queryProvider"]
+    });
+
+    await expect(removeProviderConfig({ rootDir, providerId: "router", fallbackProviderId: "missing" })).rejects.toThrow(
+      "Provider missing is not configured; cannot reassign tasks to it."
+    );
+    await expect(removeProviderConfig({ rootDir, providerId: "router", fallbackProviderId: "router" })).rejects.toThrow(
+      "Provider router is not configured; cannot reassign tasks to it."
+    );
+  });
+
+  it("refuses to orphan required tasks when removing the last provider", async () => {
+    const rootDir = path.join(os.tmpdir(), `swarmvault-provider-orphan-${process.pid}-${Date.now()}`);
+    await fs.mkdir(rootDir, { recursive: true });
+    await addProviderConfig({
+      rootDir,
+      providerId: "router",
+      provider: { type: "openrouter", model: "openrouter/test", apiKeyEnv: "OPENROUTER_API_KEY" },
+      tasks: ["queryProvider", "compileProvider"]
+    });
+
+    const removedLocal = await removeProviderConfig({ rootDir, providerId: "local" });
+    expect(removedLocal.removed).toBe(true);
+    expect(removedLocal.fallbackProviderId).toBe("router");
+    expect(removedLocal.clearedTasks).toEqual([]);
+
+    await expect(removeProviderConfig({ rootDir, providerId: "router" })).rejects.toThrow(
+      /Cannot remove provider router; tasks .* would have no provider/
+    );
+  });
+
+  it("clears optional task assignments when no fallback provider remains and skips rewrites for no-op removals", async () => {
+    const rootDir = path.join(os.tmpdir(), `swarmvault-provider-clear-${process.pid}-${Date.now()}`);
+    const configPath = path.join(rootDir, "swarmvault.config.json");
+    await fs.mkdir(rootDir, { recursive: true });
+    await fs.writeFile(
+      configPath,
+      `${JSON.stringify(
+        {
+          providers: {
+            solo: { type: "openrouter", model: "openrouter/test", apiKeyEnv: "OPENROUTER_API_KEY" }
+          },
+          tasks: {
+            compileProvider: "external",
+            queryProvider: "external",
+            lintProvider: "external",
+            visionProvider: "external",
+            imageProvider: "solo",
+            audioProvider: "solo"
+          }
+        },
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const cleared = await removeProviderConfig({ rootDir, providerId: "solo" });
+    expect(cleared.removed).toBe(true);
+    expect(cleared.fallbackProviderId).toBeNull();
+    expect(cleared.reassignedTasks).toEqual([]);
+    expect(cleared.clearedTasks).toEqual(["imageProvider", "audioProvider"]);
+    expect(cleared.updatedTasks).toEqual(["imageProvider", "audioProvider"]);
+    const rawAfterClear = JSON.parse(await fs.readFile(configPath, "utf8")) as { tasks?: Record<string, string> };
+    expect(rawAfterClear.tasks?.imageProvider).toBeUndefined();
+    expect(rawAfterClear.tasks?.audioProvider).toBeUndefined();
+    expect(rawAfterClear.tasks?.compileProvider).toBe("external");
+
+    const statBefore = await fs.stat(configPath);
+    const noop = await removeProviderConfig({ rootDir, providerId: "ghost" });
+    expect(noop.removed).toBe(false);
+    expect(noop.updatedTasks).toEqual([]);
+    const statAfter = await fs.stat(configPath);
+    expect(statAfter.mtimeMs).toBe(statBefore.mtimeMs);
   });
 });

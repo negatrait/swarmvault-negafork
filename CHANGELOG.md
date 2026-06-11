@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 3.16.1
+
+- Fixed `provider remove` corrupting `swarmvault.config.json` when the last configured provider was removed: required task assignments were deleted, leaving a config the CLI could no longer parse. Removal is now refused with a clear error while required tasks still point at the provider.
+- Fixed `provider remove --fallback` accepting unconfigured provider ids, which silently reassigned tasks to a provider that did not exist.
+- Improved `provider remove` reporting: output now distinguishes tasks reassigned to the fallback provider from optional task assignments that were cleared, and the JSON result includes `fallbackProviderId`, `reassignedTasks`, and `clearedTasks` alongside the existing `updatedTasks`.
+- Stopped `provider remove` from rewriting the config file when nothing was removed and no task assignments changed.
+- Refreshed transitive dependencies to pick up published security patches (`fast-uri`, `@xmldom/xmldom`, `hono`, `@hono/node-server`, `fast-xml-builder`, `ws`, `qs`), clearing all patchable audit advisories.
+- Updated site provider docs for the stricter `provider remove` semantics.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.16.1`.
+
 ## 3.16.0
 
 - Added first-class `kilo` and `devin` agent install targets, project/user install scope selection, `swarmvault install status`, Kilo plugin registration with JSONC source preservation, and project skill-bundle outputs for Codex, OpenCode, Gemini, Copilot, VS Code, Pi, Kimi, Amp, Antigravity, and Devin.

@@ -27,6 +27,14 @@ const PROVIDER_TASK_KEYS: ProviderTaskKey[] = [
   "audioProvider"
 ];
 
+// Task keys the vault config schema requires; they can be reassigned but never deleted.
+const REQUIRED_PROVIDER_TASK_KEYS: ReadonlySet<ProviderTaskKey> = new Set([
+  "compileProvider",
+  "queryProvider",
+  "lintProvider",
+  "visionProvider"
+]);
+
 async function loadRawConfig(rootDir: string): Promise<{ configPath: string; raw: RawVaultConfig }> {
   await initWorkspace(rootDir);
   const { paths } = await loadVaultConfig(rootDir);
@@ -142,25 +150,43 @@ export async function removeProviderConfig(options: ProviderConfigRemoveOptions)
   const removed = Boolean(providers[options.providerId]);
   delete providers[options.providerId];
 
+  if (options.fallbackProviderId && !providers[options.fallbackProviderId]) {
+    throw new Error(`Provider ${options.fallbackProviderId} is not configured; cannot reassign tasks to it.`);
+  }
   const fallbackProviderId =
     options.fallbackProviderId ?? (providers.local ? "local" : Object.keys(providers).sort((left, right) => left.localeCompare(right))[0]);
-  const updatedTasks: ProviderTaskKey[] = [];
-  for (const taskKey of PROVIDER_TASK_KEYS) {
-    if (tasks[taskKey] === options.providerId) {
-      if (!fallbackProviderId) {
-        delete tasks[taskKey];
-      } else {
-        tasks[taskKey] = fallbackProviderId;
-      }
-      updatedTasks.push(taskKey);
+  const assignedTaskKeys = PROVIDER_TASK_KEYS.filter((taskKey) => tasks[taskKey] === options.providerId);
+  if (!fallbackProviderId) {
+    const orphanedRequired = assignedTaskKeys.filter((taskKey) => REQUIRED_PROVIDER_TASK_KEYS.has(taskKey));
+    if (orphanedRequired.length) {
+      throw new Error(
+        `Cannot remove provider ${options.providerId}; tasks ${orphanedRequired.join(", ")} would have no provider. Configure another provider first or pass a fallback.`
+      );
     }
   }
+  const reassignedTasks: ProviderTaskKey[] = [];
+  const clearedTasks: ProviderTaskKey[] = [];
+  for (const taskKey of assignedTaskKeys) {
+    if (!fallbackProviderId) {
+      delete tasks[taskKey];
+      clearedTasks.push(taskKey);
+    } else {
+      tasks[taskKey] = fallbackProviderId;
+      reassignedTasks.push(taskKey);
+    }
+  }
+  const updatedTasks = assignedTaskKeys;
 
-  await writeJsonFile(configPath, raw);
+  if (removed || updatedTasks.length) {
+    await writeJsonFile(configPath, raw);
+  }
   return {
     providerId: options.providerId,
     configPath,
     removed,
-    updatedTasks
+    fallbackProviderId: fallbackProviderId ?? null,
+    updatedTasks,
+    reassignedTasks,
+    clearedTasks
   };
 }

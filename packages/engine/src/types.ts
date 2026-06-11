@@ -1978,7 +1978,10 @@ export interface ProviderConfigRemoveResult {
   providerId: string;
   configPath: string;
   removed: boolean;
+  fallbackProviderId: string | null;
   updatedTasks: ProviderTaskKey[];
+  reassignedTasks: ProviderTaskKey[];
+  clearedTasks: ProviderTaskKey[];
 }
 
 export interface ManagedSourceAddOptions {

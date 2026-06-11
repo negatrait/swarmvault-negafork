@@ -151,9 +151,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.16.0";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.16.1";
   } catch {
-    return "3.16.0";
+    return "3.16.1";
   }
 }
 
@@ -3094,8 +3094,11 @@ provider
       return;
     }
     log(`${result.removed ? "Removed" : "No provider named"} ${id}.`);
-    if (result.updatedTasks.length) {
-      log(`Reassigned tasks: ${result.updatedTasks.join(", ")}`);
+    if (result.reassignedTasks.length) {
+      log(`Reassigned tasks to ${result.fallbackProviderId}: ${result.reassignedTasks.join(", ")}`);
+    }
+    if (result.clearedTasks.length) {
+      log(`Cleared task assignments: ${result.clearedTasks.join(", ")}`);
     }
   });
 
