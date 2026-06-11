@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added an optional repo argument to `swarmvault hook install|uninstall|status` so git hooks can target a tracked repo below the vault root (e.g. a workspace-parent vault watching repos in subdirectories); the installed hook still refreshes from the vault root.
 - Hardened the post-publish live smoke against npm registry propagation races by retrying the published-package install with backoff instead of failing the release sequence.
 
 ## 3.17.0

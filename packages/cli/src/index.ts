@@ -3315,9 +3315,10 @@ program
 const hook = program.command("hook").description("Install local git hooks that keep tracked repos and the vault in sync.");
 hook
   .command("install")
-  .description("Install post-commit and post-checkout hooks for the nearest git repository.")
-  .action(async () => {
-    const status = await installGitHooks(process.cwd());
+  .description("Install post-commit and post-checkout hooks for the nearest git repository, or an explicit repo below the vault root.")
+  .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
+  .action(async (repo: string | undefined) => {
+    const status = await installGitHooks(process.cwd(), { repoPath: repo });
     if (isJson()) {
       emitJson(status);
       return;
@@ -3327,9 +3328,10 @@ hook
 
 hook
   .command("uninstall")
-  .description("Remove the SwarmVault-managed git hook blocks from the nearest git repository.")
-  .action(async () => {
-    const status = await uninstallGitHooks(process.cwd());
+  .description("Remove the SwarmVault-managed git hook blocks from the nearest git repository or an explicit repo path.")
+  .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
+  .action(async (repo: string | undefined) => {
+    const status = await uninstallGitHooks(process.cwd(), { repoPath: repo });
     if (isJson()) {
       emitJson(status);
       return;
@@ -3340,8 +3342,9 @@ hook
 hook
   .command("status")
   .description("Show whether SwarmVault-managed git hooks are installed.")
-  .action(async () => {
-    const status = await getGitHookStatus(process.cwd());
+  .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
+  .action(async (repo: string | undefined) => {
+    const status = await getGitHookStatus(process.cwd(), { repoPath: repo });
     if (isJson()) {
       emitJson(status);
       return;

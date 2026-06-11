@@ -1110,6 +1110,29 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(path.join(rootDir, ".aider.conf.yml"), "utf8")).toContain("keep-this");
   });
 
+  it("installs git hooks into an explicit repo below the vault root", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const repoDir = path.join(rootDir, "nested-repo");
+    await fs.mkdir(path.join(repoDir, ".git", "hooks"), { recursive: true });
+
+    await expect(installGitHooks(rootDir)).rejects.toThrow(/No git repository found above the current vault/);
+
+    const installed = await installGitHooks(rootDir, { repoPath: "nested-repo" });
+    expect(installed.repoRoot).toBe(repoDir);
+    expect(installed.postCommit).toBe("installed");
+
+    const postCommit = await fs.readFile(path.join(repoDir, ".git", "hooks", "post-commit"), "utf8");
+    // The hook must cd back to the vault root, not the nested repo.
+    expect(postCommit).toContain(`cd '${rootDir}'`);
+
+    const status = await getGitHookStatus(rootDir, { repoPath: "nested-repo" });
+    expect(status.postCommit).toBe("installed");
+
+    const removed = await uninstallGitHooks(rootDir, { repoPath: "nested-repo" });
+    expect(removed.postCommit).toBe("not_installed");
+  });
+
   it("installs, reports, and removes git hook blocks idempotently", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);

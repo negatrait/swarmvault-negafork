@@ -113,8 +113,22 @@ async function removeHookBlock(filePath: string): Promise<void> {
   await fs.writeFile(filePath, `${next}\n`, "utf8");
 }
 
-export async function getGitHookStatus(rootDir: string): Promise<GitHookStatus> {
-  const repoRoot = await findNearestGitRoot(rootDir);
+export interface GitHookTargetOptions {
+  /**
+   * Git repo to install hooks into, when it is not above the vault root —
+   * e.g. a vault at the workspace parent tracking repos in subdirectories.
+   * The hook block still `cd`s back to the vault root before refreshing.
+   */
+  repoPath?: string;
+}
+
+async function resolveHookRepoRoot(rootDir: string, options: GitHookTargetOptions = {}): Promise<string | null> {
+  const start = options.repoPath ? path.resolve(rootDir, options.repoPath) : rootDir;
+  return findNearestGitRoot(start);
+}
+
+export async function getGitHookStatus(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
     return {
       repoRoot: null,
@@ -130,20 +144,24 @@ export async function getGitHookStatus(rootDir: string): Promise<GitHookStatus> 
   };
 }
 
-export async function installGitHooks(rootDir: string): Promise<GitHookStatus> {
-  const repoRoot = await findNearestGitRoot(rootDir);
+export async function installGitHooks(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
-    throw new Error("No git repository found above the current vault.");
+    throw new Error(
+      options.repoPath
+        ? `No git repository found at or above ${options.repoPath}.`
+        : "No git repository found above the current vault. Pass a repo path (swarmvault hook install <repo>) when the tracked repo lives below the vault root."
+    );
   }
 
   const block = managedHookBlock(path.resolve(rootDir));
   await upsertHookFile(hookPath(repoRoot, "post-commit"), block);
   await upsertHookFile(hookPath(repoRoot, "post-checkout"), block);
-  return getGitHookStatus(rootDir);
+  return getGitHookStatus(rootDir, options);
 }
 
-export async function uninstallGitHooks(rootDir: string): Promise<GitHookStatus> {
-  const repoRoot = await findNearestGitRoot(rootDir);
+export async function uninstallGitHooks(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
     return {
       repoRoot: null,
@@ -154,5 +172,5 @@ export async function uninstallGitHooks(rootDir: string): Promise<GitHookStatus>
 
   await removeHookBlock(hookPath(repoRoot, "post-commit"));
   await removeHookBlock(hookPath(repoRoot, "post-checkout"));
-  return getGitHookStatus(rootDir);
+  return getGitHookStatus(rootDir, options);
 }
