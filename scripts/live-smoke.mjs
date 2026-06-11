@@ -83,12 +83,27 @@ await fs.mkdir(npmCacheDir, { recursive: true });
 
 try {
   await runStep("install-published-cli", async () => {
-    await runCommand("npm-install", "npm", ["install", "-g", "--prefix", prefixDir, ...installSpecs], {
-      cwd: repoRoot,
-      env: {
-        npm_config_cache: npmCacheDir
+    // Freshly published versions can take a minute to propagate through the
+    // registry CDN; retry ETARGET-style failures instead of failing the
+    // whole release sequence on a propagation race.
+    const maxInstallAttempts = 5;
+    for (let attempt = 1; attempt <= maxInstallAttempts; attempt += 1) {
+      try {
+        await runCommand("npm-install", "npm", ["install", "-g", "--prefix", prefixDir, ...installSpecs], {
+          cwd: repoRoot,
+          env: {
+            npm_config_cache: npmCacheDir
+          }
+        });
+        break;
+      } catch (error) {
+        if (attempt === maxInstallAttempts) {
+          throw error;
+        }
+        console.warn(`[live-smoke] npm install attempt ${attempt} failed; retrying in 20s (registry propagation).`);
+        await new Promise((resolve) => setTimeout(resolve, 20_000));
       }
-    });
+    }
     installedCli = await resolveInstalledCli(prefixDir);
     const cliVersion = (
       await runInstalledCliCommand("cli-version", ["--version"], {

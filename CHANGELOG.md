@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hardened the post-publish live smoke against npm registry propagation races by retrying the published-package install with backoff instead of failing the release sequence.
+
 ## 3.17.0
 
 - Added graph-first read enforcement for agent integrations: the Claude Code hook now intercepts the first broad Grep/Glob/Bash search per session with a guided redirect to `swarmvault graph query|explain|blast` and `wiki/graph/report.md` (retrying the same search is always allowed), surfaces graph staleness at session start, and triggers a background single-file graph refresh after every Edit/Write. Configure with `SWARMVAULT_GRAPH_FIRST=deny|context|off` or `hooks.graphFirst` in `swarmvault.config.json`; `off` disables the whole integration, and searches scoped to vault artifacts or single files are never intercepted.
