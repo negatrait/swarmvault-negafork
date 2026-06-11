@@ -1198,6 +1198,8 @@ export interface GraphQueryResult {
   communities: string[];
   summary: string;
   matches: GraphQueryMatch[];
+  /** Wiki-relative page path for the top match, when one resolves. */
+  topMatchPagePath?: string;
   filters?: GraphQueryFilters;
   filterStats?: GraphQueryFilterStats;
 }
@@ -1817,6 +1819,12 @@ export interface WatchOptions {
   overrideRoots?: string[];
   force?: boolean;
   maxGraphShrinkRatio?: number;
+  /**
+   * Explicit file fast path: refresh only these files (code-only) instead of
+   * walking every tracked repo root. Used by agent post-edit hooks and
+   * `swarmvault graph update --file <path>`.
+   */
+  files?: string[];
 }
 
 export interface GraphShrinkDimension {
@@ -1917,6 +1925,8 @@ export interface WatchController {
 export interface InstallAgentOptions {
   hook?: boolean;
   scope?: "project" | "user";
+  /** Register the SwarmVault MCP server in the agent's project MCP config. */
+  mcp?: boolean;
 }
 
 export interface InstallAgentResult {

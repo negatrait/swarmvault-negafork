@@ -3,15 +3,18 @@
 // `.github/hooks/swarmvault-graph-first.js`.
 
 import {
+  buildDenyReason,
   collectCandidatePaths,
   hasReport,
   hasSeenReport,
   isBroadSearchTool,
+  isNarrowSearch,
   isReportPath,
+  isVaultArtifactSearch,
   markReportRead,
-  REPORT_NOTE,
   readHookInput,
   resetSession,
+  resolveGraphFirstMode,
   resolveInputCwd,
   resolveToolName
 } from "./marker-state.js";
@@ -47,10 +50,18 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  if (isBroadSearchTool(toolName) && !(await hasSeenReport(cwd, AGENT_KEY))) {
+  const graphFirstMode = await resolveGraphFirstMode(cwd);
+  if (
+    graphFirstMode === "deny" &&
+    isBroadSearchTool(toolName) &&
+    !isVaultArtifactSearch(input, cwd) &&
+    !(await isNarrowSearch(input)) &&
+    !(await hasSeenReport(cwd, AGENT_KEY))
+  ) {
+    await markReportRead(cwd, AGENT_KEY);
     emit({
       permissionDecision: "deny",
-      permissionDecisionReason: REPORT_NOTE
+      permissionDecisionReason: buildDenyReason(toolName, input)
     });
     process.exit(0);
   }

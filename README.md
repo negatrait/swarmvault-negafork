@@ -338,7 +338,7 @@ swarmvault source reload --all
 Set up your coding agent so it knows about the vault:
 
 ```bash
-swarmvault install --agent claude --hook    # Claude Code + graph-first hook
+swarmvault install --agent claude --hook --mcp  # Claude Code + graph-first hook + MCP server
 swarmvault install --agent codex --hook     # Codex + graph-first hook
 swarmvault install --agent cursor           # Cursor
 swarmvault install --agent copilot --hook   # GitHub Copilot CLI + hook
@@ -352,6 +352,19 @@ swarmvault install --agent hermes           # Hermes user-scope skill
 swarmvault install --agent antigravity      # Google Antigravity rules + /swarmvault workflow
 swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
 swarmvault install status --agent kilo --hook
+```
+
+For hook-capable agents, the installed hooks enforce graph-first reads instead of only suggesting them. For Claude Code, `--hook` injects graph-first instructions at session start — answer code-understanding questions with the plain `swarmvault graph query|explain|path` commands (avoid `--json`, which produces much larger output), `swarmvault query`, `swarmvault context build`, or `wiki/graph/report.md`, and read source files only when editing them — along with a graph staleness note. `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. It intercepts the first broad Grep/Glob/Bash search per session with a guided redirect to those plain graph commands and the inline excerpt they return (repeating the same search is then allowed, so work is never blocked), and after Edit/Write tools it spawns a background `swarmvault graph update --file <path>` refresh so the graph tracks your edits. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`) or a single file are never intercepted. Control the behavior with `SWARMVAULT_GRAPH_FIRST=deny|context|off` (default `deny`) or the `hooks.graphFirst` key in `swarmvault.config.json`. The Codex, Gemini, Copilot, OpenCode, and Kilo hooks carry the same graph-first guidance — a session note plus a one-time search redirect appropriate to each tool's hook API.
+
+`swarmvault install --agent claude --mcp` also registers the SwarmVault MCP server in the project's `.mcp.json` (`{"mcpServers":{"swarmvault":{"command":"swarmvault","args":["mcp"]}}}`). Claude installs additionally write a project skill bundle at `.claude/skills/swarmvault/SKILL.md`, and `--scope user` installs the skill, hook, and settings once under `~/.claude` for all repos — the hook no-ops in repos without a compiled graph report.
+
+Recommended per-repo onboarding for token-saving agent workflows:
+
+```bash
+cd <repo>
+swarmvault init && swarmvault ingest .
+swarmvault install --agent claude --hook --mcp
+swarmvault hook install        # git-hook refresh on commit/checkout
 ```
 
 SwarmVault never writes these project-local rule files during `init`, `quickstart`, `scan`, or `clone` unless you explicitly opt into configured installs. Use `swarmvault install --agent <agent> [--scope project|user]` for one target at a time, or list agents in `swarmvault.config.json` and run `swarmvault init --install-agent-rules` or `swarmvault quickstart <input> --install-agent-rules` when you want configured targets installed together. `install status` reports the files SwarmVault expects for a target without mutating the workspace.
@@ -457,9 +470,9 @@ That installs the published `SKILL.md` plus a ClawHub README, examples, referenc
 
 **Optional model providers** - OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Groq, Together, xAI, Cerebras, generic OpenAI-compatible, custom adapters, or the built-in heuristic for offline/local use.
 
-**Agent integrations** - explicitly install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Kilo, Hermes, Google Antigravity, VS Code Copilot Chat, Devin, and the extended skill-bundle roster. `init`, `quickstart`, `scan`, and `clone` leave project-local rule files alone unless you opt into configured installs. Optional graph-first hooks bias supported agents, including Codex and Kilo, toward the wiki before broad search. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
+**Agent integrations** - explicitly install rules for Codex, Claude Code, Cursor, Goose, Pi, Gemini CLI, OpenCode, Aider, GitHub Copilot CLI, Trae, Claw/OpenClaw, Droid, Kiro, Kilo, Hermes, Google Antigravity, VS Code Copilot Chat, Devin, and the extended skill-bundle roster. `init`, `quickstart`, `scan`, and `clone` leave project-local rule files alone unless you opt into configured installs. Optional graph-first hooks enforce graph reads for supported agents — session-start graph guidance with staleness notes, a one-time broad-search redirect (retrying the same search is always allowed), and, for Claude Code, automatic background per-file graph refresh after edits, configurable with `SWARMVAULT_GRAPH_FIRST` or `hooks.graphFirst`. Antigravity installs under `.agents/rules/` and `.agents/workflows/`; older fully managed `.agent/` files are cleaned up during reinstall.
 
-**MCP server** - `swarmvault mcp` exposes the vault to any compatible agent client over stdio, including graph stats, graph clustering refresh, community lookup, hyperedges, context-pack, task-ledger, compatibility memory-task, vault doctor, and retrieval health tools. The repository also ships Docker/registry metadata for MCP server registries that validate a stdio container entrypoint.
+**MCP server** - `swarmvault mcp` exposes the vault to any compatible agent client over stdio, including graph stats, read-only graph freshness (`graph_status`), code-only graph refresh (`update_graph`, optionally per-file), graph clustering refresh, community lookup, hyperedges, context-pack, task-ledger, compatibility memory-task, vault doctor, and retrieval health tools. The repository also ships Docker/registry metadata for MCP server registries that validate a stdio container entrypoint.
 
 **Built-in browser clipper** - `graph serve` exposes a local `/api/bookmarklet` page and `/api/clip` endpoint so a running vault can capture the current browser URL, page title, selected text, markdown, HTML excerpts, and tags from the workbench or bookmarklet. URL-only bookmarklet clips use normalized `add`; selected text is imported through the inbox path.
 
@@ -490,7 +503,7 @@ Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know w
 | Agent | Install command |
 |-------|----------------|
 | Codex | `swarmvault install --agent codex --hook` |
-| Claude Code | `swarmvault install --agent claude` |
+| Claude Code | `swarmvault install --agent claude --hook --mcp` |
 | Cursor | `swarmvault install --agent cursor` |
 | Goose | `swarmvault install --agent goose` |
 | Pi | `swarmvault install --agent pi` |
@@ -540,7 +553,7 @@ Every edge is tagged `extracted`, `inferred`, or `ambiguous` - you always know w
 | Windsurf | `swarmvault install --agent windsurf` |
 | Zencoder | `swarmvault install --agent zencoder` |
 
-Codex, Claude Code, OpenCode, Gemini CLI, Copilot, and Kilo also support `--hook` for graph-first context injection. Project-scope installs can also write skill bundles for agents with skill directories, and `--scope user` writes user-level skill files where supported.
+Codex, Claude Code, OpenCode, Gemini CLI, Copilot, and Kilo also support `--hook` for graph-first read enforcement. Claude Code additionally supports `--mcp` for project `.mcp.json` MCP-server registration and `--scope user` for a one-time skill/hook/settings install under `~/.claude`. Project-scope installs can also write skill bundles for agents with skill directories, and `--scope user` writes user-level skill files where supported.
 
 <!-- readme-section:worked-examples -->
 ## Worked Examples

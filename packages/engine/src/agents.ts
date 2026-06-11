@@ -66,7 +66,8 @@ const managedEnd = "<!-- swarmvault:managed:end -->";
 const legacyManagedStart = "<!-- vault:managed:start -->";
 const legacyManagedEnd = "<!-- vault:managed:end -->";
 
-const claudeSearchMatcher = "Bash";
+const claudePreToolUseMatchers = ["Grep|Glob", "Bash"] as const;
+const claudePostEditMatcher = "Edit|Write|MultiEdit|NotebookEdit";
 const claudeSessionMatchers = ["startup", "resume", "clear", "compact"] as const;
 
 const geminiSessionMatcher = "startup";
@@ -79,17 +80,22 @@ type JsonWarningResult<T> = {
   warnings: string[];
 };
 
+type ClaudeHookEntry = {
+  matcher?: string;
+  hooks?: Array<{ type?: string; command?: string }>;
+};
+
 type ClaudeSettings = {
   hooks?: {
-    SessionStart?: Array<{
-      matcher?: string;
-      hooks?: Array<{ type?: string; command?: string }>;
-    }>;
-    PreToolUse?: Array<{
-      matcher?: string;
-      hooks?: Array<{ type?: string; command?: string }>;
-    }>;
+    SessionStart?: ClaudeHookEntry[];
+    PreToolUse?: ClaudeHookEntry[];
+    PostToolUse?: ClaudeHookEntry[];
   };
+};
+
+type McpConfig = {
+  mcpServers?: Record<string, { command?: string; args?: string[]; [key: string]: unknown }>;
+  [key: string]: unknown;
 };
 
 type GeminiSettings = {
@@ -210,6 +216,7 @@ const SKILL_BUNDLE_AGENTS: Record<string, string> = {
 const PROJECT_SKILL_TARGETS: Partial<Record<AgentType, string[]>> = {
   antigravity: [".agents/skills"],
   amp: [".amp/skills"],
+  claude: [".claude/skills"],
   codex: [".agents/skills"],
   copilot: [".copilot/skills"],
   devin: [".devin/skills"],
@@ -223,6 +230,7 @@ const PROJECT_SKILL_TARGETS: Partial<Record<AgentType, string[]>> = {
 const USER_SKILL_TARGETS: Partial<Record<AgentType, string>> = {
   antigravity: path.join(".gemini", "config", "skills"),
   amp: path.join(".amp", "skills"),
+  claude: path.join(".claude", "skills"),
   codex: path.join(".codex", "skills"),
   copilot: path.join(".copilot", "skills"),
   devin: path.join(".config", "devin", "skills"),
@@ -269,13 +277,25 @@ const SWARMVAULT_RULE_BULLETS = [
   "- Treat `wiki/` as generated markdown owned by the agent and compiler workflow.",
   "- If `SWARMVAULT_OUT` is set, resolve generated artifact paths like `raw/`, `wiki/`, and `state/` under that directory.",
   "- Read `wiki/graph/report.md` before broad file searching when it exists; otherwise start with `wiki/index.md`.",
-  "- For graph questions, prefer `swarmvault graph query`, `swarmvault graph path`, and `swarmvault graph explain` before broad grep/glob searching.",
+  "- For code and graph questions (where is X, what calls Y, structure, impact), prefer `swarmvault graph query`, `swarmvault graph path`, and `swarmvault graph explain` over broad grep/glob searching; read source files directly only when editing them or when the graph lacks detail.",
   "- Preserve frontmatter fields including `page_id`, `source_ids`, `node_ids`, `freshness`, and `source_hashes`.",
-  "- Save high-value answers back into `wiki/outputs/` instead of leaving them only in chat.",
+  "- When asked for durable research, reviews, or handoff artifacts, save the answer into `wiki/outputs/`; answer quick questions directly in chat without writing files.",
   "- Prefer `swarmvault ingest`, `swarmvault compile`, `swarmvault query`, and `swarmvault lint` for SwarmVault maintenance tasks."
 ];
 
-const LEGACY_SWARMVAULT_RULE_BULLETS = SWARMVAULT_RULE_BULLETS.filter((bullet) => !bullet.includes("SWARMVAULT_OUT"));
+// Frozen pre-3.17 wording of changed bullets, kept only so legacy-file
+// cleanup can still recognize content written by older releases.
+const PRE_GRAPH_FIRST_BULLET =
+  "- For graph questions, prefer `swarmvault graph query`, `swarmvault graph path`, and `swarmvault graph explain` before broad grep/glob searching.";
+const PRE_GRAPH_FIRST_SAVE_BULLET = "- Save high-value answers back into `wiki/outputs/` instead of leaving them only in chat.";
+
+const PRE_GRAPH_FIRST_RULE_BULLETS = SWARMVAULT_RULE_BULLETS.map((bullet) => {
+  if (bullet.startsWith("- For code and graph questions")) return PRE_GRAPH_FIRST_BULLET;
+  if (bullet.startsWith("- When asked for durable research")) return PRE_GRAPH_FIRST_SAVE_BULLET;
+  return bullet;
+});
+
+const LEGACY_SWARMVAULT_RULE_BULLETS = PRE_GRAPH_FIRST_RULE_BULLETS.filter((bullet) => !bullet.includes("SWARMVAULT_OUT"));
 
 function buildManagedBlock(target: keyof typeof agentFileKinds): string {
   const heading =
@@ -286,7 +306,12 @@ function buildManagedBlock(target: keyof typeof agentFileKinds): string {
           "",
           "For architecture, structure, relationship, add/modify/find, or component-location questions, read the graph report first when it exists. Use source files after that when the graph lacks detail, is stale, or you are making a specific edit."
         ]
-      : [];
+      : target === "claude"
+        ? [
+            "",
+            'For architecture, structure, where-is, what-calls, or impact questions, query the graph first: `swarmvault graph query "<seed>"` (top matches + inline page excerpt), `swarmvault graph explain "<node>"`, or `swarmvault graph blast <target>` for impact. Avoid `--json` — the plain output is far smaller. Trust the graph answer for orientation; read source files only when you are editing them or the graph lacks the detail you need. Check freshness with `swarmvault graph status` and refresh with `swarmvault graph update` (add `--file <path>` for single files).'
+          ]
+        : [];
   return [managedStart, heading, "", ...SWARMVAULT_RULE_BULLETS, ...extra, managedEnd, ""].join("\n");
 }
 
@@ -398,8 +423,8 @@ function buildKiloPluginFile(): string {
     "      if (!['bash', 'shell', 'terminal', 'search', 'grep', 'glob'].includes(String(toolName).toLowerCase())) return;",
     "      const root = project?.root ?? process.cwd();",
     "      return {",
-    "        message: `SwarmVault graph guidance: from $" +
-      "{root}, read wiki/graph/report.md first when it exists, or run swarmvault graph query/path/explain before broad search.`",
+    "        message: `SwarmVault graph-first: from $" +
+      "{root}, answer structure questions with swarmvault graph query/explain/path or swarmvault query instead of broad search; wiki/graph/report.md has the orientation report. Read source files only when editing them or when the graph lacks detail.`",
     "      };",
     "    }",
     "  };",
@@ -542,7 +567,14 @@ function targetsForAgent(rootDir: string, agent: AgentType, options: InstallAgen
     if (agent === "hermes") {
       targets.push(path.join(rootDir, agentFileKinds.agents));
     }
+    if (agent === "claude" && options.hook) {
+      targets.push(claudeUserSettingsPath(), claudeUserHookScriptPath());
+    }
     return [...new Set(targets)];
+  }
+
+  if (agent === "claude" && options.mcp) {
+    targets.push(path.join(rootDir, ".mcp.json"));
   }
 
   if (options.scope === "project") {
@@ -639,7 +671,11 @@ async function cleanupLegacyAntigravityFiles(rootDir: string): Promise<string[]>
   const warnings = await Promise.all([
     removeLegacyOwnedFile(
       legacyRulesPath,
-      [buildAntigravityRulesFile(), buildAntigravityRulesFile(LEGACY_SWARMVAULT_RULE_BULLETS)],
+      [
+        buildAntigravityRulesFile(),
+        buildAntigravityRulesFile(PRE_GRAPH_FIRST_RULE_BULLETS),
+        buildAntigravityRulesFile(LEGACY_SWARMVAULT_RULE_BULLETS)
+      ],
       "Legacy Antigravity rules file"
     ),
     removeLegacyOwnedFile(legacyWorkflowPath, [buildAntigravityWorkflowFile()], "Legacy Antigravity workflow file")
@@ -758,6 +794,40 @@ function withPluginEntry(config: PluginConfig, pluginEntry: string): PluginConfi
   };
 }
 
+function isSwarmvaultClaudeEntry(entry: ClaudeHookEntry): boolean {
+  return JSON.stringify(entry).includes("swarmvault-graph-first.js");
+}
+
+/**
+ * Merge the SwarmVault hook entries into a Claude settings file. Existing
+ * SwarmVault-owned entries whose matcher or command no longer matches the
+ * current layout are migrated (removed and re-added); user-owned entries are
+ * never touched.
+ */
+function mergeClaudeHookSettings(settings: ClaudeSettings, scriptCommandPath: string): ClaudeSettings {
+  const sessionCommand = `node "${scriptCommandPath}" session-start`;
+  const preToolUseCommand = `node "${scriptCommandPath}" pre-tool-use`;
+  const postEditCommand = `node "${scriptCommandPath}" post-edit`;
+
+  const hooks = settings.hooks ?? {};
+  const keepForeign = (entries: ClaudeHookEntry[] | undefined) => (entries ?? []).filter((entry) => !isSwarmvaultClaudeEntry(entry));
+
+  const sessionStart = keepForeign(hooks.SessionStart);
+  for (const matcher of claudeSessionMatchers) {
+    sessionStart.push({ matcher, hooks: [{ type: "command", command: sessionCommand }] });
+  }
+
+  const preToolUse = keepForeign(hooks.PreToolUse);
+  for (const matcher of claudePreToolUseMatchers) {
+    preToolUse.push({ matcher, hooks: [{ type: "command", command: preToolUseCommand }] });
+  }
+
+  const postToolUse = keepForeign(hooks.PostToolUse);
+  postToolUse.push({ matcher: claudePostEditMatcher, hooks: [{ type: "command", command: postEditCommand }] });
+
+  return { ...settings, hooks: { ...hooks, SessionStart: sessionStart, PreToolUse: preToolUse, PostToolUse: postToolUse } };
+}
+
 async function installClaudeHook(rootDir: string): Promise<{ path: string; warnings: string[] }> {
   const settingsPath = path.join(rootDir, ".claude", "settings.json");
   const scriptPath = path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js");
@@ -769,31 +839,52 @@ async function installClaudeHook(rootDir: string): Promise<{ path: string; warni
     return { path: settingsPath, warnings };
   }
 
-  const hooks = settings.hooks ?? {};
-  const sessionStart = hooks.SessionStart ?? [];
-  const preToolUse = hooks.PreToolUse ?? [];
-  const sessionCommand = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/swarmvault-graph-first.js" session-start';
-  const preToolUseCommand = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/swarmvault-graph-first.js" pre-tool-use';
-
-  for (const matcher of claudeSessionMatchers) {
-    if (!sessionStart.some((entry) => entry.matcher === matcher && JSON.stringify(entry).includes("swarmvault-graph-first.js"))) {
-      sessionStart.push({
-        matcher,
-        hooks: [{ type: "command", command: sessionCommand }]
-      });
-    }
-  }
-
-  if (!preToolUse.some((entry) => entry.matcher === claudeSearchMatcher && JSON.stringify(entry).includes("swarmvault-graph-first.js"))) {
-    preToolUse.push({
-      matcher: claudeSearchMatcher,
-      hooks: [{ type: "command", command: preToolUseCommand }]
-    });
-  }
-
-  settings.hooks = { ...hooks, SessionStart: sessionStart, PreToolUse: preToolUse };
-  await fs.writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  const merged = mergeClaudeHookSettings(settings, "$CLAUDE_PROJECT_DIR/.claude/hooks/swarmvault-graph-first.js");
+  await fs.writeFile(settingsPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
   return { path: settingsPath, warnings: [] };
+}
+
+function claudeUserSettingsPath(): string {
+  return path.join(os.homedir(), ".claude", "settings.json");
+}
+
+function claudeUserHookScriptPath(): string {
+  return path.join(os.homedir(), ".claude", "hooks", "swarmvault-graph-first.js");
+}
+
+/**
+ * User-scope hook install into ~/.claude. Safe globally: the hook script
+ * no-ops in any cwd without a compiled `wiki/graph/report.md`.
+ */
+async function installClaudeUserHook(): Promise<{ paths: string[]; warnings: string[] }> {
+  const settingsPath = claudeUserSettingsPath();
+  const scriptPath = claudeUserHookScriptPath();
+  await writeOwnedFile(scriptPath, await readBuiltHook("claude.js"), true);
+  await ensureDir(path.dirname(settingsPath));
+
+  const { data: settings, warnings } = await readJsonWithWarnings<ClaudeSettings>(settingsPath, {}, "~/.claude/settings.json");
+  if (warnings.length > 0 && (await fileExists(settingsPath))) {
+    return { paths: [settingsPath, scriptPath], warnings };
+  }
+
+  const merged = mergeClaudeHookSettings(settings, "$HOME/.claude/hooks/swarmvault-graph-first.js");
+  await fs.writeFile(settingsPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
+  return { paths: [settingsPath, scriptPath], warnings: [] };
+}
+
+/** Register the SwarmVault MCP server in the project's `.mcp.json`. */
+async function installClaudeMcp(rootDir: string): Promise<{ path: string; warnings: string[] }> {
+  const mcpConfigPath = path.join(rootDir, ".mcp.json");
+  const { data: config, warnings } = await readJsonWithWarnings<McpConfig>(mcpConfigPath, {}, ".mcp.json");
+  if (warnings.length > 0 && (await fileExists(mcpConfigPath))) {
+    return { path: mcpConfigPath, warnings };
+  }
+  const mcpServers = config.mcpServers ?? {};
+  if (!mcpServers.swarmvault) {
+    mcpServers.swarmvault = { command: "swarmvault", args: ["mcp"] };
+  }
+  await writeOwnedFile(mcpConfigPath, `${JSON.stringify({ ...config, mcpServers }, null, 2)}\n`);
+  return { path: mcpConfigPath, warnings: [] };
 }
 
 async function installGeminiHook(rootDir: string): Promise<{ paths: string[]; warnings: string[] }> {
@@ -1010,6 +1101,10 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
       if (agent === "kilo") {
         await writeOwnedFile(kiloUserCommandPath(), buildKiloCommandFile());
       }
+      if (agent === "claude" && options.hook) {
+        const result = await installClaudeUserHook();
+        warnings.push(...result.warnings);
+      }
     }
     const targets = targetsForAgent(rootDir, agent, options);
     return warnings.length > 0 ? { agent, target, targets, warnings } : { agent, target, targets };
@@ -1114,6 +1209,11 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
       const result = await installCopilotHook(rootDir);
       warnings.push(...result.warnings);
     }
+  }
+
+  if (options.mcp && agent === "claude") {
+    const result = await installClaudeMcp(rootDir);
+    warnings.push(...result.warnings);
   }
 
   const targets = targetsForAgent(rootDir, agent, options);

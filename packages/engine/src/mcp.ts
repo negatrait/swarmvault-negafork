@@ -7,6 +7,7 @@ import { z } from "zod";
 import { loadVaultConfig } from "./config.js";
 import { buildContextPack, listContextPacks, readContextPack } from "./context-packs.js";
 import { doctorVault } from "./doctor.js";
+import { getGraphStatus } from "./graph-status.js";
 import { ingestInputDetailed, listManifests } from "./ingest.js";
 import { finishMemoryTask, listMemoryTasks, readMemoryTask, resumeMemoryTask, startMemoryTask, updateMemoryTask } from "./memory.js";
 import { runMigration } from "./migrate.js";
@@ -42,9 +43,9 @@ import {
   runAutoPromotion,
   searchVault
 } from "./vault.js";
-import { getWatchStatus } from "./watch.js";
+import { getWatchStatus, runWatchCycle } from "./watch.js";
 
-const SERVER_VERSION = "3.16.1";
+const SERVER_VERSION = "3.17.0";
 const codeLanguageSchema = z.enum([
   "javascript",
   "jsx",
@@ -765,6 +766,42 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
     safeHandler(async () => {
       const status = await getWatchStatus(rootDir);
       return asToolText(status);
+    })
+  );
+
+  server.registerTool(
+    "graph_status",
+    {
+      description:
+        "Read-only graph freshness check: graph/report presence, tracked repo changes since the last refresh, and the recommended refresh command.",
+      inputSchema: {
+        repoRoots: z.array(z.string()).optional().describe("Optional repo roots to check instead of configured/tracked roots")
+      }
+    },
+    safeHandler(async ({ repoRoots }) => {
+      const status = await getGraphStatus(rootDir, { repoRoots });
+      return asToolText(status);
+    })
+  );
+
+  server.registerTool(
+    "update_graph",
+    {
+      description:
+        "Code-only graph refresh. With files, refreshes just those files (fast path used after edits); otherwise walks tracked repo roots.",
+      inputSchema: {
+        files: z.array(z.string()).optional().describe("Refresh only these files instead of walking every tracked repo root"),
+        force: z.boolean().optional().describe("Allow updates even when node or edge counts shrink sharply")
+      }
+    },
+    safeHandler(async ({ files, force }) => {
+      const result = await runWatchCycle(rootDir, {
+        repo: true,
+        codeOnly: true,
+        force: force ?? false,
+        files: files?.length ? files : undefined
+      });
+      return asToolText(result);
     })
   );
 

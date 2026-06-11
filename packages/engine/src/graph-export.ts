@@ -1250,8 +1250,26 @@ export function renderHtmlStandalone(graph: GraphArtifact): string {
       var seedPageIds = coreUnique(matches.filter(function(m) { return m.type === "page"; }).map(function(m) { return m.id; }));
       var visitedEdgeIdList = Object.keys(visitedEdgeIds);
 
+      var topMatchParts = matches.slice(0, 8).map(function(m) {
+        var pagePath;
+        if (m.type === "page") {
+          pagePath = (CORE_PAGE_BY_ID[m.id] && CORE_PAGE_BY_ID[m.id].path) || m.id;
+        } else if (m.type === "node") {
+          var matchNode = CORE_NODE_BY_ID[m.id];
+          var matchPageId = matchNode && matchNode.pageId;
+          if (matchPageId) pagePath = (CORE_PAGE_BY_ID[matchPageId] && CORE_PAGE_BY_ID[matchPageId].path) || matchPageId;
+        }
+        return (m.label || m.id) + " (" + m.type + ", score " + m.score + (pagePath ? ", page " + pagePath : "") + ")";
+      });
+      var topMatchesLine = matches.length
+        ? "Top matches: " + topMatchParts.join("; ") + (matches.length > 8 ? " (+" + (matches.length - 8) + " more)" : "")
+        : "Top matches: none";
+      var seedsLine = seeds.length
+        ? "Seeds: " + seeds.slice(0, 15).join(", ") + (seeds.length > 15 ? " (+" + (seeds.length - 15) + " more)" : "")
+        : "Seeds: none";
       var summary = [
-        "Seeds: " + (seeds.join(", ") || "none"),
+        topMatchesLine,
+        seedsLine,
         "Visited nodes: " + visitedNodeIds.length,
         "Visited edges: " + visitedEdgeIdList.length,
         "Touched group patterns: " + hyperedgeIds.length,

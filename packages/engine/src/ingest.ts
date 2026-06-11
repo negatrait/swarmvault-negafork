@@ -2732,6 +2732,219 @@ export async function syncTrackedReposForWatch(
   };
 }
 
+/**
+ * Single-file equivalent of the directory-walk filters in
+ * `collectDirectoryFiles`: a file refreshed in isolation must pass exactly
+ * the checks the full sync would have applied so the fast path cannot
+ * ingest something the walk would exclude.
+ */
+async function evaluateRepoFileForSync(
+  absolutePath: string,
+  repoRoot: string,
+  options: NormalizedIngestOptions
+): Promise<{ ok: boolean; reason?: string }> {
+  const name = path.basename(absolutePath);
+  if (name === SWARMVAULT_IGNORE_FILENAME) {
+    return { ok: false, reason: "swarmvaultignore" };
+  }
+  if (name === SWARMVAULT_INCLUDE_FILENAME) {
+    return { ok: false, reason: "swarmvaultinclude" };
+  }
+  const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+  const builtIn = builtInIgnoreReason(relativePath);
+  if (builtIn) {
+    return { ok: false, reason: builtIn };
+  }
+  if (matchesAnyGlob(relativePath, options.exclude)) {
+    return { ok: false, reason: "exclude_glob" };
+  }
+
+  const fileDir = path.dirname(absolutePath);
+  const gitignoreMatchers = await loadCascadingMatchers(fileDir, repoRoot, ".gitignore", { enabled: options.gitignore });
+  const swarmvaultIgnoreMatchers = await loadSwarmvaultIgnoreMatchers(fileDir, repoRoot, options.swarmvaultignore);
+  const includeMatchers = await loadCascadingMatchers(fileDir, repoRoot, SWARMVAULT_INCLUDE_FILENAME, {
+    matchInputRelativeFromParents: true
+  });
+  const allowlisted = isAllowlisted(absolutePath, repoRoot, includeMatchers);
+  if (cascadingMatcherMatches(absolutePath, repoRoot, gitignoreMatchers) && !allowlisted) {
+    return { ok: false, reason: "gitignore" };
+  }
+  if (cascadingMatcherMatches(absolutePath, repoRoot, swarmvaultIgnoreMatchers) && !allowlisted) {
+    return { ok: false, reason: "swarmvaultignore" };
+  }
+  if (options.include.length > 0 && !matchesAnyGlob(relativePath, options.include)) {
+    return { ok: false, reason: "include_glob" };
+  }
+
+  const mimeType = guessMimeType(absolutePath);
+  const detectionOptions = await localCodeDetectionOptions(absolutePath);
+  let sourceKind = inferKind(mimeType, absolutePath, detectionOptions);
+  if (sourceKind === "binary" && path.extname(absolutePath).toLowerCase() === ".zip") {
+    const bytes = await fs.readFile(absolutePath);
+    if (isSlackExportArchive(bytes)) {
+      sourceKind = "chat_export";
+    }
+  }
+  sourceKind = await refineBinaryKindWithContentSniff(absolutePath, sourceKind);
+  if (!supportedDirectoryKind(sourceKind)) {
+    return { ok: false, reason: `unsupported_kind:${sourceKind}` };
+  }
+  const sourceClass = sourceClassForRelativePath(relativePath, options);
+  if (!options.extractClasses.includes(sourceClass)) {
+    return { ok: false, reason: `source_class:${sourceClass}` };
+  }
+  return { ok: true };
+}
+
+/**
+ * Per-file variant of `syncTrackedReposForWatch`: refreshes only the given
+ * files instead of walking every tracked repo root. Powers
+ * `swarmvault graph update --file <path>` (the agent post-edit fast path).
+ */
+export async function syncTrackedFiles(rootDir: string, filePaths: string[], options?: IngestOptions): Promise<WatchRepoSyncResult> {
+  const { paths } = await initWorkspace(rootDir);
+  const normalizedOptions = await resolveRepoIngestOptions(rootDir, options);
+  const manifests = await listManifests(rootDir);
+  const trackedRoots = (await listTrackedRepoRoots(rootDir)).map((item) => path.resolve(item));
+
+  const imported: SourceManifest[] = [];
+  const updated: SourceManifest[] = [];
+  const removed: SourceManifest[] = [];
+  const skipped: DirectoryIngestResult["skipped"] = [];
+  const pendingSemanticRefresh: WatchRepoSyncResult["pendingSemanticRefresh"] = [];
+  const staleSourceIds = new Set<string>();
+  const usedRoots = new Set<string>();
+  let scannedCount = 0;
+
+  const resolvedFiles = [...new Set(filePaths.map((candidate) => path.resolve(rootDir, candidate)))];
+
+  for (const absolutePath of resolvedFiles) {
+    // Longest tracked root containing the file wins, matching the repo-root
+    // attribution the directory walk derives implicitly.
+    const repoRoot = trackedRoots
+      .filter((candidate) => withinRoot(candidate, absolutePath))
+      .sort((left, right) => right.length - left.length)[0];
+    if (!repoRoot) {
+      skipped.push({ path: toPosix(path.relative(rootDir, absolutePath)), reason: "untracked" });
+      continue;
+    }
+
+    const ignoreRoots = repoSyncWorkspaceIgnorePaths(rootDir, paths, repoRoot);
+    if (ignoreRoots.some((ignoreRoot) => withinRoot(ignoreRoot, absolutePath))) {
+      skipped.push({ path: toPosix(path.relative(rootDir, absolutePath)), reason: "workspace_generated" });
+      continue;
+    }
+
+    usedRoots.add(repoRoot);
+    scannedCount += 1;
+    const fileManifests = manifests.filter((manifest) => manifest.originalPath && path.resolve(manifest.originalPath) === absolutePath);
+
+    if (!(await fileExists(absolutePath))) {
+      for (const manifest of fileManifests) {
+        if (shouldDeferWatchSemanticRefresh(manifest.sourceKind)) {
+          pendingSemanticRefresh.push({
+            id: pendingSemanticRefreshId("removed", repoRoot, manifest.repoRelativePath ?? toPosix(path.relative(repoRoot, absolutePath))),
+            repoRoot,
+            path: toPosix(path.relative(rootDir, absolutePath)),
+            changeType: "removed",
+            detectedAt: new Date().toISOString(),
+            sourceId: manifest.sourceId,
+            sourceKind: manifest.sourceKind
+          });
+          staleSourceIds.add(manifest.sourceId);
+        } else {
+          await removeManifestArtifacts(rootDir, manifest, paths);
+          removed.push(manifest);
+        }
+      }
+      continue;
+    }
+
+    const decision = await evaluateRepoFileForSync(absolutePath, repoRoot, normalizedOptions);
+    if (!decision.ok) {
+      skipped.push({ path: toPosix(path.relative(rootDir, absolutePath)), reason: decision.reason ?? "excluded" });
+      continue;
+    }
+
+    const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+    const preparedInputs = await prepareFileInputs(
+      rootDir,
+      absolutePath,
+      repoRoot,
+      sourceClassForRelativePath(relativePath, normalizedOptions)
+    );
+    const firstPrepared = preparedInputs[0];
+    if (firstPrepared && shouldDeferWatchSemanticRefresh(firstPrepared.sourceKind)) {
+      const existingByPartKey = new Map(fileManifests.map((manifest) => [manifest.sourcePartKey ?? "__single__", manifest]));
+      const changed =
+        fileManifests.length !== preparedInputs.length ||
+        preparedInputs.some((prepared) => {
+          const match = existingByPartKey.get(prepared.sourcePartKey ?? "__single__");
+          const contentHash = buildCompositeHash(prepared.payloadBytes, prepared.attachments);
+          return !match || !preparedMatchesManifest(match, prepared, contentHash);
+        }) ||
+        fileManifests.some(
+          (manifest) => !preparedInputs.some((prepared) => (prepared.sourcePartKey ?? "") === (manifest.sourcePartKey ?? ""))
+        );
+      if (changed) {
+        pendingSemanticRefresh.push({
+          id: pendingSemanticRefreshId(
+            fileManifests.length ? "modified" : "added",
+            repoRoot,
+            firstPrepared.repoRelativePath ?? relativePath
+          ),
+          repoRoot,
+          path: toPosix(path.relative(rootDir, absolutePath)),
+          changeType: fileManifests.length ? "modified" : "added",
+          detectedAt: new Date().toISOString(),
+          sourceId: fileManifests[0]?.sourceId,
+          sourceKind: firstPrepared.sourceKind
+        });
+        for (const manifest of fileManifests) {
+          staleSourceIds.add(manifest.sourceId);
+        }
+      }
+      continue;
+    }
+
+    const result = await persistPreparedInputs(rootDir, absolutePath, preparedInputs, paths, normalizedOptions.redactor);
+    imported.push(...result.created);
+    updated.push(...result.updated);
+    removed.push(...result.removed);
+  }
+
+  const uniqueRoots = [...usedRoots].sort((left, right) => left.localeCompare(right));
+  if (resolvedFiles.length > 0) {
+    await appendLogEntry(
+      rootDir,
+      "sync_files_watch",
+      resolvedFiles.map((candidate) => toPosix(path.relative(rootDir, candidate))).join(","),
+      [
+        `files=${resolvedFiles.length}`,
+        `repo_roots=${uniqueRoots.length}`,
+        `imported=${imported.length}`,
+        `updated=${updated.length}`,
+        `removed=${removed.length}`,
+        `pending_semantic_refresh=${pendingSemanticRefresh.length}`,
+        `skipped=${skipped.length}`
+      ]
+    );
+  }
+
+  return {
+    repoRoots: uniqueRoots,
+    scannedCount,
+    imported,
+    updated,
+    removed,
+    skipped,
+    pendingSemanticRefresh: pendingSemanticRefresh.filter(
+      (entry, index, items) => index === items.findIndex((candidate) => candidate.id === entry.id)
+    ),
+    staleSourceIds: [...staleSourceIds]
+  };
+}
+
 async function prepareFileInputs(
   rootDir: string,
   absoluteInput: string,

@@ -3,16 +3,22 @@
 // `.codex/hooks/swarmvault-graph-first.js`.
 
 import {
+  buildDenyReason,
+  buildGraphFirstNote,
   collectCandidatePaths,
   hasReport,
   hasSeenReport,
   isBroadSearchInput,
+  isNarrowSearch,
   isReportPath,
+  isVaultArtifactSearch,
   markReportRead,
-  REPORT_NOTE,
   readHookInput,
+  readWatchStaleness,
   resetSession,
-  resolveInputCwd
+  resolveGraphFirstMode,
+  resolveInputCwd,
+  resolveToolName
 } from "./marker-state.js";
 
 const AGENT_KEY = "codex";
@@ -21,10 +27,10 @@ function emit(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-function note(): { priority: "IMPORTANT"; message: string } {
+function note(message: string): { priority: "IMPORTANT"; message: string } {
   return {
     priority: "IMPORTANT",
-    message: REPORT_NOTE
+    message
   };
 }
 
@@ -40,7 +46,7 @@ async function main(): Promise<void> {
 
   if (mode === "session-start") {
     await resetSession(cwd, AGENT_KEY);
-    emit(note());
+    emit(note(buildGraphFirstNote(await readWatchStaleness(cwd))));
     process.exit(0);
   }
 
@@ -50,8 +56,16 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  if (isBroadSearchInput(input) && !(await hasSeenReport(cwd, AGENT_KEY))) {
-    emit(note());
+  const graphFirstMode = await resolveGraphFirstMode(cwd);
+  if (
+    graphFirstMode !== "off" &&
+    isBroadSearchInput(input) &&
+    !isVaultArtifactSearch(input, cwd) &&
+    !(await isNarrowSearch(input)) &&
+    !(await hasSeenReport(cwd, AGENT_KEY))
+  ) {
+    await markReportRead(cwd, AGENT_KEY);
+    emit(note(buildDenyReason(resolveToolName(input), input)));
     process.exit(0);
   }
 

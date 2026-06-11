@@ -93,6 +93,7 @@ swarmvault graph cluster
 swarmvault cluster-only
 swarmvault graph update ./src
 swarmvault update ./src
+swarmvault graph update --file ./src/auth.ts --file ./src/db.ts
 swarmvault graph update ./src --force
 swarmvault graph refresh
 swarmvault graph query "auth calls" --context calls --evidence extracted --language typescript
@@ -135,6 +136,7 @@ swarmvault watch ./src --once --code-only
 swarmvault graph validate --strict
 swarmvault graph update .
 swarmvault update .
+swarmvault graph update --file packages/engine/src/index.ts
 swarmvault graph update . --force
 swarmvault watch status
 swarmvault hook install
@@ -147,6 +149,8 @@ swarmvault schedule run <job-id>
 ```bash
 swarmvault install --agent codex --hook
 swarmvault install --agent claude --hook
+swarmvault install --agent claude --hook --mcp
+swarmvault install --agent claude --hook --scope user
 swarmvault install --agent gemini --hook
 swarmvault install --agent opencode --hook
 swarmvault install --agent aider
@@ -157,4 +161,7 @@ swarmvault install --agent droid
 swarmvault install --agent kilo --hook
 swarmvault install --agent devin
 swarmvault install status --agent kilo --hook
+swarmvault install status --agent claude --hook --mcp
 ```
+
+The Claude Code hook enforces graph-first reads: session-start graph instructions plus a staleness note, a one-time redirect of the first broad Grep/Glob/Bash search per session (repeating the search is allowed), and a background `swarmvault graph update --file <path>` refresh after Edit/Write. Configure with `SWARMVAULT_GRAPH_FIRST=deny|context|off` or `hooks.graphFirst` in `swarmvault.config.json`. `--mcp` registers the MCP server in the project `.mcp.json`; `--scope user` installs the Claude skill, hook, and settings under `~/.claude`.

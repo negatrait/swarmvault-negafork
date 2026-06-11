@@ -100,6 +100,8 @@ swarmvault check-update .
 
 If it recommends `swarmvault graph update`, the detected changes are code-only and can use the faster graph refresh path; `swarmvault update` is the top-level alias for the same refresh. If it recommends `swarmvault compile`, graph/report artifacts are missing, a non-code tracked source changed, or a pending semantic refresh already exists.
 
+When you know exactly which files changed, `swarmvault graph update --file <path>` (repeatable) refreshes just those files instead of walking every tracked root. Concurrent per-file refreshes coalesce through a lock plus queue under `state/watch/`, so rapid edit bursts do not stack compiles. Installed Claude Code hooks run this automatically in the background after Edit/Write tools.
+
 `swarmvault graph update` and `swarmvault update` abort when the refreshed graph drops more than 25% of nodes or edges. Re-run with `swarmvault graph update . --force`, `swarmvault update . --force`, or `SWARMVAULT_FORCE_UPDATE=1` only when the shrink is expected, such as after deliberately deleting a large source tree.
 
 Before exporting, merging, pushing, or publishing graph artifacts, run `swarmvault graph validate --strict` to catch dangling references, duplicate ids, or invalid confidence values.
@@ -181,6 +183,29 @@ Then verify:
 - `state/memory/tasks/`
 
 Run `swarmvault compile` after creating or updating tasks when you want task and decision nodes to appear in `state/graph.json` and the graph viewer. Existing `memory` commands remain compatibility aliases.
+
+## Agent searches are being denied
+
+With graph-first hooks installed, the first broad Grep/Glob/Bash search per session is intercepted with a deny plus a redirect message pointing at the plain `swarmvault graph query|explain|path` commands (the message warns against `--json`, which produces much larger output), `swarmvault query`, `swarmvault context build`, and `wiki/graph/report.md`. `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. This is a one-time guided redirect, not a block: repeating the same search is then allowed, so work is never stuck. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`) or a single file are never intercepted.
+
+If you want the guidance without the deny, or none at all:
+
+```bash
+SWARMVAULT_GRAPH_FIRST=context   # session guidance only, no search interception
+SWARMVAULT_GRAPH_FIRST=off       # disable graph-first behavior entirely
+```
+
+Or set `hooks.graphFirst` to `deny`, `context`, or `off` in `swarmvault.config.json`. The default is `deny`.
+
+## Hook is not firing
+
+Reinstall the hook in the project root and verify the settings entries:
+
+```bash
+swarmvault install --agent claude --hook
+```
+
+Then check that `.claude/settings.json` contains the SwarmVault hook entries (session start, search interception, and post-edit refresh matchers) and that `.claude/hooks/swarmvault-graph-first.js` exists. Reinstalling migrates older installed hook entries to the current matcher layout while preserving user-owned hook entries. For user-scope installs under `~/.claude` (`install --agent claude --hook --scope user`), remember the hook intentionally no-ops in repos without a compiled `wiki/graph/report.md`, so run `swarmvault compile` first if the session shows no graph-first behavior.
 
 ## Agent install or hooks seem stale
 

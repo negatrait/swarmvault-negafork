@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import chokidar from "chokidar";
 import { initWorkspace, loadVaultConfig } from "./config.js";
-import { checkTrackedRepoChanges, importInbox, listTrackedRepoRoots, syncTrackedReposForWatch } from "./ingest.js";
+import { checkTrackedRepoChanges, importInbox, listTrackedRepoRoots, syncTrackedFiles, syncTrackedReposForWatch } from "./ingest.js";
 import { appendWatchRun, recordSession } from "./logs.js";
 import type {
   GraphArtifact,
@@ -202,7 +202,78 @@ type WatchCycleResult = {
   pendingSemanticRefreshPaths: string[];
   changedPages: string[];
   lintFindingCount?: number;
+  /** Files deferred to the next refresh because another refresh held the lock. */
+  queuedFiles?: string[];
 };
+
+const REFRESH_LOCK_DIRNAME = "refresh.lock";
+const REFRESH_QUEUE_FILENAME = "refresh-queue.json";
+const REFRESH_LOCK_STALE_MS = 10 * 60_000;
+const MAX_FILE_REFRESH_ROUNDS = 5;
+
+function refreshLockDir(watchDir: string): string {
+  return path.join(watchDir, REFRESH_LOCK_DIRNAME);
+}
+
+async function tryAcquireRefreshLock(watchDir: string): Promise<boolean> {
+  const lockDir = refreshLockDir(watchDir);
+  await fs.mkdir(watchDir, { recursive: true });
+  const writeOwner = () =>
+    fs.writeFile(
+      path.join(lockDir, "owner.json"),
+      `${JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })}\n`,
+      "utf8"
+    );
+  try {
+    await fs.mkdir(lockDir, { recursive: false });
+    await writeOwner();
+    return true;
+  } catch {
+    try {
+      const stat = await fs.stat(lockDir);
+      if (Date.now() - stat.mtimeMs > REFRESH_LOCK_STALE_MS) {
+        await fs.rm(lockDir, { recursive: true, force: true });
+        await fs.mkdir(lockDir, { recursive: false });
+        await writeOwner();
+        return true;
+      }
+    } catch {
+      // Raced with another holder; treat as not acquired.
+    }
+    return false;
+  }
+}
+
+async function releaseRefreshLock(watchDir: string): Promise<void> {
+  await fs.rm(refreshLockDir(watchDir), { recursive: true, force: true });
+}
+
+async function enqueueRefreshFiles(watchDir: string, files: string[]): Promise<void> {
+  await fs.mkdir(watchDir, { recursive: true });
+  const queuePath = path.join(watchDir, REFRESH_QUEUE_FILENAME);
+  let existing: string[] = [];
+  try {
+    const parsed = JSON.parse(await fs.readFile(queuePath, "utf8"));
+    if (Array.isArray(parsed)) {
+      existing = parsed.filter((entry): entry is string => typeof entry === "string");
+    }
+  } catch {
+    // Missing or unreadable queue starts fresh.
+  }
+  const merged = [...new Set([...existing, ...files])];
+  await fs.writeFile(queuePath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
+}
+
+async function drainRefreshQueue(watchDir: string): Promise<string[]> {
+  const queuePath = path.join(watchDir, REFRESH_QUEUE_FILENAME);
+  try {
+    const parsed = JSON.parse(await fs.readFile(queuePath, "utf8"));
+    await fs.rm(queuePath, { force: true });
+    return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function hasIgnoredRepoSegment(baseDir: string, targetPath: string): boolean {
   const relativePath = path.relative(baseDir, targetPath);
@@ -390,8 +461,139 @@ async function performWatchCycle(
   };
 }
 
+async function runFileRefreshCycle(
+  rootDir: string,
+  paths: Awaited<ReturnType<typeof initWorkspace>>["paths"],
+  options: WatchOptions,
+  files: string[]
+): Promise<WatchCycleResult> {
+  const resolvedFiles = [...new Set(files.map((candidate) => path.resolve(rootDir, candidate)))];
+  const emptyResult: WatchCycleResult = {
+    watchedRepoRoots: [],
+    importedCount: 0,
+    scannedCount: 0,
+    attachmentCount: 0,
+    repoImportedCount: 0,
+    repoUpdatedCount: 0,
+    repoRemovedCount: 0,
+    repoScannedCount: 0,
+    pendingSemanticRefreshCount: 0,
+    pendingSemanticRefreshPaths: [],
+    changedPages: []
+  };
+
+  if (!(await tryAcquireRefreshLock(paths.watchDir))) {
+    await enqueueRefreshFiles(paths.watchDir, resolvedFiles);
+    return { ...emptyResult, queuedFiles: resolvedFiles };
+  }
+
+  const startedAt = new Date();
+  const reasons = resolvedFiles.map((file) => `file:${path.relative(rootDir, file) || file}`);
+  let success = true;
+  let error: string | undefined;
+  const result: WatchCycleResult = { ...emptyResult };
+
+  try {
+    const seenRoots = new Set<string>();
+    const changedPages = new Set<string>();
+    let pendingFiles = resolvedFiles;
+    let rounds = 0;
+    while (pendingFiles.length > 0 && rounds < MAX_FILE_REFRESH_ROUNDS) {
+      rounds += 1;
+      const repoSync = await syncTrackedFiles(rootDir, pendingFiles);
+      const compile = await compileVault(rootDir, { codeOnly: true });
+      const pendingSemanticRefresh = await mergePendingSemanticRefresh(rootDir, repoSync.pendingSemanticRefresh);
+      const stalePagePaths = await markPagesStaleForSources(
+        rootDir,
+        pendingSemanticRefresh.map((entry) => entry.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId))
+      );
+      for (const repoRoot of repoSync.repoRoots) {
+        seenRoots.add(repoRoot);
+      }
+      for (const page of [...compile.changedPages, ...stalePagePaths]) {
+        changedPages.add(page);
+      }
+      result.scannedCount += repoSync.scannedCount;
+      result.repoScannedCount += repoSync.scannedCount;
+      result.repoImportedCount += repoSync.imported.length;
+      result.repoUpdatedCount += repoSync.updated.length;
+      result.repoRemovedCount += repoSync.removed.length;
+      result.pendingSemanticRefreshCount = pendingSemanticRefresh.length;
+      result.pendingSemanticRefreshPaths = pendingSemanticRefresh.map((entry) => entry.path);
+      // Edits that landed while this refresh ran were parked in the queue by
+      // the lock losers; drain and fold them into this cycle.
+      pendingFiles = await drainRefreshQueue(paths.watchDir);
+    }
+    if (pendingFiles.length > 0) {
+      await enqueueRefreshFiles(paths.watchDir, pendingFiles);
+      result.queuedFiles = pendingFiles;
+    }
+    result.watchedRepoRoots = [...seenRoots].sort((left, right) => left.localeCompare(right));
+    result.changedPages = [...changedPages];
+    if (options.lint) {
+      result.lintFindingCount = (await lintVault(rootDir)).length;
+    }
+    return result;
+  } catch (caught) {
+    success = false;
+    error = caught instanceof Error ? caught.message : String(caught);
+    throw caught;
+  } finally {
+    await releaseRefreshLock(paths.watchDir);
+    const finishedAt = new Date();
+    const runSummary = {
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      durationMs: finishedAt.getTime() - startedAt.getTime(),
+      inputDir: paths.inboxDir,
+      reasons,
+      importedCount: result.repoImportedCount + result.repoUpdatedCount,
+      scannedCount: result.scannedCount,
+      attachmentCount: 0,
+      changedPages: result.changedPages,
+      repoImportedCount: result.repoImportedCount,
+      repoUpdatedCount: result.repoUpdatedCount,
+      repoRemovedCount: result.repoRemovedCount,
+      repoScannedCount: result.repoScannedCount,
+      pendingSemanticRefreshCount: result.pendingSemanticRefreshCount,
+      pendingSemanticRefreshPaths: result.pendingSemanticRefreshPaths,
+      lintFindingCount: result.lintFindingCount,
+      success,
+      error
+    };
+    await recordSession(rootDir, {
+      operation: "watch",
+      title: `File refresh for ${reasons.join(", ")}`,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      success,
+      error,
+      changedPages: result.changedPages,
+      lintFindingCount: result.lintFindingCount,
+      lines: [
+        `reasons=${reasons.join(",")}`,
+        `repo_imported=${result.repoImportedCount}`,
+        `repo_updated=${result.repoUpdatedCount}`,
+        `repo_removed=${result.repoRemovedCount}`,
+        `pending_semantic_refresh=${result.pendingSemanticRefreshCount}`,
+        `lint=${result.lintFindingCount ?? 0}`
+      ]
+    });
+    await appendWatchRun(rootDir, runSummary);
+    await writeWatchStatusArtifact(rootDir, {
+      generatedAt: finishedAt.toISOString(),
+      watchedRepoRoots: result.watchedRepoRoots,
+      lastRun: runSummary,
+      pendingSemanticRefresh: await readPendingSemanticRefresh(rootDir)
+    });
+  }
+}
+
 export async function runWatchCycle(rootDir: string, options: WatchOptions = {}): Promise<WatchCycleResult> {
   const { paths } = await initWorkspace(rootDir);
+  if (options.files && options.files.length > 0) {
+    return runFileRefreshCycle(rootDir, paths, options, options.files);
+  }
   const previousGraph = await readJsonFile<GraphArtifact>(paths.graphPath);
   const startedAt = new Date();
   let success = true;

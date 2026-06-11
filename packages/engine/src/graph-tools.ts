@@ -1,6 +1,8 @@
 import {
   coreGraphFilterSummaryLines,
   filterCoreGraphForQuery,
+  formatSeedList,
+  formatTopGraphMatches,
   normalizeCoreGraphQueryFilters,
   runCoreGraphExplain,
   runCoreGraphPath
@@ -328,8 +330,10 @@ export function queryGraph(
     pageIds,
     communities,
     matches,
+    topMatchPagePath: matches.length > 0 ? pagePathForQueryMatch(matches[0], nodes, pages) : undefined,
     summary: [
-      `Seeds: ${seeds.join(", ") || "none"}`,
+      formatTopGraphMatches(matches, (match) => pagePathForQueryMatch(match, nodes, pages)),
+      formatSeedList(seeds),
       `Visited nodes: ${visitedNodeIds.length}`,
       `Visited edges: ${visitedEdgeIds.size}`,
       ...coreGraphFilterSummaryLines(normalizedFilters, filtered.stats),
@@ -340,6 +344,21 @@ export function queryGraph(
     filters: normalizedFilters,
     filterStats: filtered.stats
   };
+}
+
+function pagePathForQueryMatch(
+  match: { type: string; id: string },
+  nodes: Map<string, GraphNode>,
+  pages: Map<string, { path?: string }>
+): string | undefined {
+  if (match.type === "page") {
+    return pages.get(match.id)?.path ?? match.id;
+  }
+  if (match.type === "node") {
+    const pageId = nodes.get(match.id)?.pageId;
+    return pageId ? (pages.get(pageId)?.path ?? pageId) : undefined;
+  }
+  return undefined;
 }
 
 export function shortestGraphPath(graph: GraphArtifact, from: string, to: string): GraphPathResult {

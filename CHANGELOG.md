@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 3.17.0
+
+- Added graph-first read enforcement for agent integrations: the Claude Code hook now intercepts the first broad Grep/Glob/Bash search per session with a guided redirect to `swarmvault graph query|explain|blast` and `wiki/graph/report.md` (retrying the same search is always allowed), surfaces graph staleness at session start, and triggers a background single-file graph refresh after every Edit/Write. Configure with `SWARMVAULT_GRAPH_FIRST=deny|context|off` or `hooks.graphFirst` in `swarmvault.config.json`; `off` disables the whole integration, and searches scoped to vault artifacts or single files are never intercepted.
+- Reworked `graph query` output for agent consumption, validated with live token A/B runs against an uninstrumented baseline: summaries now lead with ranked top matches (label, type, score, wiki page path) before the capped seed list across CLI, MCP, serve, and standalone HTML surfaces, and the plain CLI output inlines a bounded excerpt of the best-matching wiki page so where-is/what-calls questions resolve in one command instead of a search-plus-read chain.
+- Added `swarmvault graph update --file <path>` (repeatable): a code-only fast path that refreshes just the named files instead of walking every tracked repo root, with a refresh lock plus queue so rapid edit bursts coalesce instead of stacking concurrent compiles.
+- Added `swarmvault install --agent claude --mcp` to register the SwarmVault MCP server in the project's `.mcp.json`, project skill bundles at `.claude/skills/`, and user-scope Claude installs (`--scope user`) covering `~/.claude` skills, hooks, and settings.
+- Upgraded the Codex, Gemini, Copilot, OpenCode, and Kilo integrations to the same graph-first guidance (session-start instructions with staleness notes and a one-time search redirect), and refreshed the shared agent rule bullets to direct code-structure questions at the graph before source files.
+- Added `graph_status` and `update_graph` MCP tools for read-only freshness checks and code-only (optionally per-file) graph refreshes over MCP.
+- Migrated previously installed Claude hook settings entries to the new matcher layout on reinstall; user-owned hook entries are preserved, and legacy agent rule files written by older releases are still recognized during cleanup.
+- Updated the shared agent rule bullets: code-structure questions go to the graph before grep/glob with source reads reserved for editing, and answers are saved into `wiki/outputs/` only for durable research, review, or handoff requests instead of every question.
+- Updated OSS docs, localized READMEs, site docs, spec notes, and the published ClawHub skill bundle for the graph-first agent workflows.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.17.0`.
+
 ## 3.16.1
 
 - Fixed `provider remove` corrupting `swarmvault.config.json` when the last configured provider was removed: required task assignments were deleted, leaving a config the CLI could no longer parse. Removal is now refused with a clear error while required tasks still point at the provider.

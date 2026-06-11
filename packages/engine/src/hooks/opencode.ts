@@ -52,12 +52,15 @@ export default async function swarmvaultGraphFirst({ client }: OpencodePluginCon
     }
   }
 
+  const graphFirstNote =
+    "SwarmVault graph-first: this repo has a compiled code graph. Answer structure questions (where is X, what calls Y) with `swarmvault graph query|explain|path --json`, `swarmvault query`, or wiki/graph/report.md instead of broad grep/glob. Read source files only when editing them or when the graph lacks detail.";
+
   return {
     async "session.created"(input: OpencodeSessionInput) {
       reportSeen = false;
       const cwd = input?.session?.cwd ?? process.cwd();
       if (await hasReport(cwd)) {
-        await note("SwarmVault graph report exists. Read wiki/graph/report.md before broad workspace searching.");
+        await note(graphFirstNote);
       }
     },
     async "tool.execute.before"(input: OpencodeToolInput) {
@@ -73,7 +76,8 @@ export default async function swarmvaultGraphFirst({ client }: OpencodePluginCon
       }
 
       if (!reportSeen && ["glob", "grep"].includes(String(input?.tool ?? ""))) {
-        await note("SwarmVault graph report exists. Read wiki/graph/report.md before broad workspace searching.");
+        reportSeen = true;
+        await note(graphFirstNote);
       }
     }
   };

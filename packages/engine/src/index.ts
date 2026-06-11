@@ -67,6 +67,7 @@ export {
   listManifests,
   listTrackedRepoRoots,
   readExtractedText,
+  syncTrackedFiles,
   syncTrackedRepos,
   syncTrackedReposForWatch
 } from "./ingest.js";

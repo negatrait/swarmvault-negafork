@@ -44,7 +44,7 @@ SwarmVault is save-first. The files on disk are the product.
 - `state/extracts/` - extraction markdown and JSON sidecars for PDF, the full Word family, RTF, OpenDocument, EPUB, CSV/TSV, the full Excel family, the full PowerPoint family, Jupyter notebooks, BibTeX, Org-mode, AsciiDoc, transcript, Slack export, email, calendar, audio transcripts, video transcripts, YouTube transcript captures, structured config/data previews, and image sources
 - `state/approvals/` - review bundles from `compile --approve`
 - `state/benchmark.json` - latest benchmark/trust artifact
-- `state/watch/` - pending semantic refresh and watch status artifacts
+- `state/watch/` - pending semantic refresh, watch status, and per-file graph refresh lock/queue artifacts used by `graph update --file`
 - `state/sessions/` - saved compile/query/explore/lint/watch history
 - `state/jobs.ndjson` - watch run log
 

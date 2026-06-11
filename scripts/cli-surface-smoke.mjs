@@ -492,6 +492,10 @@ async function runBehaviorSmoke() {
   await runJsonCheck(["graph", "update", sourceDir], workspaceDir, "graph update", (result) => {
     assert.ok(Array.isArray(result.watchedRepoRoots), "graph update did not return watched roots");
   });
+  await runJsonCheck(["graph", "update", "--file", path.join(sourceDir, "app.ts")], workspaceDir, "graph update --file", (result) => {
+    assert.ok(Array.isArray(result.watchedRepoRoots), "graph update --file did not return watched roots");
+    assert.equal(result.scannedCount, 1, "graph update --file did not scan exactly the named file");
+  });
   await runJsonCheck(["graph", "refresh", sourceDir], workspaceDir, "graph refresh alias", (result) => {
     assert.ok(Array.isArray(result.watchedRepoRoots), "graph refresh alias did not return watched roots");
   });
@@ -631,6 +635,14 @@ async function runBehaviorSmoke() {
   await runJsonCheck(["install", "status", "--agent", "codex"], workspaceDir, "install status", (result) => {
     assert.equal(result.agent, "codex", "install status did not return the requested agent");
     assert.ok(result.targets.some((entry) => entry.path.endsWith("AGENTS.md")), "install status did not include AGENTS.md");
+  });
+  await runJsonCheck(["install", "--agent", "claude", "--hook", "--mcp"], workspaceDir, "install claude hook+mcp", (result) => {
+    assert.equal(result.agent, "claude", "install claude did not return the requested agent");
+    assert.ok(result.targets.some((entry) => entry.endsWith(".mcp.json")), "install claude --mcp did not include .mcp.json");
+    assert.ok(
+      result.targets.some((entry) => entry.endsWith(path.join(".claude", "hooks", "swarmvault-graph-first.js"))),
+      "install claude --hook did not include the hook script"
+    );
   });
 
   const scanDir = await makeTempDir("swarmvault-cli-surface-scan-");

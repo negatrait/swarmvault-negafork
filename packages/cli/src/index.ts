@@ -92,6 +92,7 @@ import {
   readContextPack,
   readGraphReport,
   readMemoryTask,
+  readPage,
   rebuildRetrievalIndex,
   refreshGraphClusters,
   registerLocalWhisperProvider,
@@ -151,9 +152,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.16.1";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.17.0";
   } catch {
-    return "3.16.1";
+    return "3.17.0";
   }
 }
 
@@ -742,17 +743,32 @@ function getCommandPath(command: Command): string[] {
   return names;
 }
 
-async function runGraphUpdateCommand(targetPath: string | undefined, options: { lint?: boolean; force?: boolean }): Promise<void> {
+async function runGraphUpdateCommand(
+  targetPath: string | undefined,
+  options: { lint?: boolean; force?: boolean; file?: string[] }
+): Promise<void> {
   const overrideRoots = targetPath ? [path.resolve(process.cwd(), targetPath)] : undefined;
+  const files = options.file?.length ? options.file.map((candidate) => path.resolve(process.cwd(), candidate)) : undefined;
   const result = await runWatchCycle(process.cwd(), {
     repo: true,
     codeOnly: true,
     lint: options.lint ?? false,
     force: options.force ?? false,
-    overrideRoots
+    overrideRoots,
+    files
   });
   if (isJson()) {
     emitJson(result);
+    return;
+  }
+  if (result.queuedFiles?.length && result.scannedCount === 0) {
+    log(`Another refresh holds the lock. Queued ${result.queuedFiles.length} file(s) for the active refresh to fold in.`);
+    return;
+  }
+  if (files) {
+    log(
+      `Refreshed ${result.scannedCount} file(s). Imported ${result.repoImportedCount}, updated ${result.repoUpdatedCount}, removed ${result.repoRemovedCount}, pending semantic refresh ${result.pendingSemanticRefreshCount}.`
+    );
     return;
   }
   log(
@@ -2282,8 +2298,9 @@ const graphPush = graph.command("push").description("Push the compiled graph int
 graph
   .command("update")
   .alias("refresh")
-  .description("Refresh code-derived graph artifacts from tracked repo roots or one explicit repo path.")
+  .description("Refresh code-derived graph artifacts from tracked repo roots, one explicit repo path, or explicit files.")
   .argument("[path]", "Optional repo root to refresh instead of configured/tracked roots")
+  .option("--file <path>", "Refresh only this file (repeatable); skips the full tracked-root walk", collectRepeated, [])
   .option("--lint", "Run lint after the refresh cycle", false)
   .option("--force", "Allow graph updates even when node or edge counts shrink sharply", false)
   .action(runGraphUpdateCommand);
@@ -2635,6 +2652,19 @@ graph
         return;
       }
       log(result.summary);
+      // Inline the top match's wiki page so one query answers most
+      // where-is/what-calls questions without a follow-up file read.
+      if (result.topMatchPagePath) {
+        const page = await readPage(process.cwd(), result.topMatchPagePath).catch(() => null);
+        if (page?.content) {
+          const limit = 1600;
+          const excerpt =
+            page.content.length > limit
+              ? `${page.content.slice(0, limit)}\n… (truncated — read wiki/${result.topMatchPagePath} for the rest)`
+              : page.content;
+          log(`\n--- Top match page: wiki/${result.topMatchPagePath} ---\n${excerpt}`);
+        }
+      }
     }
   );
 
@@ -3251,6 +3281,7 @@ program
   .command("update", { hidden: true })
   .description("Compatibility alias for graph update: refresh code-derived graph artifacts from tracked repo roots.")
   .argument("[path]", "Optional repo root to refresh instead of configured/tracked roots")
+  .option("--file <path>", "Refresh only this file (repeatable); skips the full tracked-root walk", collectRepeated, [])
   .option("--lint", "Run lint after the refresh cycle", false)
   .option("--force", "Allow graph updates even when node or edge counts shrink sharply", false)
   .action(runGraphUpdateCommand);
@@ -3429,10 +3460,15 @@ install
   .description("Show whether SwarmVault instructions are installed for an agent.")
   .requiredOption("--agent <agent>", "Agent name")
   .option("--hook", "Include hook/plugin targets in the status check", false)
+  .option("--mcp", "Include MCP config targets in the status check", false)
   .option("--scope <scope>", "Install scope to inspect: project or user", "project")
-  .action(async (options: { agent: AgentType; hook?: boolean; scope?: string }) => {
+  .action(async (options: { agent: AgentType; hook?: boolean; mcp?: boolean; scope?: string }) => {
     const scope = options.scope === "user" ? "user" : "project";
-    const result = await getAgentInstallStatus(process.cwd(), options.agent, { hook: options.hook ?? false, scope });
+    const result = await getAgentInstallStatus(process.cwd(), options.agent, {
+      hook: options.hook ?? false,
+      mcp: options.mcp ?? false,
+      scope
+    });
     if (isJson()) {
       emitJson(result);
       return;
@@ -3449,8 +3485,9 @@ install
     "claude, codex, cursor, gemini, goose, opencode, copilot, aider, droid, pi, trae, claw, kiro, kilo, hermes, antigravity, vscode, amp, augment, adal, bob, cline, codebuddy, command-code, continue, cortex, crush, deepagents, devin, firebender, iflow, junie, kilo-code, kimi, kode, mcpjam, mistral-vibe, mux, neovate, openclaw, openhands, pochi, qoder, qwen-code, replit, roo-code, trae-cn, warp, windsurf, or zencoder"
   )
   .option("--hook", "Also install hook/plugin guidance when the target agent supports it", false)
+  .option("--mcp", "Also register the SwarmVault MCP server in the agent's project MCP config", false)
   .option("--scope <scope>", "Install scope: project or user", "project")
-  .action(async (options: { agent?: AgentType; hook?: boolean; scope?: string }) => {
+  .action(async (options: { agent?: AgentType; hook?: boolean; mcp?: boolean; scope?: string }) => {
     if (!options.agent) {
       throw new Error("Specify --agent <agent>.");
     }
@@ -3458,10 +3495,13 @@ install
     if (options.hook && !hookCapableAgents.has(options.agent)) {
       throw new Error("--hook is only supported for --agent codex, claude, opencode, gemini, copilot, or kilo");
     }
+    if (options.mcp && options.agent !== "claude") {
+      throw new Error("--mcp is currently only supported for --agent claude (project-level .mcp.json)");
+    }
     const scope = options.scope === "user" ? "user" : "project";
-    const result = await installAgent(process.cwd(), options.agent, { hook: options.hook ?? false, scope });
+    const result = await installAgent(process.cwd(), options.agent, { hook: options.hook ?? false, mcp: options.mcp ?? false, scope });
     if (isJson()) {
-      emitJson({ ...result, hook: options.hook ?? false, scope });
+      emitJson({ ...result, hook: options.hook ?? false, mcp: options.mcp ?? false, scope });
     } else {
       log(`Installed rules into ${result.target}`);
       if (result.targets.length > 1) {

@@ -823,7 +823,8 @@ function embeddedGraphQuery(
     communities,
     matches,
     summary: [
-      `Seeds: ${seeds.join(", ") || "none"}`,
+      formatTopMatchesLine(matches, nodesById, pagesById),
+      formatSeedsLine(seeds),
       `Visited nodes: ${visitedNodeIds.length}`,
       `Visited edges: ${visitedEdgeIds.size}`,
       `Touched group patterns: ${hyperedgeIds.length}`,
@@ -831,6 +832,41 @@ function embeddedGraphQuery(
       `Pages: ${pageIds.join(", ") || "none"}`
     ].join("\n")
   };
+}
+
+// Keep aligned with `formatTopGraphMatches`/`formatSeedList` in the engine's
+// graph-query-core so serve, CLI, and standalone HTML summaries match.
+function formatTopMatchesLine(
+  matches: Array<{ type: string; id: string; label: string; score: number }>,
+  nodesById: Map<string, { pageId?: string }>,
+  pagesById: Map<string, { path?: string }>
+): string {
+  if (matches.length === 0) {
+    return "Top matches: none";
+  }
+  const parts = matches.slice(0, 8).map((match) => {
+    let pagePath: string | undefined;
+    if (match.type === "page") {
+      pagePath = pagesById.get(match.id)?.path ?? match.id;
+    } else if (match.type === "node") {
+      const pageId = nodesById.get(match.id)?.pageId;
+      if (pageId) {
+        pagePath = pagesById.get(pageId)?.path ?? pageId;
+      }
+    }
+    return `${match.label || match.id} (${match.type}, score ${match.score}${pagePath ? `, page ${pagePath}` : ""})`;
+  });
+  const more = matches.length > 8 ? ` (+${matches.length - 8} more)` : "";
+  return `Top matches: ${parts.join("; ")}${more}`;
+}
+
+function formatSeedsLine(seeds: string[]): string {
+  if (seeds.length === 0) {
+    return "Seeds: none";
+  }
+  const shown = seeds.slice(0, 15).join(", ");
+  const more = seeds.length > 15 ? ` (+${seeds.length - 15} more)` : "";
+  return `Seeds: ${shown}${more}`;
 }
 
 function normalizeSnippet(content: string, query: string): string {

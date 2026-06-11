@@ -3,15 +3,20 @@
 // `.gemini/hooks/swarmvault-graph-first.js`.
 
 import {
+  buildDenyReason,
+  buildGraphFirstNote,
   collectCandidatePaths,
   hasReport,
   hasSeenReport,
   isBroadSearchTool,
+  isNarrowSearch,
   isReportPath,
+  isVaultArtifactSearch,
   markReportRead,
-  REPORT_NOTE,
   readHookInput,
+  readWatchStaleness,
   resetSession,
+  resolveGraphFirstMode,
   resolveInputCwd,
   resolveToolName
 } from "./marker-state.js";
@@ -34,11 +39,12 @@ async function main(): Promise<void> {
 
   if (mode === "session-start") {
     await resetSession(cwd, AGENT_KEY);
+    const graphFirstNote = buildGraphFirstNote(await readWatchStaleness(cwd));
     emit({
-      systemMessage: REPORT_NOTE,
+      systemMessage: graphFirstNote,
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: "SwarmVault graph report: wiki/graph/report.md"
+        additionalContext: graphFirstNote
       }
     });
     process.exit(0);
@@ -51,8 +57,16 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  if (isBroadSearchTool(toolName) && !(await hasSeenReport(cwd, AGENT_KEY))) {
-    emit({ systemMessage: REPORT_NOTE });
+  const graphFirstMode = await resolveGraphFirstMode(cwd);
+  if (
+    graphFirstMode !== "off" &&
+    isBroadSearchTool(toolName) &&
+    !isVaultArtifactSearch(input, cwd) &&
+    !(await isNarrowSearch(input)) &&
+    !(await hasSeenReport(cwd, AGENT_KEY))
+  ) {
+    await markReportRead(cwd, AGENT_KEY);
+    emit({ systemMessage: buildDenyReason(toolName, input) });
     process.exit(0);
   }
 

@@ -311,6 +311,38 @@ export function coreGraphFilterSummaryLines(filters: CoreGraphQueryFilters | und
   ];
 }
 
+/**
+ * Lead line for query summaries: the ranked matches ARE the answer, so they
+ * come first with their page paths; agents should not have to dig them out
+ * of the seed dump.
+ */
+export function formatTopGraphMatches(
+  matches: CoreQueryMatch[],
+  pagePathForMatch: (match: CoreQueryMatch) => string | undefined,
+  limit = 8
+): string {
+  if (matches.length === 0) {
+    return "Top matches: none";
+  }
+  const parts = matches.slice(0, limit).map((match) => {
+    const pagePath = pagePathForMatch(match);
+    const pageSuffix = pagePath ? `, page ${pagePath}` : "";
+    return `${match.label || match.id} (${match.type}, score ${match.score}${pageSuffix})`;
+  });
+  const more = matches.length > limit ? ` (+${matches.length - limit} more)` : "";
+  return `Top matches: ${parts.join("; ")}${more}`;
+}
+
+/** Seed list capped for summaries — full ids remain in `seedNodeIds`. */
+export function formatSeedList(seeds: string[], limit = 15): string {
+  if (seeds.length === 0) {
+    return "Seeds: none";
+  }
+  const shown = seeds.slice(0, limit).join(", ");
+  const more = seeds.length > limit ? ` (+${seeds.length - limit} more)` : "";
+  return `Seeds: ${shown}${more}`;
+}
+
 function uniqueMatches(matches: CoreQueryMatch[]): CoreQueryMatch[] {
   const seen = new Set<string>();
   const out: CoreQueryMatch[] = [];
@@ -515,10 +547,22 @@ export function runCoreGraphQuery(
 
   const seedPageIds = uniqueStrings(matches.filter((match) => match.type === "page").map((match) => match.id));
 
+  const pagePathForMatch = (match: CoreQueryMatch): string | undefined => {
+    if (match.type === "page") {
+      return pagesById.get(match.id)?.path ?? match.id;
+    }
+    if (match.type === "node") {
+      const pageId = nodeById.get(match.id)?.pageId;
+      return pageId ? (pagesById.get(pageId)?.path ?? pageId) : undefined;
+    }
+    return undefined;
+  };
+
   // Keep the summary shape aligned with the server-side `queryGraph` so the
   // standalone HTML and MCP/serve surfaces describe results the same way.
   const summary = [
-    `Seeds: ${seeds.join(", ") || "none"}`,
+    formatTopGraphMatches(matches, pagePathForMatch),
+    formatSeedList(seeds),
     `Visited nodes: ${visitedNodeIds.length}`,
     `Visited edges: ${visitedEdgeIds.size}`,
     ...coreGraphFilterSummaryLines(normalizedFilters, filtered.stats),
@@ -526,10 +570,6 @@ export function runCoreGraphQuery(
     `Communities: ${communities.join(", ") || "none"}`,
     `Pages: ${pageIds.join(", ") || "none"}`
   ].join("\n");
-
-  // Silence unused-locals lint when pagesById is not referenced by the
-  // consumer; keeping the lookup as a seam for future preview features.
-  void pagesById;
 
   return {
     question,

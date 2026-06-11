@@ -519,7 +519,10 @@ describe("swarmvault workflow", () => {
     const agentsManagedBlock = agentsContent.match(managedBlockPattern)?.[0];
     const claudeManagedBlock = claudeContent.match(managedBlockPattern)?.[0];
     expect(agentsManagedBlock).toBeTruthy();
-    expect(claudeManagedBlock).toBe(agentsManagedBlock);
+    expect(claudeManagedBlock).toBeTruthy();
+    // The Claude block carries the shared rules plus a graph-first extra.
+    expect(claudeManagedBlock).toContain("- Treat `raw/` as immutable source input.");
+    expect(claudeManagedBlock).toContain('swarmvault graph query "<seed>"');
     expect(agentsContent).not.toBe(claudeContent);
   });
 
@@ -729,6 +732,37 @@ describe("swarmvault workflow", () => {
     }
   });
 
+  it("installs claude user-scope skill, hook, and settings under the user home", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), "swarmvault-claude-home-"));
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    try {
+      const result = await installAgent(rootDir, "claude", { scope: "user", hook: true });
+      const skillPath = path.join(fakeHome, ".claude", "skills", "swarmvault", "SKILL.md");
+      const settingsPath = path.join(fakeHome, ".claude", "settings.json");
+      const scriptPath = path.join(fakeHome, ".claude", "hooks", "swarmvault-graph-first.js");
+      expect(result.target).toBe(skillPath);
+      expect(result.targets).toEqual(expect.arrayContaining([skillPath, settingsPath, scriptPath]));
+
+      const skill = matter(await fs.readFile(skillPath, "utf8"));
+      expect(skill.data.name).toBe("swarmvault");
+      const settings = JSON.parse(await fs.readFile(settingsPath, "utf8")) as {
+        hooks?: { PreToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> };
+      };
+      expect(settings.hooks?.PreToolUse?.some((entry) => entry.matcher === "Grep|Glob")).toBe(true);
+      expect(JSON.stringify(settings)).toContain("$HOME/.claude/hooks/swarmvault-graph-first.js");
+      expect(await fs.readFile(scriptPath, "utf8")).toContain("permissionDecision");
+    } finally {
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
+      await fs.rm(fakeHome, { recursive: true, force: true });
+    }
+  });
+
   it("installs project skill bundles for agents that expose skill directories", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
@@ -834,13 +868,14 @@ describe("swarmvault workflow", () => {
     }
   });
 
-  it("installs Claude rules with an optional graph-first pre-search hook", async () => {
+  it("installs Claude rules with a graph-first redirect hook and post-edit refresh wiring", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
     const claudeTarget = await installAgent(rootDir, "claude", { hook: true });
     expect(claudeTarget.target).toBe(path.join(rootDir, "CLAUDE.md"));
     expect(claudeTarget.targets).toContain(path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js"));
+    expect(await fs.readFile(path.join(rootDir, "CLAUDE.md"), "utf8")).toContain("swarmvault graph query");
 
     const settingsPath = path.join(rootDir, ".claude", "settings.json");
     const scriptPath = path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js");
@@ -848,13 +883,16 @@ describe("swarmvault workflow", () => {
       hooks?: {
         SessionStart?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }>;
         PreToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }>;
+        PostToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }>;
       };
     };
     expect(settings.hooks?.SessionStart?.some((entry) => entry.matcher === "startup")).toBe(true);
+    expect(settings.hooks?.PreToolUse?.some((entry) => entry.matcher === "Grep|Glob")).toBe(true);
     expect(settings.hooks?.PreToolUse?.some((entry) => entry.matcher === "Bash")).toBe(true);
+    expect(settings.hooks?.PostToolUse?.some((entry) => entry.matcher === "Edit|Write|MultiEdit|NotebookEdit")).toBe(true);
     expect(JSON.stringify(settings)).toContain("swarmvault-graph-first.js");
     expect(await fs.readFile(scriptPath, "utf8")).toContain("hookSpecificOutput");
-    expect(await fs.readFile(scriptPath, "utf8")).toContain("additionalContext");
+    expect(await fs.readFile(scriptPath, "utf8")).toContain("permissionDecision");
 
     await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true });
     await fs.writeFile(path.join(rootDir, "wiki", "graph", "report.md"), "# Graph report\n", "utf8");
@@ -863,7 +901,7 @@ describe("swarmvault workflow", () => {
       hookSpecificOutput?: { hookEventName?: string; additionalContext?: string };
     };
     expect(sessionStart.hookSpecificOutput?.hookEventName).toBe("SessionStart");
-    expect(sessionStart.hookSpecificOutput?.additionalContext).toContain("wiki/graph/report.md");
+    expect(sessionStart.hookSpecificOutput?.additionalContext).toContain("swarmvault graph query");
 
     const firstSearch = JSON.parse(
       await runNodeScript(
@@ -872,9 +910,20 @@ describe("swarmvault workflow", () => {
         JSON.stringify({ cwd: rootDir, tool_name: "Bash", tool_input: { command: "rg Widget" } }),
         rootDir
       )
-    ) as { hookSpecificOutput?: { hookEventName?: string; additionalContext?: string } };
+    ) as { hookSpecificOutput?: { hookEventName?: string; permissionDecision?: string; permissionDecisionReason?: string } };
     expect(firstSearch.hookSpecificOutput?.hookEventName).toBe("PreToolUse");
-    expect(firstSearch.hookSpecificOutput?.additionalContext).toContain("wiki/graph/report.md");
+    expect(firstSearch.hookSpecificOutput?.permissionDecision).toBe("deny");
+    expect(firstSearch.hookSpecificOutput?.permissionDecisionReason).toContain("swarmvault graph query");
+
+    const retrySearch = JSON.parse(
+      await runNodeScript(
+        scriptPath,
+        ["pre-tool-use"],
+        JSON.stringify({ cwd: rootDir, tool_name: "Bash", tool_input: { command: "grep -R Widget ." } }),
+        rootDir
+      )
+    ) as { hookSpecificOutput?: { permissionDecision?: string } };
+    expect(retrySearch.hookSpecificOutput?.permissionDecision).not.toBe("deny");
 
     const reportRead = JSON.parse(
       await runNodeScript(
@@ -886,20 +935,72 @@ describe("swarmvault workflow", () => {
     ) as Record<string, never>;
     expect(reportRead).toEqual({});
 
-    const secondSearch = JSON.parse(
+    const postEdit = JSON.parse(
       await runNodeScript(
         scriptPath,
-        ["pre-tool-use"],
-        JSON.stringify({ cwd: rootDir, tool_name: "Bash", tool_input: { command: "grep -R Widget ." } }),
+        ["post-edit"],
+        JSON.stringify({ cwd: rootDir, tool_name: "Edit", tool_input: { file_path: path.join(rootDir, "src", "main.ts") } }),
         rootDir
       )
     ) as Record<string, never>;
-    expect(secondSearch).toEqual({});
+    expect(postEdit).toEqual({});
 
     await installAgent(rootDir, "claude", { hook: true });
-    const settingsAgain = await fs.readFile(settingsPath, "utf8");
-    expect(settingsAgain.match(/"Bash"/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
-    expect(settingsAgain.match(/swarmvault-graph-first\.js/g)?.length ?? 0).toBeGreaterThan(0);
+    const settingsAgain = JSON.parse(await fs.readFile(settingsPath, "utf8")) as {
+      hooks?: { PreToolUse?: Array<{ matcher?: string }>; PostToolUse?: Array<{ matcher?: string }> };
+    };
+    expect(settingsAgain.hooks?.PreToolUse?.filter((entry) => entry.matcher === "Bash")).toHaveLength(1);
+    expect(settingsAgain.hooks?.PreToolUse?.filter((entry) => entry.matcher === "Grep|Glob")).toHaveLength(1);
+    expect(settingsAgain.hooks?.PostToolUse).toHaveLength(1);
+  });
+
+  it("migrates legacy Claude hook settings entries to the current matchers", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const settingsPath = path.join(rootDir, ".claude", "settings.json");
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+    await fs.writeFile(
+      settingsPath,
+      `${JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: "Bash",
+              hooks: [{ type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/swarmvault-graph-first.js" pre-tool-use' }]
+            },
+            { matcher: "Bash", hooks: [{ type: "command", command: "echo user-owned" }] }
+          ]
+        }
+      })}\n`,
+      "utf8"
+    );
+
+    await installAgent(rootDir, "claude", { hook: true });
+
+    const settings = JSON.parse(await fs.readFile(settingsPath, "utf8")) as {
+      hooks?: { PreToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> };
+    };
+    const swarmvaultEntries =
+      settings.hooks?.PreToolUse?.filter((entry) => JSON.stringify(entry).includes("swarmvault-graph-first.js")) ?? [];
+    expect(swarmvaultEntries.map((entry) => entry.matcher).sort()).toEqual(["Bash", "Grep|Glob"]);
+    expect(settings.hooks?.PreToolUse?.some((entry) => JSON.stringify(entry).includes("echo user-owned"))).toBe(true);
+  });
+
+  it("registers the SwarmVault MCP server for Claude with --mcp", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const mcpPath = path.join(rootDir, ".mcp.json");
+    await fs.writeFile(`${mcpPath}`, `${JSON.stringify({ mcpServers: { other: { command: "other-server" } } })}\n`, "utf8");
+
+    const result = await installAgent(rootDir, "claude", { hook: true, mcp: true });
+    expect(result.targets).toContain(mcpPath);
+
+    const config = JSON.parse(await fs.readFile(mcpPath, "utf8")) as {
+      mcpServers?: Record<string, { command?: string; args?: string[] }>;
+    };
+    expect(config.mcpServers?.swarmvault?.command).toBe("swarmvault");
+    expect(config.mcpServers?.swarmvault?.args).toEqual(["mcp"]);
+    expect(config.mcpServers?.other?.command).toBe("other-server");
   });
 
   it("installs Codex rules with an optional graph-first pre-search hook", async () => {
@@ -921,7 +1022,7 @@ describe("swarmvault workflow", () => {
     };
     expect(hooks.hooks?.SessionStart?.some((entry) => JSON.stringify(entry).includes("swarmvault-graph-first.js"))).toBe(true);
     expect(hooks.hooks?.PreToolUse?.some((entry) => entry.matcher === "Bash")).toBe(true);
-    expect(await fs.readFile(scriptPath, "utf8")).toContain("REPORT_NOTE");
+    expect(await fs.readFile(scriptPath, "utf8")).toContain("buildDenyReason");
 
     await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true });
     await fs.writeFile(path.join(rootDir, "wiki", "graph", "report.md"), "# Graph report\n", "utf8");
@@ -942,7 +1043,7 @@ describe("swarmvault workflow", () => {
       )
     ) as { priority?: string; message?: string };
     expect(firstSearch.priority).toBe("IMPORTANT");
-    expect(firstSearch.message).toContain("wiki/graph/report.md");
+    expect(firstSearch.message).toContain("swarmvault graph query");
 
     const reportRead = JSON.parse(
       await runNodeScript(
