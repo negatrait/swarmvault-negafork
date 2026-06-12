@@ -61,6 +61,43 @@ describe("graph callers", () => {
     expect(result.summary).toMatch(/chargeCustomer\(total\)/);
   });
 
+  it("attributes call sites to the correct caller within one file", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const repoDir = path.join(rootDir, "repo");
+    await fs.mkdir(repoDir, { recursive: true });
+    await fs.writeFile(
+      path.join(repoDir, "billing.ts"),
+      "export function chargeCustomer(amount: number): number {\n  return amount * 100;\n}\n",
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(repoDir, "checkout.ts"),
+      [
+        "import { chargeCustomer } from './billing';",
+        "",
+        "export function completeCheckout(total: number): number {",
+        "  return chargeCustomer(total);",
+        "}",
+        "",
+        "export function retryCheckout(total: number): number {",
+        "  return chargeCustomer(total) + 1;",
+        "}",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+    await ingestDirectory(rootDir, repoDir, {});
+    await compileVault(rootDir);
+
+    const result = await listGraphCallers(rootDir, "chargeCustomer");
+    const complete = result.callers.find((caller) => caller.callerLabel === "completeCheckout");
+    const retry = result.callers.find((caller) => caller.callerLabel === "retryCheckout");
+    // Each caller reports only the call sites inside its own declaration range.
+    expect(complete?.callSites.map((site) => site.line)).toEqual([4]);
+    expect(retry?.callSites.map((site) => site.line)).toEqual([8]);
+  });
+
   it("reports symbols with no callers", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);

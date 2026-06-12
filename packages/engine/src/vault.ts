@@ -2318,7 +2318,9 @@ function buildGraph(
           sourceClass: manifest.sourceClass,
           language: analysis.code.language,
           moduleId,
-          symbolKind: symbol.kind
+          symbolKind: symbol.kind,
+          startLine: symbol.startLine,
+          endLine: symbol.endLine
         });
 
         pushEdge({

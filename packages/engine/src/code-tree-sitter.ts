@@ -37,6 +37,8 @@ type DraftCodeSymbol = {
   extendsNames: string[];
   implementsNames: string[];
   bodyText?: string;
+  startLine?: number;
+  endLine?: number;
 };
 
 type GoReceiverBinding = {
@@ -387,7 +389,9 @@ function finalizeCodeAnalysis(
     exported: symbol.exported,
     calls: uniqueBy(symbol.callNames, (name) => name),
     extends: uniqueBy(symbol.extendsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name),
-    implements: uniqueBy(symbol.implementsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name)
+    implements: uniqueBy(symbol.implementsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name),
+    startLine: symbol.startLine,
+    endLine: symbol.endLine
   }));
 
   return {

@@ -33,6 +33,8 @@ type DraftCodeSymbol = {
   extendsNames: string[];
   implementsNames: string[];
   bodyText?: string;
+  startLine?: number;
+  endLine?: number;
 };
 
 type CodeLanguageDetectionOptions = {
@@ -507,7 +509,9 @@ function finalizeCodeAnalysis(
     exported: symbol.exported,
     calls: uniqueBy(symbol.callNames, (name) => name),
     extends: uniqueBy(symbol.extendsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name),
-    implements: uniqueBy(symbol.implementsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name)
+    implements: uniqueBy(symbol.implementsNames.map((name) => normalizeSymbolReference(name)).filter(Boolean), (name) => name),
+    startLine: symbol.startLine,
+    endLine: symbol.endLine
   }));
 
   return {
@@ -1945,11 +1949,18 @@ function analyzeTypeScriptLikeCode(
     }
   }
 
+  // Declaration line ranges feed `graph callers` call-site attribution.
+  const applyLineRange = (symbol: DraftCodeSymbol, node: ts.Node) => {
+    symbol.startLine = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+    symbol.endLine = sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1;
+  };
+
   for (const statement of sourceFile.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name) {
       const symbol = draftSymbols.find((item) => item.name === statement.name?.text && item.kind === "function");
       if (symbol) {
         symbol.callNames = collectCallNames(statement.body, callableNames, symbol.name);
+        applyLineRange(symbol, statement);
       }
       continue;
     }
@@ -1958,6 +1969,7 @@ function analyzeTypeScriptLikeCode(
       const symbol = draftSymbols.find((item) => item.name === statement.name?.text && item.kind === "class");
       if (symbol) {
         symbol.callNames = collectCallNames(statement, callableNames, symbol.name);
+        applyLineRange(symbol, statement);
       }
       continue;
     }
@@ -1971,6 +1983,7 @@ function analyzeTypeScriptLikeCode(
         const symbol = draftSymbols.find((item) => item.name === declarationName && item.kind === "variable");
         if (symbol) {
           symbol.callNames = collectCallNames(declaration.initializer, callableNames, symbol.name);
+          applyLineRange(symbol, statement);
         }
       }
     }

@@ -24,7 +24,7 @@ importers:
   packages/cli:
     dependencies:
       '@swarmvaultai/engine':
-        specifier: 3.19.0
+        specifier: 3.20.0
         version: link:../engine
       commander:
         specifier: ^14.0.1

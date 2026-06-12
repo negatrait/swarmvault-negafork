@@ -859,6 +859,9 @@ export interface CodeSymbol {
   calls: string[];
   extends: string[];
   implements: string[];
+  /** 1-based source line range of the declaration, when the analyzer captures it. */
+  startLine?: number;
+  endLine?: number;
 }
 
 export interface CodeRelation {
@@ -946,6 +949,10 @@ export interface GraphNode {
   language?: CodeLanguage;
   moduleId?: string;
   symbolKind?: CodeSymbolKind;
+  /** 1-based source line where the symbol's declaration starts. */
+  startLine?: number;
+  /** 1-based source line where the symbol's declaration ends. */
+  endLine?: number;
   communityId?: string;
   degree?: number;
   bridgeScore?: number;

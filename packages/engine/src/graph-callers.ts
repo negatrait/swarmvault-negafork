@@ -50,14 +50,23 @@ async function readCallerSource(manifest: SourceManifest, rootDir: string): Prom
   return null;
 }
 
-function findCallSites(source: string, targetLabel: string, callerLabel: string): GraphCallSite[] {
+function findCallSites(
+  source: string,
+  targetLabel: string,
+  callerLabel: string,
+  range?: { startLine?: number; endLine?: number }
+): GraphCallSite[] {
   const pattern = callSitePattern(targetLabel);
   const definitionPattern = new RegExp(
     `(?:function|def|fn|func|const|let|var|class|interface|type)\\s+${targetLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
   );
   const sites: GraphCallSite[] = [];
   const lines = source.split(/\r?\n/);
-  for (let index = 0; index < lines.length && sites.length < MAX_CALL_SITES_PER_FILE; index += 1) {
+  // When the caller symbol carries a declaration line range, scan only that
+  // range so call sites are attributed to the right caller in the file.
+  const firstIndex = range?.startLine ? Math.max(0, range.startLine - 1) : 0;
+  const lastIndex = range?.endLine ? Math.min(lines.length - 1, range.endLine - 1) : lines.length - 1;
+  for (let index = firstIndex; index <= lastIndex && sites.length < MAX_CALL_SITES_PER_FILE; index += 1) {
     const text = lines[index];
     if (!pattern.test(text)) continue;
     // Skip the target's own definition line and import lines — callers want use sites.
@@ -114,7 +123,7 @@ export async function listGraphCallers(rootDir: string, target: string): Promise
       callerKind: caller.symbolKind,
       filePath: filePath ?? "unknown",
       repoRelativePath: manifest.repoRelativePath,
-      callSites: source ? findCallSites(source, node.label, caller.label) : []
+      callSites: source ? findCallSites(source, node.label, caller.label, { startLine: caller.startLine, endLine: caller.endLine }) : []
     });
   }
 
