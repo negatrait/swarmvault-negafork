@@ -1940,6 +1940,8 @@ export interface InstallAgentResult {
   target: string;
   targets: string[];
   warnings?: string[];
+  /** Informational host-project hygiene changes (gitignore/tsconfig). */
+  notices?: string[];
 }
 
 export interface AgentInstallTargetStatus {

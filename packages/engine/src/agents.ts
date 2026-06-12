@@ -872,6 +872,93 @@ async function installClaudeUserHook(): Promise<{ paths: string[]; warnings: str
   return { paths: [settingsPath, scriptPath], warnings: [] };
 }
 
+const ARTIFACT_DIRS = ["raw", "wiki", "state", "agent", "inbox"];
+const GITIGNORE_HYGIENE_MARKER = "# swarmvault artifacts";
+
+/**
+ * Keep vault artifacts from breaking the host project: stored source copies
+ * under raw/ are real .ts/.js files, so they must be excluded from the
+ * project's git tracking, TypeScript program, and linters. Returns notices
+ * describing what was changed plus warnings for what needs manual edits.
+ */
+async function ensureHostProjectHygiene(rootDir: string): Promise<{ notices: string[]; warnings: string[] }> {
+  const notices: string[] = [];
+  const warnings: string[] = [];
+
+  if (process.env.SWARMVAULT_OUT?.trim()) {
+    return { notices, warnings };
+  }
+
+  // .gitignore managed block (git repos only).
+  if (await fileExists(path.join(rootDir, ".git"))) {
+    const gitignorePath = path.join(rootDir, ".gitignore");
+    const existing = (await fileExists(gitignorePath)) ? await fs.readFile(gitignorePath, "utf8") : "";
+    if (!existing.includes(GITIGNORE_HYGIENE_MARKER)) {
+      const block = `\n${GITIGNORE_HYGIENE_MARKER}\n${ARTIFACT_DIRS.map((dir) => `${dir}/`).join("\n")}\nswarmvault.config.json\nswarmvault.schema.md\n`;
+      await fs.writeFile(gitignorePath, `${existing.replace(/\n*$/, "\n")}${block}`, "utf8");
+      notices.push("Added SwarmVault artifact directories to .gitignore.");
+    }
+  }
+
+  // tsconfig.json exclude patch (strict JSON only — JSONC with comments is
+  // left untouched so user comments are never destroyed).
+  const tsconfigPath = path.join(rootDir, "tsconfig.json");
+  if (await fileExists(tsconfigPath)) {
+    const source = await fs.readFile(tsconfigPath, "utf8");
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      const candidate = JSON.parse(source);
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+        parsed = candidate as Record<string, unknown>;
+      }
+    } catch {
+      parsed = null;
+    }
+    if (parsed) {
+      const exclude = Array.isArray(parsed.exclude) ? parsed.exclude.filter((entry): entry is string => typeof entry === "string") : [];
+      const missing = ARTIFACT_DIRS.filter(
+        (dir) => !exclude.includes(dir) && !exclude.includes(`${dir}/`) && !exclude.includes(`./${dir}`)
+      );
+      if (missing.length > 0) {
+        parsed.exclude = [...exclude, ...missing];
+        await fs.writeFile(tsconfigPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+        notices.push(`Excluded SwarmVault artifact directories from tsconfig.json (${missing.join(", ")}).`);
+      }
+    } else {
+      let parsesAsJsonc = false;
+      try {
+        JSON.parse(stripJsonComments(source));
+        parsesAsJsonc = true;
+      } catch {
+        parsesAsJsonc = false;
+      }
+      if (parsesAsJsonc) {
+        warnings.push(
+          `tsconfig.json contains comments, so it was left unchanged — add ${ARTIFACT_DIRS.join(", ")} to its "exclude" array manually so vault artifacts are not type-checked.`
+        );
+      }
+    }
+  }
+
+  // Linters: detection-only advisory; JS config files are never edited.
+  const eslintConfigs = ["eslint.config.mjs", "eslint.config.js", "eslint.config.ts", ".eslintrc.json", ".eslintrc.js"];
+  for (const candidate of eslintConfigs) {
+    if (await fileExists(path.join(rootDir, candidate))) {
+      const content = await fs.readFile(path.join(rootDir, candidate), "utf8");
+      if (
+        !ARTIFACT_DIRS.some((dir) => content.includes(`"${dir}/**"`) || content.includes(`'${dir}/**'`) || content.includes(`"${dir}"`))
+      ) {
+        warnings.push(
+          `Add SwarmVault artifact directories (${ARTIFACT_DIRS.map((dir) => `${dir}/**`).join(", ")}) to the ignore list in ${candidate} so stored source copies are not linted.`
+        );
+      }
+      break;
+    }
+  }
+
+  return { notices, warnings };
+}
+
 /**
  * Persist the graph-first hook mode into swarmvault.config.json so the
  * installed hooks pick it up. Enforcement ("deny") is an explicit install-time
@@ -1251,8 +1338,15 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
     warnings.push(...result.warnings);
   }
 
+  const hygiene = await ensureHostProjectHygiene(rootDir);
+  warnings.push(...hygiene.warnings);
+
   const targets = targetsForAgent(rootDir, agent, options);
-  return warnings.length > 0 ? { agent, target, targets, warnings } : { agent, target, targets };
+  const base: InstallAgentResult = { agent, target, targets };
+  if (hygiene.notices.length > 0) {
+    base.notices = hygiene.notices;
+  }
+  return warnings.length > 0 ? { ...base, warnings } : base;
 }
 
 export async function getAgentInstallStatus(

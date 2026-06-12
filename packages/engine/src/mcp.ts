@@ -7,6 +7,7 @@ import { z } from "zod";
 import { loadVaultConfig } from "./config.js";
 import { buildContextPack, listContextPacks, readContextPack } from "./context-packs.js";
 import { doctorVault } from "./doctor.js";
+import { listGraphCallers } from "./graph-callers.js";
 import { getGraphStatus } from "./graph-status.js";
 import { ingestInputDetailed, listManifests } from "./ingest.js";
 import { finishMemoryTask, listMemoryTasks, readMemoryTask, resumeMemoryTask, startMemoryTask, updateMemoryTask } from "./memory.js";
@@ -45,7 +46,7 @@ import {
 } from "./vault.js";
 import { getWatchStatus, runWatchCycle } from "./watch.js";
 
-const SERVER_VERSION = "3.18.0";
+const SERVER_VERSION = "3.19.0";
 const codeLanguageSchema = z.enum([
   "javascript",
   "jsx",
@@ -766,6 +767,20 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
     safeHandler(async () => {
       const status = await getWatchStatus(rootDir);
       return asToolText(status);
+    })
+  );
+
+  server.registerTool(
+    "graph_callers",
+    {
+      description: "List the callers of a symbol with file:line call-site evidence derived from graph call edges.",
+      inputSchema: {
+        target: z.string().min(1).describe("Symbol label or node id")
+      }
+    },
+    safeHandler(async ({ target }) => {
+      const result = await listGraphCallers(rootDir, target);
+      return asToolText(result);
     })
   );
 

@@ -958,6 +958,47 @@ describe("swarmvault workflow", () => {
     expect(settingsAgain.hooks?.PostToolUse).toHaveLength(1);
   });
 
+  it("applies host-project hygiene during install (gitignore + tsconfig exclude)", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    await fs.mkdir(path.join(rootDir, ".git"), { recursive: true });
+    await fs.writeFile(path.join(rootDir, ".gitignore"), "node_modules/\n", "utf8");
+    await fs.writeFile(
+      path.join(rootDir, "tsconfig.json"),
+      `${JSON.stringify({ compilerOptions: { strict: true }, exclude: ["node_modules"] })}\n`,
+      "utf8"
+    );
+
+    const result = await installAgent(rootDir, "claude", { hook: true });
+    expect(result.notices?.join(" ")).toContain(".gitignore");
+    expect(result.notices?.join(" ")).toContain("tsconfig.json");
+
+    const gitignore = await fs.readFile(path.join(rootDir, ".gitignore"), "utf8");
+    expect(gitignore).toContain("node_modules/");
+    expect(gitignore).toContain("# swarmvault artifacts");
+    expect(gitignore).toContain("wiki/");
+
+    const tsconfig = JSON.parse(await fs.readFile(path.join(rootDir, "tsconfig.json"), "utf8")) as { exclude?: string[] };
+    expect(tsconfig.exclude).toEqual(expect.arrayContaining(["node_modules", "raw", "wiki", "state", "agent", "inbox"]));
+
+    // Idempotent: a second install adds nothing new.
+    const again = await installAgent(rootDir, "claude", { hook: true });
+    expect(again.notices ?? []).toHaveLength(0);
+    const gitignoreAgain = await fs.readFile(path.join(rootDir, ".gitignore"), "utf8");
+    expect(gitignoreAgain.match(/# swarmvault artifacts/g)).toHaveLength(1);
+  });
+
+  it("leaves commented tsconfig files untouched and warns instead", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const tsconfigSource = '{\n  // user comment that must survive\n  "compilerOptions": { "strict": true }\n}\n';
+    await fs.writeFile(path.join(rootDir, "tsconfig.json"), tsconfigSource, "utf8");
+
+    const result = await installAgent(rootDir, "claude", { hook: true });
+    expect(await fs.readFile(path.join(rootDir, "tsconfig.json"), "utf8")).toBe(tsconfigSource);
+    expect(result.warnings?.join(" ")).toContain("tsconfig.json contains comments");
+  });
+
   it("migrates legacy Claude hook settings entries to the current matchers", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);

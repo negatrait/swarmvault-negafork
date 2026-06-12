@@ -475,10 +475,25 @@ function finalizeCodeAnalysis(
   diagnostics: CodeDiagnostic[],
   metadata?: { moduleName?: string; namespace?: string }
 ): CodeAnalysis {
-  const topLevelNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  // Candidate call names cover both module-local symbols and imported local
+  // names, so cross-file `calls` edges can resolve through the import map at
+  // graph-build time instead of being dropped at extraction.
+  const callableNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  for (const codeImport of imports) {
+    for (const importedSymbol of codeImport.importedSymbols) {
+      const [, rawLocalName] = importedSymbol.split(/\s+as\s+/i);
+      const localName = (rawLocalName ?? importedSymbol).trim();
+      if (localName) {
+        callableNames.add(localName);
+      }
+    }
+    if (codeImport.defaultImport) {
+      callableNames.add(codeImport.defaultImport);
+    }
+  }
   for (const symbol of draftSymbols) {
     if (symbol.callNames.length === 0 && symbol.bodyText) {
-      symbol.callNames = collectCallNamesFromText(symbol.bodyText, topLevelNames, symbol.name);
+      symbol.callNames = collectCallNamesFromText(symbol.bodyText, callableNames, symbol.name);
     }
   }
 
@@ -1913,13 +1928,28 @@ function analyzeTypeScriptLikeCode(
     }
   }
 
-  const topLevelNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  // Candidate call names cover both module-local symbols and imported local
+  // names, so cross-file `calls` edges can resolve through the import map at
+  // graph-build time instead of being dropped at extraction.
+  const callableNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  for (const codeImport of imports) {
+    for (const importedSymbol of codeImport.importedSymbols) {
+      const [, rawLocalName] = importedSymbol.split(/\s+as\s+/i);
+      const localName = (rawLocalName ?? importedSymbol).trim();
+      if (localName) {
+        callableNames.add(localName);
+      }
+    }
+    if (codeImport.defaultImport) {
+      callableNames.add(codeImport.defaultImport);
+    }
+  }
 
   for (const statement of sourceFile.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name) {
       const symbol = draftSymbols.find((item) => item.name === statement.name?.text && item.kind === "function");
       if (symbol) {
-        symbol.callNames = collectCallNames(statement.body, topLevelNames, symbol.name);
+        symbol.callNames = collectCallNames(statement.body, callableNames, symbol.name);
       }
       continue;
     }
@@ -1927,7 +1957,7 @@ function analyzeTypeScriptLikeCode(
     if (ts.isClassDeclaration(statement) && statement.name) {
       const symbol = draftSymbols.find((item) => item.name === statement.name?.text && item.kind === "class");
       if (symbol) {
-        symbol.callNames = collectCallNames(statement, topLevelNames, symbol.name);
+        symbol.callNames = collectCallNames(statement, callableNames, symbol.name);
       }
       continue;
     }
@@ -1940,7 +1970,7 @@ function analyzeTypeScriptLikeCode(
         const declarationName = declaration.name.text;
         const symbol = draftSymbols.find((item) => item.name === declarationName && item.kind === "variable");
         if (symbol) {
-          symbol.callNames = collectCallNames(declaration.initializer, topLevelNames, symbol.name);
+          symbol.callNames = collectCallNames(declaration.initializer, callableNames, symbol.name);
         }
       }
     }

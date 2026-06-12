@@ -84,6 +84,7 @@ swarmvault graph share --post
 swarmvault graph share --svg ./share-card.svg
 swarmvault graph share --bundle ./share-kit
 swarmvault graph blast ./src/index.ts
+swarmvault graph callers "chargeCustomer"
 swarmvault graph status ./src
 swarmvault check-update ./src
 swarmvault graph stats

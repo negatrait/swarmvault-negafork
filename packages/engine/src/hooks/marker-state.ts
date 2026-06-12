@@ -378,6 +378,7 @@ export const REPORT_NOTE =
 const GRAPH_FIRST_COMMANDS = [
   '- `swarmvault graph query "<seed>"` — top matches with page paths plus an inline excerpt of the best page; usually answers where-is/what-calls in one command',
   '- `swarmvault graph explain "<node>"` — compact node summary with neighbors and its wiki page',
+  '- `swarmvault graph callers "<symbol>"` — exact caller list with file:line call sites; use for who-calls/impact questions instead of grep',
   "- `swarmvault graph blast <target>` — reverse-import impact analysis for change-impact questions",
   "- `wiki/graph/report.md` — orientation report (architecture, communities, key nodes)",
   "Do not add `--json` to these — the plain output is far smaller and already structured.",
@@ -421,7 +422,7 @@ export function buildDenyReason(toolName: string, input: unknown): string {
   const term = extractSearchTerm(input).slice(0, 120);
   return [
     `SwarmVault graph-first: this repo has a compiled code graph that answers structure questions in far fewer tokens than ${toolName || "broad search"}.`,
-    `Run: swarmvault graph query "${term}" — it prints the top matches with page paths plus an inline excerpt of the best page, which usually answers the question without reading source. Add --context calls for caller/impact questions. Do not add --json (much larger output).`,
+    `Run: swarmvault graph query "${term}" — it prints the top matches with page paths plus an inline excerpt of the best page, which usually answers the question without reading source. For who-calls/impact questions run swarmvault graph callers "${term}" (exact file:line call sites). Do not add --json (much larger output).`,
     "Trust that answer for orientation questions instead of re-verifying in source files.",
     "If the graph does not answer, repeat this exact search — it will be allowed for the rest of the session."
   ].join(" ");

@@ -13,6 +13,7 @@ swarmvault graph status .
 swarmvault graph query "auth flow"
 swarmvault graph explain "src/auth.ts"
 swarmvault graph path "LoginForm" "SessionStore"
+swarmvault graph callers "chargeCustomer"
 swarmvault query "How does the auth flow work?"
 swarmvault context build "Refactor the auth flow" --target ./src --budget 8000
 swarmvault graph update --file ./src/auth.ts
@@ -27,6 +28,7 @@ swarmvault install status --agent claude --hook --mcp
 - A new Claude Code session starts with injected graph-first instructions plus a staleness note when `wiki/graph/report.md` exists
 - With `--graph-first` installed, the first broad Grep/Glob/Bash search in a session is denied once with a redirect to the plain `graph query|explain|path` commands (the deny message warns against `--json`, which produces much larger output); repeating the same search is then allowed. Without the opt-in the hook stays advisory and only adds a one-time guidance note
 - Searches scoped to `wiki/`, `raw/`, `state/`, a single file, or search tools filtering piped output pass through without interception
+- `swarmvault graph callers "chargeCustomer"` lists every caller of the symbol from graph call edges with exact file:line call-site evidence (it scans only the files the graph identifies as callers), and the deny/redirect message recommends it for who-calls/impact-of-change questions
 - After the agent edits a file, a background `swarmvault graph update --file <path>` refresh runs and `swarmvault graph status .` reports the graph fresh again
 - Concurrent edit bursts coalesce through the refresh lock plus queue under `state/watch/` instead of stacking compiles
 - `graph_status` and `update_graph` are available over MCP for read-only freshness checks and code-only (optionally per-file) refreshes

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 3.19.0
+
+- Added `swarmvault graph callers <symbol>` (CLI) and `graph_callers` (MCP): lists every caller of a symbol from graph call edges with exact file:line call-site evidence, scanning only the files the graph identifies as callers. Live token A/B testing showed caller/impact questions were the one category where agents still fell back to repo-wide grep; this closes that gap, and hook guidance now points who-calls/impact questions at it.
+- Fixed cross-file `calls` edges being dropped at extraction: call-name candidates now include imported local names (named, aliased, and default imports) in both the TypeScript-AST and parser-fallback analyzers, so calls into imported symbols resolve through the import map into cross-module graph edges instead of only same-module ones.
+- Added host-project hygiene to `swarmvault install`: vault artifact directories are appended to `.gitignore` in git repos, excluded from strict-JSON `tsconfig.json` files so stored source copies under `raw/` no longer break the host project's typecheck, and linter configs that still cover the artifact directories produce an advisory warning. Commented (JSONC) tsconfig files are never rewritten — a warning explains the manual edit instead — and everything is skipped when `SWARMVAULT_OUT` keeps artifacts outside the repo.
+- Updated OSS docs, localized READMEs, site docs, and the published ClawHub skill bundle for the new caller-evidence and install-hygiene workflows.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.19.0`.
+
 ## 3.18.0
 
 - Made graph-first search enforcement opt-in: installed agent hooks now default to advisory mode (`context`), and `swarmvault install --agent <agent> --hook --graph-first [deny|context|off]` persists the chosen mode as `hooks.graphFirst` in `swarmvault.config.json` (`SWARMVAULT_GRAPH_FIRST` still overrides per session).

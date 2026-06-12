@@ -74,6 +74,7 @@ import {
   listChatSessions,
   listContextPacks,
   listGodNodes,
+  listGraphCallers,
   listManagedSourceRecords,
   listManifests,
   listMemoryTasks,
@@ -152,9 +153,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.18.0";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.19.0";
   } catch {
-    return "3.18.0";
+    return "3.19.0";
   }
 }
 
@@ -2696,6 +2697,19 @@ graph
   });
 
 graph
+  .command("callers")
+  .description("List the callers of a symbol with file:line call-site evidence from graph call edges.")
+  .argument("<target>", "Symbol label or node id")
+  .action(async (target: string) => {
+    const result = await listGraphCallers(process.cwd(), target);
+    if (isJson()) {
+      emitJson(result);
+      return;
+    }
+    log(result.summary);
+  });
+
+graph
   .command("god-nodes")
   .description("List the highest-connectivity non-source graph nodes.")
   .option("--limit <n>", "Maximum number of nodes to return", "10")
@@ -3531,6 +3545,9 @@ install
       }
       if (result.targets.length > 1) {
         log(`Also wrote: ${result.targets.filter((entry) => entry !== result.target).join(", ")}`);
+      }
+      for (const notice of result.notices ?? []) {
+        log(notice);
       }
       for (const warning of result.warnings ?? []) {
         emitNotice(warning);

@@ -36,6 +36,7 @@ export {
   resolveDecayConfig,
   runDecayPass
 } from "./freshness.js";
+export { listGraphCallers } from "./graph-callers.js";
 export type { SynthesizedHubEdge, SynthesizedHubNode, SynthesizedHyperedgeHubs } from "./graph-export.js";
 export {
   exportGraphFormat,

@@ -186,7 +186,7 @@ Run `swarmvault compile` after creating or updating tasks when you want task and
 
 ## Agent searches are being denied
 
-Search denial only happens after an explicit opt-in: installing with `swarmvault install --agent <agent> --hook --graph-first`, or setting `hooks.graphFirst: "deny"` in `swarmvault.config.json`. With that opt-in, the first broad Grep/Glob/Bash search per session is intercepted with a deny plus a redirect message pointing at the plain `swarmvault graph query|explain|path` commands (the message warns against `--json`, which produces much larger output). `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. This is a one-time guided redirect, not a block: repeating the same search is then allowed, so work is never stuck. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`), single files, or search tools filtering piped output are never intercepted.
+Search denial only happens after an explicit opt-in: installing with `swarmvault install --agent <agent> --hook --graph-first`, or setting `hooks.graphFirst: "deny"` in `swarmvault.config.json`. With that opt-in, the first broad Grep/Glob/Bash search per session is intercepted with a deny plus a redirect message pointing at the plain `swarmvault graph query|explain|path` commands (the message warns against `--json`, which produces much larger output). `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. For who-calls and impact-of-change questions, the redirect message also recommends `swarmvault graph callers <symbol>`, which lists every caller from graph call edges with exact file:line call-site evidence instead of a repo-wide grep. This is a one-time guided redirect, not a block: repeating the same search is then allowed, so work is never stuck. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`), single files, or search tools filtering piped output are never intercepted.
 
 Without the opt-in, hooks stay advisory (`context` mode): a one-time guidance note, no denial. To change or disable the behavior:
 
@@ -196,6 +196,12 @@ SWARMVAULT_GRAPH_FIRST=off       # disable graph-first behavior entirely
 ```
 
 Or set `hooks.graphFirst` to `deny`, `context`, or `off` in `swarmvault.config.json`. The default without any opt-in is `context`.
+
+## `swarmvault install` edited `.gitignore` or `tsconfig.json`
+
+That is intentional host-project hygiene. `swarmvault install --agent <agent>` appends the vault artifact directories (`raw/`, `wiki/`, `state/`, `agent/`, `inbox/`) to `.gitignore` in git repos, adds them to a strict-JSON `tsconfig.json` `"exclude"` list so stored source copies under `raw/` do not break the host typecheck, and warns when linter configs still cover the artifact directories. Commented (JSONC) tsconfig files are never rewritten — a warning explains the manual edit instead.
+
+To opt out, set `SWARMVAULT_OUT` so generated artifacts live outside the repo; the hygiene edits are skipped entirely.
 
 ## Hook is not firing
 

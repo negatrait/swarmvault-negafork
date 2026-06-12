@@ -356,10 +356,25 @@ function finalizeCodeAnalysis(
   metadata?: { moduleName?: string; namespace?: string },
   relations?: NonNullable<CodeAnalysis["relations"]>
 ): CodeAnalysis {
-  const topLevelNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  // Candidate call names cover both module-local symbols and imported local
+  // names, so cross-file `calls` edges can resolve through the import map at
+  // graph-build time instead of being dropped at extraction.
+  const callableNames = new Set(draftSymbols.map((symbol) => symbol.name));
+  for (const codeImport of imports) {
+    for (const importedSymbol of codeImport.importedSymbols) {
+      const [, rawLocalName] = importedSymbol.split(/\s+as\s+/i);
+      const localName = (rawLocalName ?? importedSymbol).trim();
+      if (localName) {
+        callableNames.add(localName);
+      }
+    }
+    if (codeImport.defaultImport) {
+      callableNames.add(codeImport.defaultImport);
+    }
+  }
   for (const symbol of draftSymbols) {
     if (symbol.callNames.length === 0 && symbol.bodyText) {
-      symbol.callNames = collectCallNamesFromText(symbol.bodyText, topLevelNames, symbol.name);
+      symbol.callNames = collectCallNamesFromText(symbol.bodyText, callableNames, symbol.name);
     }
   }
 
