@@ -45,6 +45,7 @@ const SURFACE_MANIFEST = {
   graph: "help",
   "graph blast": "behavior",
   "graph cluster": "behavior",
+  "graph callers": "behavior",
   "graph clusters": "alias",
   "graph cycles": "behavior",
   "graph explain": "behavior",
@@ -471,6 +472,13 @@ async function runBehaviorSmoke() {
   });
   await runJsonCheck(["graph", "explain", "Durable"], workspaceDir, "graph explain", (result) => {
     assert.ok(typeof result.summary === "string", "graph explain did not return a summary");
+  });
+  await runJsonCheck(["graph", "callers", "durableOutput"], workspaceDir, "graph callers", (result) => {
+    assert.ok(Array.isArray(result.callers), "graph callers did not return a caller list");
+    assert.ok(
+      result.callers.some((caller) => caller.callerLabel === "renderOutput" && caller.callSites.length > 0),
+      "graph callers did not surface the renderOutput call site"
+    );
   });
   await runJsonCheck(["graph", "path", "Durable", "Durable"], workspaceDir, "graph path", (result) => {
     assert.ok(typeof result.summary === "string", "graph path did not return a summary");
