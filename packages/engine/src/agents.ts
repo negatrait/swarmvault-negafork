@@ -872,6 +872,32 @@ async function installClaudeUserHook(): Promise<{ paths: string[]; warnings: str
   return { paths: [settingsPath, scriptPath], warnings: [] };
 }
 
+/**
+ * Persist the graph-first hook mode into swarmvault.config.json so the
+ * installed hooks pick it up. Enforcement ("deny") is an explicit install-time
+ * opt-in; without it the hooks stay advisory ("context").
+ */
+async function persistGraphFirstMode(rootDir: string, mode: "deny" | "context" | "off"): Promise<{ warnings: string[] }> {
+  const configPath = path.join(rootDir, "swarmvault.config.json");
+  if (!(await fileExists(configPath))) {
+    return { warnings: [`No swarmvault.config.json at ${rootDir}; run swarmvault init or set hooks.graphFirst manually.`] };
+  }
+  try {
+    const parsed = JSON.parse(await fs.readFile(configPath, "utf8")) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("config is not an object");
+    }
+    const hooks =
+      parsed.hooks && typeof parsed.hooks === "object" && !Array.isArray(parsed.hooks) ? (parsed.hooks as Record<string, unknown>) : {};
+    hooks.graphFirst = mode;
+    parsed.hooks = hooks;
+    await fs.writeFile(configPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+    return { warnings: [] };
+  } catch {
+    return { warnings: ["Could not update swarmvault.config.json; set hooks.graphFirst manually."] };
+  }
+}
+
 /** Register the SwarmVault MCP server in the project's `.mcp.json`. */
 async function installClaudeMcp(rootDir: string): Promise<{ path: string; warnings: string[] }> {
   const mcpConfigPath = path.join(rootDir, ".mcp.json");
@@ -1106,6 +1132,10 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
         warnings.push(...result.warnings);
       }
     }
+    if (options.graphFirst) {
+      const result = await persistGraphFirstMode(rootDir, options.graphFirst);
+      warnings.push(...result.warnings);
+    }
     const targets = targetsForAgent(rootDir, agent, options);
     return warnings.length > 0 ? { agent, target, targets, warnings } : { agent, target, targets };
   }
@@ -1213,6 +1243,11 @@ export async function installAgent(rootDir: string, agent: AgentType, options: I
 
   if (options.mcp && agent === "claude") {
     const result = await installClaudeMcp(rootDir);
+    warnings.push(...result.warnings);
+  }
+
+  if (options.graphFirst) {
+    const result = await persistGraphFirstMode(rootDir, options.graphFirst);
     warnings.push(...result.warnings);
   }
 

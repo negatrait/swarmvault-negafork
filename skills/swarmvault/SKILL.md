@@ -1,7 +1,7 @@
 ---
 name: swarmvault
 description: "Use SwarmVault when the user needs a local-first knowledge vault that writes durable markdown, graph, search, dashboard, review, chat-session, context-pack, task-ledger, static AI export, retrieval, and MCP artifacts to disk from books, notes, transcripts, exports, datasets, slide decks, files, URLs, code, and recurring source workflows."
-version: "3.17.0"
+version: "3.18.0"
 metadata: '{"openclaw":{"requires":{"anyBins":["swarmvault","vault"]},"install":[{"id":"node","kind":"node","package":"@swarmvaultai/cli","bins":["swarmvault","vault"],"label":"Install SwarmVault CLI (npm)"}],"emoji":"🗃️","homepage":"https://www.swarmvault.ai/docs"}}'
 ---
 
@@ -60,7 +60,7 @@ When a compiled vault exists for a codebase (`wiki/graph/report.md` is present),
 - Bounded handoff context → `swarmvault context build "<goal>" --target <path> --budget <tokens>`.
 - Read source files directly only when editing them or when the graph lacks the needed detail.
 - Check freshness with `swarmvault graph status`; refresh with `swarmvault graph update`, or `swarmvault graph update --file <path>` for just-edited files.
-- Installed agent hooks enforce this: the first broad Grep/Glob/Bash search per session is redirected to the graph (repeating the search is allowed), and edits trigger an automatic background single-file refresh. Control the behavior with `SWARMVAULT_GRAPH_FIRST=deny|context|off` or `hooks.graphFirst` in `swarmvault.config.json`.
+- Installed agent hooks default to advisory mode: a one-time guidance note on the first broad search, plus an automatic background single-file refresh after edits. Enforcement (the first broad Grep/Glob/Bash search per session is denied with a redirect to the graph; repeating the search is allowed) is opt-in — install with `--graph-first`, or set `hooks.graphFirst: "deny"` in `swarmvault.config.json`. `SWARMVAULT_GRAPH_FIRST=deny|context|off` overrides per session; search tools that filter piped output are never intercepted.
 
 ## Working rules
 
@@ -112,7 +112,7 @@ When a compiled vault exists for a codebase (`wiki/graph/report.md` is present),
 
 - `swarmvault install --agent codex|claude|cursor|goose|pi|gemini|opencode|aider|copilot|trae|claw|droid|kiro|kilo|hermes|antigravity|vscode|amp|augment|adal|bob|cline|codebuddy|command-code|continue|cortex|crush|deepagents|devin|firebender|iflow|junie|kilo-code|kimi|kode|mcpjam|mistral-vibe|mux|neovate|openclaw|openhands|pochi|qoder|qwen-code|replit|roo-code|trae-cn|warp|windsurf|zencoder` installs agent-specific rules into the current project. Agents in the extended roster receive a project-level skill bundle at the tool's conventional skills directory.
 - `swarmvault init`, `quickstart`, `scan`, and `clone` leave project-local agent rule files alone by default. Use `install --agent` explicitly, or set `agents` in `swarmvault.config.json` and pass `--install-agent-rules` to initialization or scan commands when configured installs are intentional.
-- `swarmvault install --agent codex|claude|opencode|gemini|copilot|kilo --hook` installs graph-first hook or plugin support for the agents that expose project hook APIs. For Claude Code the hook redirects the first broad search per session to graph commands, surfaces staleness at session start, and refreshes the graph in the background after edits. Use `swarmvault install status --agent <agent> [--hook] [--mcp]` to inspect expected files without writing.
+- `swarmvault install --agent codex|claude|opencode|gemini|copilot|kilo --hook` installs graph-first hook or plugin support for the agents that expose project hook APIs. For Claude Code the hook surfaces staleness at session start, nudges the first broad search per session toward graph commands, and refreshes the graph in the background after edits; add `--graph-first` to opt in to search enforcement (persists `hooks.graphFirst: "deny"`). Use `swarmvault install status --agent <agent> [--hook] [--mcp]` to inspect expected files without writing.
 - `swarmvault install --agent claude --mcp` also registers the SwarmVault MCP server in the project's `.mcp.json`; `swarmvault install --agent claude --hook --scope user` installs the skill, hook, and settings once under `~/.claude` for all repos (the hook no-ops in repos without a compiled graph report).
 - `swarmvault install --agent aider` installs `CONVENTIONS.md` and wires `.aider.conf.yml` to read it when that config is valid YAML.
 - `swarmvault install --agent antigravity` writes `.agents/rules/swarmvault.md` and `.agents/workflows/swarmvault.md`; reinstall removes older fully managed `.agent/` files.

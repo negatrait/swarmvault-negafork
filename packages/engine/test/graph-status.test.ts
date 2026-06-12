@@ -162,6 +162,28 @@ describe("graph status", () => {
     expect(projected.edges.map((edge) => edge.id)).toEqual(["edge:beta-shared"]);
   });
 
+  it("does not report redacted or content-deduped sources as changed", async () => {
+    const rootDir = await createTempWorkspace();
+    await initVault(rootDir);
+    const repoDir = path.join(rootDir, "repo");
+    await fs.mkdir(repoDir, { recursive: true });
+    // Redactable content: the stored manifest hashes the scrubbed payload,
+    // so raw-byte comparison alone would report this file forever-modified.
+    const secretSource = 'export const example = "sk-proj-abcdef1234567890abcdef1234567890abcdef12";\n';
+    await fs.writeFile(path.join(repoDir, "secret-fixture.ts"), secretSource, "utf8");
+    // Identical twin files: ingest dedupes them onto one manifest, so the
+    // second path has no manifest of its own.
+    const twinContent = '{\n  "id": "twin",\n  "version": "1.0.0"\n}\n';
+    await fs.writeFile(path.join(repoDir, "twin-a.json"), twinContent, "utf8");
+    await fs.writeFile(path.join(repoDir, "twin-b.json"), twinContent, "utf8");
+    await ingestDirectory(rootDir, repoDir, {});
+    await compileVault(rootDir);
+
+    const status = await getGraphStatus(rootDir);
+    expect(status.changes).toEqual([]);
+    expect(status.stale).toBe(false);
+  });
+
   it("does not initialize a workspace when graph artifacts are missing", async () => {
     const rootDir = await createTempWorkspace();
 

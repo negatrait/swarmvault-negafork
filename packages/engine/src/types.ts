@@ -1927,6 +1927,12 @@ export interface InstallAgentOptions {
   scope?: "project" | "user";
   /** Register the SwarmVault MCP server in the agent's project MCP config. */
   mcp?: boolean;
+  /**
+   * Persist `hooks.graphFirst` in swarmvault.config.json. Enforcement
+   * ("deny") is opt-in at install time; the hook default without config is
+   * advisory "context".
+   */
+  graphFirst?: "deny" | "context" | "off";
 }
 
 export interface InstallAgentResult {

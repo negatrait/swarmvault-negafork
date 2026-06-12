@@ -7,7 +7,7 @@ Use this when the user wants Claude Code (or another hook-capable agent) to answ
 ```bash
 cd <repo>
 swarmvault init && swarmvault ingest .
-swarmvault install --agent claude --hook --mcp
+swarmvault install --agent claude --hook --mcp --graph-first
 swarmvault hook install
 swarmvault graph status .
 swarmvault graph query "auth flow"
@@ -25,8 +25,8 @@ swarmvault install status --agent claude --hook --mcp
 - `.mcp.json` registers the `swarmvault` MCP server (`{"mcpServers":{"swarmvault":{"command":"swarmvault","args":["mcp"]}}}`) after `--mcp`
 - `.claude/skills/swarmvault/SKILL.md` exists as the project skill bundle
 - A new Claude Code session starts with injected graph-first instructions plus a staleness note when `wiki/graph/report.md` exists
-- The first broad Grep/Glob/Bash search in a session is denied once with a redirect to the plain `graph query|explain|path` commands (the deny message warns against `--json`, which produces much larger output), `swarmvault query`, `swarmvault context build`, and `wiki/graph/report.md`; repeating the same search is then allowed
-- Searches scoped to `wiki/`, `raw/`, `state/`, or a single file pass through without interception
+- With `--graph-first` installed, the first broad Grep/Glob/Bash search in a session is denied once with a redirect to the plain `graph query|explain|path` commands (the deny message warns against `--json`, which produces much larger output); repeating the same search is then allowed. Without the opt-in the hook stays advisory and only adds a one-time guidance note
+- Searches scoped to `wiki/`, `raw/`, `state/`, a single file, or search tools filtering piped output pass through without interception
 - After the agent edits a file, a background `swarmvault graph update --file <path>` refresh runs and `swarmvault graph status .` reports the graph fresh again
 - Concurrent edit bursts coalesce through the refresh lock plus queue under `state/watch/` instead of stacking compiles
 - `graph_status` and `update_graph` are available over MCP for read-only freshness checks and code-only (optionally per-file) refreshes
@@ -36,6 +36,6 @@ swarmvault install status --agent claude --hook --mcp
 
 - Answer "where is X / what calls Y / how is Z structured" questions with the plain `graph query`, `graph explain`, and `graph path` commands before reading source files; `graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers the question without follow-up file reads. Read sources directly only when editing them, and avoid `--json` for these reads — it produces much larger output.
 - If a search is denied, run the suggested graph command first; retrying the same search is always allowed when the graph genuinely lacks the detail.
-- Tune the behavior with `SWARMVAULT_GRAPH_FIRST=deny|context|off` (default `deny`) or `hooks.graphFirst` in `swarmvault.config.json`; `context` keeps the session guidance without intercepting searches.
+- Enforcement is opt-in: install with `--graph-first` (persists `hooks.graphFirst: "deny"`), or set `hooks.graphFirst` in `swarmvault.config.json` later. The default without opt-in is `context` — session guidance without denying searches. `SWARMVAULT_GRAPH_FIRST=deny|context|off` overrides per session.
 - Use `swarmvault install --agent claude --hook --scope user` to set up `~/.claude` once for all repos; the hook no-ops in repos without a compiled graph report.
 - Codex, Gemini, Copilot, OpenCode, and Kilo installs carry the same graph-first guidance adapted to each tool's hook API.

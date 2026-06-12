@@ -186,16 +186,16 @@ Run `swarmvault compile` after creating or updating tasks when you want task and
 
 ## Agent searches are being denied
 
-With graph-first hooks installed, the first broad Grep/Glob/Bash search per session is intercepted with a deny plus a redirect message pointing at the plain `swarmvault graph query|explain|path` commands (the message warns against `--json`, which produces much larger output), `swarmvault query`, `swarmvault context build`, and `wiki/graph/report.md`. `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. This is a one-time guided redirect, not a block: repeating the same search is then allowed, so work is never stuck. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`) or a single file are never intercepted.
+Search denial only happens after an explicit opt-in: installing with `swarmvault install --agent <agent> --hook --graph-first`, or setting `hooks.graphFirst: "deny"` in `swarmvault.config.json`. With that opt-in, the first broad Grep/Glob/Bash search per session is intercepted with a deny plus a redirect message pointing at the plain `swarmvault graph query|explain|path` commands (the message warns against `--json`, which produces much larger output). `swarmvault graph query "<seed>"` prints the top matches with page paths plus an inline excerpt of the best-matching wiki page, so one command usually answers where-is/what-calls questions without follow-up file reads. This is a one-time guided redirect, not a block: repeating the same search is then allowed, so work is never stuck. Searches scoped to vault artifact directories (`wiki/`, `raw/`, `state/`), single files, or search tools filtering piped output are never intercepted.
 
-If you want the guidance without the deny, or none at all:
+Without the opt-in, hooks stay advisory (`context` mode): a one-time guidance note, no denial. To change or disable the behavior:
 
 ```bash
 SWARMVAULT_GRAPH_FIRST=context   # session guidance only, no search interception
 SWARMVAULT_GRAPH_FIRST=off       # disable graph-first behavior entirely
 ```
 
-Or set `hooks.graphFirst` to `deny`, `context`, or `off` in `swarmvault.config.json`. The default is `deny`.
+Or set `hooks.graphFirst` to `deny`, `context`, or `off` in `swarmvault.config.json`. The default without any opt-in is `context`.
 
 ## Hook is not firing
 

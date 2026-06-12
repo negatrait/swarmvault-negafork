@@ -37,6 +37,9 @@ describe("claude graph-first hook", () => {
     workspace = await fs.mkdtemp(path.join(os.tmpdir(), "swarmvault-claude-hook-"));
     await fs.mkdir(path.join(workspace, "wiki", "graph"), { recursive: true });
     await fs.writeFile(path.join(workspace, "wiki", "graph", "report.md"), "# Graph report\n", "utf8");
+    // Enforcement is opt-in; these fixtures opt in the way `install
+    // --graph-first` does so the deny flow can be exercised.
+    await fs.writeFile(path.join(workspace, "swarmvault.config.json"), `${JSON.stringify({ hooks: { graphFirst: "deny" } })}\n`, "utf8");
   });
 
   afterEach(async () => {
@@ -77,6 +80,29 @@ describe("claude graph-first hook", () => {
     );
     const result = await startSession();
     expect(String(hookOutput(result).additionalContext)).toContain("semantic refresh");
+  });
+
+  it("stays advisory by default when no graph-first opt-in exists", async () => {
+    await fs.rm(path.join(workspace, "swarmvault.config.json"), { force: true });
+    await startSession();
+    const result = await runHook("pre-tool-use", {
+      tool_name: "Grep",
+      tool_input: { pattern: "anything" },
+      cwd: workspace
+    });
+    const specific = hookOutput(result);
+    expect(specific.permissionDecision).not.toBe("deny");
+    expect(String(specific.additionalContext ?? "")).toContain("graph");
+  });
+
+  it("does not flag search tools that filter piped output", async () => {
+    await startSession();
+    const result = await runHook("pre-tool-use", {
+      tool_name: "Bash",
+      tool_input: { command: 'swarmvault graph status | grep -E "State"' },
+      cwd: workspace
+    });
+    expect(result.output).toEqual({});
   });
 
   it("denies the first Grep and allows the retry", async () => {

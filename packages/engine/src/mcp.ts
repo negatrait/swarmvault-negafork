@@ -45,7 +45,7 @@ import {
 } from "./vault.js";
 import { getWatchStatus, runWatchCycle } from "./watch.js";
 
-const SERVER_VERSION = "3.17.0";
+const SERVER_VERSION = "3.18.0";
 const codeLanguageSchema = z.enum([
   "javascript",
   "jsx",

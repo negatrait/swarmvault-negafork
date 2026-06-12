@@ -872,10 +872,14 @@ describe("swarmvault workflow", () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const claudeTarget = await installAgent(rootDir, "claude", { hook: true });
+    const claudeTarget = await installAgent(rootDir, "claude", { hook: true, graphFirst: "deny" });
     expect(claudeTarget.target).toBe(path.join(rootDir, "CLAUDE.md"));
     expect(claudeTarget.targets).toContain(path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js"));
     expect(await fs.readFile(path.join(rootDir, "CLAUDE.md"), "utf8")).toContain("swarmvault graph query");
+    const installConfig = JSON.parse(await fs.readFile(path.join(rootDir, "swarmvault.config.json"), "utf8")) as {
+      hooks?: { graphFirst?: string };
+    };
+    expect(installConfig.hooks?.graphFirst).toBe("deny");
 
     const settingsPath = path.join(rootDir, ".claude", "settings.json");
     const scriptPath = path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js");

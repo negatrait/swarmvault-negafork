@@ -2307,6 +2307,45 @@ function preparedMatchesManifest(manifest: SourceManifest, prepared: PreparedInp
   );
 }
 
+/**
+ * Stored manifests hash the redacted payload/extract (see
+ * `persistPreparedInput`), so change detection must compare against the same
+ * redacted view or sources the redactor rewrote read as permanently modified.
+ */
+function applyComparisonRedaction(prepared: PreparedInput, redactor?: Redactor | null): PreparedInput {
+  if (!redactor) {
+    return prepared;
+  }
+  let payloadBytes = prepared.payloadBytes;
+  let changed = false;
+  if (shouldRedactPayload(prepared)) {
+    const result = redactor.redact(payloadBytes.toString("utf8"));
+    if (result.matches.length) {
+      payloadBytes = Buffer.from(result.text, "utf8");
+      changed = true;
+    }
+  }
+  let extractedText = prepared.extractedText;
+  if (extractedText) {
+    const result = redactor.redact(extractedText);
+    if (result.matches.length) {
+      extractedText = result.text;
+      changed = true;
+    }
+  }
+  if (!changed) {
+    return prepared;
+  }
+  return {
+    ...prepared,
+    payloadBytes,
+    extractedText,
+    contentHash: undefined,
+    semanticHash: undefined,
+    extractionHash: undefined
+  };
+}
+
 function shouldDeferWatchSemanticRefresh(sourceKind: SourceManifest["sourceKind"]): boolean {
   return (
     sourceKind === "markdown" ||
@@ -2414,6 +2453,41 @@ export async function checkTrackedRepoChanges(rootDir: string, repoRoots?: strin
       const contentHash = sha256(payloadBytes);
       const existingMatches = existing.length > 0 && existing.every((manifest) => manifest.contentHash === contentHash);
       if (existingMatches) {
+        continue;
+      }
+      // Stored hashes cover the prepared (redacted/composite) payload, so a
+      // raw-byte mismatch can be a false positive for sources the redactor
+      // rewrote, and a missing manifest can mean the content was deduped onto
+      // another path's manifest. Confirm through the same prepare pipeline
+      // the sync uses before reporting the file as changed.
+      const relativePath = repoRelativePathFor(absolutePath, repoRoot) ?? toPosix(path.relative(repoRoot, absolutePath));
+      const preparedInputs = (
+        await prepareFileInputs(rootDir, absolutePath, repoRoot, sourceClassForRelativePath(relativePath, normalizedOptions))
+      ).map((prepared) => applyComparisonRedaction(prepared, normalizedOptions.redactor));
+      if (existing.length > 0) {
+        const existingByPartKey = new Map(existing.map((manifest) => [manifest.sourcePartKey ?? "__single__", manifest]));
+        const preparedMatches =
+          existing.length === preparedInputs.length &&
+          preparedInputs.every((prepared) => {
+            const match = existingByPartKey.get(prepared.sourcePartKey ?? "__single__");
+            return (
+              Boolean(match) &&
+              preparedMatchesManifest(match as SourceManifest, prepared, buildCompositeHash(prepared.payloadBytes, prepared.attachments))
+            );
+          });
+        if (preparedMatches) {
+          continue;
+        }
+      } else if (
+        preparedInputs.length > 0 &&
+        preparedInputs.every(
+          (prepared) =>
+            !prepared.sourcePartKey &&
+            manifests.some((manifest) => manifest.contentHash === buildCompositeHash(prepared.payloadBytes, prepared.attachments))
+        )
+      ) {
+        // Identical content already lives in the vault under another path —
+        // ingest dedupes by content hash, so this is not a pending change.
         continue;
       }
       const sourceKind = existing[0]?.sourceKind ?? (await inferTrackedFileSourceKind(absolutePath));
@@ -2635,19 +2709,20 @@ export async function syncTrackedReposForWatch(
       );
       const firstPrepared = preparedInputs[0];
       if (firstPrepared && shouldDeferWatchSemanticRefresh(firstPrepared.sourceKind)) {
+        const comparisonInputs = preparedInputs.map((prepared) => applyComparisonRedaction(prepared, normalizedOptions.redactor));
         const existing = repoManifests.filter(
           (manifest) => manifest.originalPath && path.resolve(manifest.originalPath) === path.resolve(absolutePath)
         );
         const existingByPartKey = new Map(existing.map((manifest) => [manifest.sourcePartKey ?? "__single__", manifest]));
         const changed =
-          existing.length !== preparedInputs.length ||
-          preparedInputs.some((prepared) => {
+          existing.length !== comparisonInputs.length ||
+          comparisonInputs.some((prepared) => {
             const match = existingByPartKey.get(prepared.sourcePartKey ?? "__single__");
             const contentHash = buildCompositeHash(prepared.payloadBytes, prepared.attachments);
             return !match || !preparedMatchesManifest(match, prepared, contentHash);
           }) ||
           existing.some(
-            (manifest) => !preparedInputs.some((prepared) => (prepared.sourcePartKey ?? "") === (manifest.sourcePartKey ?? ""))
+            (manifest) => !comparisonInputs.some((prepared) => (prepared.sourcePartKey ?? "") === (manifest.sourcePartKey ?? ""))
           );
         if (changed) {
           pendingSemanticRefresh.push({
@@ -2875,16 +2950,17 @@ export async function syncTrackedFiles(rootDir: string, filePaths: string[], opt
     );
     const firstPrepared = preparedInputs[0];
     if (firstPrepared && shouldDeferWatchSemanticRefresh(firstPrepared.sourceKind)) {
+      const comparisonInputs = preparedInputs.map((prepared) => applyComparisonRedaction(prepared, normalizedOptions.redactor));
       const existingByPartKey = new Map(fileManifests.map((manifest) => [manifest.sourcePartKey ?? "__single__", manifest]));
       const changed =
-        fileManifests.length !== preparedInputs.length ||
-        preparedInputs.some((prepared) => {
+        fileManifests.length !== comparisonInputs.length ||
+        comparisonInputs.some((prepared) => {
           const match = existingByPartKey.get(prepared.sourcePartKey ?? "__single__");
           const contentHash = buildCompositeHash(prepared.payloadBytes, prepared.attachments);
           return !match || !preparedMatchesManifest(match, prepared, contentHash);
         }) ||
         fileManifests.some(
-          (manifest) => !preparedInputs.some((prepared) => (prepared.sourcePartKey ?? "") === (manifest.sourcePartKey ?? ""))
+          (manifest) => !comparisonInputs.some((prepared) => (prepared.sourcePartKey ?? "") === (manifest.sourcePartKey ?? ""))
         );
       if (changed) {
         pendingSemanticRefresh.push({

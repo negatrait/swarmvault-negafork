@@ -152,9 +152,9 @@ program.addHelpText("after", (context) =>
 function readCliVersion(): string {
   try {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: string };
-    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.17.0";
+    return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "3.18.0";
   } catch {
-    return "3.17.0";
+    return "3.18.0";
   }
 }
 
@@ -3489,8 +3489,12 @@ install
   )
   .option("--hook", "Also install hook/plugin guidance when the target agent supports it", false)
   .option("--mcp", "Also register the SwarmVault MCP server in the agent's project MCP config", false)
+  .option(
+    "--graph-first [mode]",
+    "Opt in to graph-first search enforcement for installed hooks: deny (default when the flag is passed), context, or off; persisted as hooks.graphFirst"
+  )
   .option("--scope <scope>", "Install scope: project or user", "project")
-  .action(async (options: { agent?: AgentType; hook?: boolean; mcp?: boolean; scope?: string }) => {
+  .action(async (options: { agent?: AgentType; hook?: boolean; mcp?: boolean; graphFirst?: string | boolean; scope?: string }) => {
     if (!options.agent) {
       throw new Error("Specify --agent <agent>.");
     }
@@ -3501,12 +3505,30 @@ install
     if (options.mcp && options.agent !== "claude") {
       throw new Error("--mcp is currently only supported for --agent claude (project-level .mcp.json)");
     }
+    let graphFirst: "deny" | "context" | "off" | undefined;
+    if (options.graphFirst !== undefined) {
+      const mode = options.graphFirst === true ? "deny" : String(options.graphFirst).toLowerCase();
+      if (mode !== "deny" && mode !== "context" && mode !== "off") {
+        throw new Error("--graph-first accepts deny, context, or off");
+      }
+      graphFirst = mode;
+    }
     const scope = options.scope === "user" ? "user" : "project";
-    const result = await installAgent(process.cwd(), options.agent, { hook: options.hook ?? false, mcp: options.mcp ?? false, scope });
+    const result = await installAgent(process.cwd(), options.agent, {
+      hook: options.hook ?? false,
+      mcp: options.mcp ?? false,
+      graphFirst,
+      scope
+    });
     if (isJson()) {
-      emitJson({ ...result, hook: options.hook ?? false, mcp: options.mcp ?? false, scope });
+      emitJson({ ...result, hook: options.hook ?? false, mcp: options.mcp ?? false, graphFirst: graphFirst ?? null, scope });
     } else {
       log(`Installed rules into ${result.target}`);
+      if (graphFirst) {
+        log(`Graph-first hook mode set to "${graphFirst}" in swarmvault.config.json.`);
+      } else if (options.hook) {
+        log('Hooks run in advisory mode by default; add --graph-first to opt in to search enforcement (hooks.graphFirst: "deny").');
+      }
       if (result.targets.length > 1) {
         log(`Also wrote: ${result.targets.filter((entry) => entry !== result.target).join(", ")}`);
       }

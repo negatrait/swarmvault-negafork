@@ -356,7 +356,7 @@ swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
 swarmvault install status --agent kilo --hook
 ```
 
-hook 対応エージェントでは、インストールされた hook が graph-first の読み取りを提案するだけでなく実際に強制します。Claude Code の場合、`--hook` はセッション開始時に graph-first の指示を注入します — コード理解系の質問にはプレーンな `swarmvault graph query|explain|path` コマンド（`--json` は出力がはるかに大きくなるため避ける）、`swarmvault query`、`swarmvault context build`、または `wiki/graph/report.md` で答え、ソースファイルは編集するときだけ直接読む — に加えてグラフ鮮度の注意書きも添えます。`swarmvault graph query "<seed>"` はページパス付きの上位マッチに加えて、最も一致した wiki ページのインライン抜粋を表示するため、たいてい 1 コマンドで「X はどこか / Y を呼ぶのは何か」という質問にファイルの追加読み込みなしで答えられます。各セッションで最初の広い Grep/Glob/Bash 検索をインターセプトして、これらのプレーンなグラフコマンドとそのインライン抜粋へのガイド付きリダイレクトを返し（同じ検索を繰り返せばそのまま通るため、作業がブロックされることはありません）、Edit/Write ツールの後にはバックグラウンドで `swarmvault graph update --file <path>` を起動してグラフを編集に追従させます。ボルトのアーティファクトディレクトリ（`wiki/`、`raw/`、`state/`）や単一ファイルに限定された検索は決してインターセプトされません。動作は `SWARMVAULT_GRAPH_FIRST=deny|context|off`（デフォルト `deny`）または `swarmvault.config.json` の `hooks.graphFirst` キーで制御できます。Codex、Gemini、Copilot、OpenCode、Kilo の hook にも同じ graph-first ガイダンス — セッションノートと、各ツールの hook API に合わせた一度きりの検索リダイレクト — が入ります。
+hook 対応エージェントでは、インストールされた hook が graph-first の読み取りをガイドし、強制はオプトインです。Claude Code の場合、`--hook` はセッション開始時に graph-first の指示を注入します — コード理解系の質問にはプレーンな `swarmvault graph query|explain|path` コマンド（`--json` は出力がはるかに大きくなるため避ける）、`swarmvault query`、`swarmvault context build`、または `wiki/graph/report.md` で答え、ソースファイルは編集するときだけ直接読む — に加えてグラフ鮮度の注意書きも添えます。`swarmvault graph query "<seed>"` はページパス付きの上位マッチに加えて、最も一致した wiki ページのインライン抜粋を表示するため、たいてい 1 コマンドで「X はどこか / Y を呼ぶのは何か」という質問にファイルの追加読み込みなしで答えられます。デフォルトでは hook はアドバイザリーモード（`context`）で動作します: 各セッションで最初の広い Grep/Glob/Bash 検索に対して、これらのプレーンなグラフコマンドを指す一度きりのガイダンスノートが付くだけで、何も拒否されません。インストール時に `--graph-first` を渡すと強制にオプトインでき、その場合は各セッションで最初の広い検索が一度だけ拒否され、これらのプレーンなグラフコマンドとそのインライン抜粋へのガイド付きリダイレクトが返ります（同じ検索を繰り返せばそのまま通るため、作業がブロックされることはありません）。このフラグは省略可能な値 — `deny`（フラグを渡したときのデフォルト）、`context`、`off` — を受け取り、選んだモードを `swarmvault.config.json` の `hooks.graphFirst` として永続化します。`SWARMVAULT_GRAPH_FIRST=deny|context|off` はセッション単位で引き続き上書きできます。Edit/Write ツールの後にはバックグラウンドで `swarmvault graph update --file <path>` を起動してグラフを編集に追従させます。ボルトのアーティファクトディレクトリ（`wiki/`、`raw/`、`state/`）や単一ファイルに限定された検索は決してインターセプトされず、パイプ出力をフィルタするだけの検索ツール（例: `some-command | grep …`）は広いファイル検索として扱われません。Codex、Gemini、Copilot、OpenCode、Kilo の hook にも同じ graph-first ガイダンス — セッションノートと、各ツールの hook API に合わせた一度きりの検索リダイレクト — が入ります。
 
 `swarmvault install --agent claude --mcp` はプロジェクトの `.mcp.json` に SwarmVault MCP server を登録します（`{"mcpServers":{"swarmvault":{"command":"swarmvault","args":["mcp"]}}}`）。Claude のインストールでは `.claude/skills/swarmvault/SKILL.md` にプロジェクト skill bundle も書き込まれます。`--scope user` を使うと skill・hook・settings が `~/.claude` 配下に一度だけインストールされ、すべてのリポジトリで有効になります — コンパイル済みグラフレポートのないリポジトリでは hook は何もしません。
 
@@ -365,8 +365,8 @@ hook 対応エージェントでは、インストールされた hook が graph
 ```bash
 cd <repo>
 swarmvault init && swarmvault ingest .
-swarmvault install --agent claude --hook --mcp
-swarmvault hook install        # commit/checkout 時の git-hook リフレッシュ
+swarmvault install --agent claude --hook --mcp --graph-first
+swarmvault hook install        # commit/checkout 時の git-hook リフレッシュ。追跡対象リポジトリがボルトルートより下にある場合は省略可能なリポジトリパス引数（例: `swarmvault hook install packages/app`）を受け取ります
 ```
 
 `swarmvault install --agent <agent> [--scope project|user]` で project scope または user scope を選べます。`swarmvault install status --agent <agent>` は対象ファイルの存在を read-only で報告します。
@@ -472,7 +472,7 @@ clawhub install swarmvault
 
 **任意のモデルプロバイダー** - OpenAI、Anthropic、Gemini、Ollama、OpenRouter、Groq、Together、xAI、Cerebras、汎用 OpenAI-compatible、custom adapters、そしてオフライン/ローカル既定の heuristic を使えます。
 
-**Agent integration** - Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Kilo、Hermes、Google Antigravity、VS Code Copilot Chat、Devin、および extended skill-bundle roster 用の規則を明示的にインストールします。`init`、`quickstart`、`scan`、`clone` は、設定済みインストールを選ばない限りプロジェクトローカル rule files を書きません。任意の graph-first hooks は対応エージェントに graph-first の読み取りを強制します — セッション開始時のグラフガイダンスと鮮度注意書き、一度きりの広域検索リダイレクト（同じ検索の再実行は常に許可）、Claude Code では編集後の自動バックグラウンドのファイル単位グラフリフレッシュで、`SWARMVAULT_GRAPH_FIRST` または `hooks.graphFirst` で設定できます。Antigravity は `.agents/rules/` と `.agents/workflows/` にインストールされ、再インストール時に古い fully managed `.agent/` files をクリーンアップします。
+**Agent integration** - Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Kilo、Hermes、Google Antigravity、VS Code Copilot Chat、Devin、および extended skill-bundle roster 用の規則を明示的にインストールします。`init`、`quickstart`、`scan`、`clone` は、設定済みインストールを選ばない限りプロジェクトローカル rule files を書きません。任意の graph-first hooks は対応エージェントの graph-first 読み取りをガイドします — セッション開始時のグラフガイダンスと鮮度注意書き、最初の広域検索への一度きりのアドバイザリーノート（または `--graph-first` の強制オプトインで一度きりの拒否リダイレクト、同じ検索の再実行は常に許可）、Claude Code では編集後の自動バックグラウンドのファイル単位グラフリフレッシュで、`SWARMVAULT_GRAPH_FIRST` または `hooks.graphFirst` で設定できます。Antigravity は `.agents/rules/` と `.agents/workflows/` にインストールされ、再インストール時に古い fully managed `.agent/` files をクリーンアップします。
 
 **MCP server** - `swarmvault mcp` は graph stats、read-only のグラフ鮮度チェック（`graph_status`）、コード限定グラフリフレッシュ（`update_graph`、ファイル単位指定も可）、graph clustering refresh、community lookup、hyperedges、context-pack、task-ledger、互換 memory-task、vault doctor、retrieval health tools を含むボルト操作を stdio 経由で互換エージェントクライアントへ公開します。リポジトリには、stdio container entrypoint を検証する MCP server registry 向けの Docker/registry metadata も含まれます。
 
@@ -555,7 +555,7 @@ clawhub install swarmvault
 | Windsurf | `swarmvault install --agent windsurf` |
 | Zencoder | `swarmvault install --agent zencoder` |
 
-Codex、Claude Code、OpenCode、Gemini CLI、Copilot、Kilo は `--hook` にも対応しており、graph-first の読み取りを強制できます。Claude Code はさらに `--mcp` でプロジェクトの `.mcp.json` への MCP server 登録に、`--scope user` で `~/.claude` 配下への skill/hook/settings の一括インストールに対応します。Project-scope installs は skills directory を持つ agent に skill bundle を書けます。`--scope user` は対応する user-level skill files を書きます。
+Codex、Claude Code、OpenCode、Gemini CLI、Copilot、Kilo は `--hook` にも対応しており、graph-first の読み取りをガイドします（デフォルトはアドバイザリー。`--graph-first` で強制にオプトイン）。Claude Code はさらに `--mcp` でプロジェクトの `.mcp.json` への MCP server 登録に、`--scope user` で `~/.claude` 配下への skill/hook/settings の一括インストールに対応します。Project-scope installs は skills directory を持つ agent に skill bundle を書けます。`--scope user` は対応する user-level skill files を書きます。
 
 <!-- readme-section:worked-examples -->
 ## 実例

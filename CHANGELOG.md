@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+## 3.18.0
+
+- Made graph-first search enforcement opt-in: installed agent hooks now default to advisory mode (`context`), and `swarmvault install --agent <agent> --hook --graph-first [deny|context|off]` persists the chosen mode as `hooks.graphFirst` in `swarmvault.config.json` (`SWARMVAULT_GRAPH_FIRST` still overrides per session).
+- Stopped the graph-first hooks from flagging search tools that filter piped output (e.g. `some-command | grep …`); only a search tool leading a pipeline counts as a broad file search.
+- Fixed `graph status` permanently reporting redacted or composite sources as modified by confirming raw-byte mismatches through the same prepare pipeline the sync uses before counting them as changes.
 - Added an optional repo argument to `swarmvault hook install|uninstall|status` so git hooks can target a tracked repo below the vault root (e.g. a workspace-parent vault watching repos in subdirectories); the installed hook still refreshes from the vault root.
 - Hardened the post-publish live smoke against npm registry propagation races by retrying the published-package install with backoff instead of failing the release sequence.
+- Updated OSS docs, localized READMEs, site docs, and the published ClawHub skill bundle for the opt-in graph-first workflow.
+- Bumped OSS packages, viewer, Obsidian plugin metadata, MCP-facing version, ClawHub skill metadata, and desktop package metadata to `3.18.0`.
 
 ## 3.17.0
 

@@ -140,6 +140,7 @@ swarmvault graph update --file packages/engine/src/index.ts
 swarmvault graph update . --force
 swarmvault watch status
 swarmvault hook install
+swarmvault hook install packages/app   # repo below the vault root
 swarmvault schedule list
 swarmvault schedule run <job-id>
 ```
@@ -150,6 +151,7 @@ swarmvault schedule run <job-id>
 swarmvault install --agent codex --hook
 swarmvault install --agent claude --hook
 swarmvault install --agent claude --hook --mcp
+swarmvault install --agent claude --hook --mcp --graph-first
 swarmvault install --agent claude --hook --scope user
 swarmvault install --agent gemini --hook
 swarmvault install --agent opencode --hook
@@ -164,4 +166,4 @@ swarmvault install status --agent kilo --hook
 swarmvault install status --agent claude --hook --mcp
 ```
 
-The Claude Code hook enforces graph-first reads: session-start graph instructions plus a staleness note, a one-time redirect of the first broad Grep/Glob/Bash search per session (repeating the search is allowed), and a background `swarmvault graph update --file <path>` refresh after Edit/Write. Configure with `SWARMVAULT_GRAPH_FIRST=deny|context|off` or `hooks.graphFirst` in `swarmvault.config.json`. `--mcp` registers the MCP server in the project `.mcp.json`; `--scope user` installs the Claude skill, hook, and settings under `~/.claude`.
+The Claude Code hook guides graph-first reads: session-start graph instructions plus a staleness note, a one-time advisory note on the first broad Grep/Glob/Bash search per session, and a background `swarmvault graph update --file <path>` refresh after Edit/Write. Add `--graph-first` to opt in to enforcement (the first broad search is denied once with a guided redirect; repeating the search is allowed) — it persists `hooks.graphFirst: "deny"` in `swarmvault.config.json`, and `SWARMVAULT_GRAPH_FIRST=deny|context|off` overrides per session. `--mcp` registers the MCP server in the project `.mcp.json`; `--scope user` installs the Claude skill, hook, and settings under `~/.claude`.

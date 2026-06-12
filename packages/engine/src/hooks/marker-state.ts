@@ -187,17 +187,25 @@ function collectCommandCandidates(node: unknown, acc: string[] = []): string[] {
 }
 
 function commandLooksLikeBroadSearch(command: string): boolean {
-  const tokens = command
-    .replace(/[;&|()]/g, " ")
-    .split(/\s+/)
-    .map((token) => path.basename(token.replace(/^['"]|['"]$/g, "")))
-    .filter(Boolean);
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (["rg", "grep", "find", "fd", "ag", "ack"].includes(token)) {
+  // A search tool reading from a pipe filters another command's output —
+  // not a file search — so within each statement only the first pipeline
+  // stage counts.
+  const statements = command.split(/;|&&|\|\|/);
+  for (const statement of statements) {
+    const firstStage = statement.split("|")[0] ?? "";
+    const tokens = firstStage
+      .replace(/[()]/g, " ")
+      .split(/\s+/)
+      .map((token) => path.basename(token.replace(/^['"]|['"]$/g, "")))
+      .filter(Boolean);
+    const leading = tokens.find((token) => !token.includes("=") && !token.startsWith("-"));
+    if (!leading) {
+      continue;
+    }
+    if (["rg", "grep", "find", "fd", "ag", "ack"].includes(leading)) {
       return true;
     }
-    if (token === "git" && tokens[index + 1] === "grep") {
+    if (leading === "git" && tokens[tokens.indexOf(leading) + 1] === "grep") {
       return true;
     }
   }
@@ -263,8 +271,9 @@ export type GraphFirstMode = "deny" | "context" | "off";
 
 /**
  * Resolution order: SWARMVAULT_GRAPH_FIRST env var, then `hooks.graphFirst`
- * in swarmvault.config.json, then the "deny" default (deny-once-per-session
- * guided redirect).
+ * in swarmvault.config.json, then the "context" default. Enforcement
+ * ("deny", the once-per-session guided redirect) is opt-in — set it at
+ * install time with `swarmvault install --agent <a> --hook --graph-first`.
  */
 export async function resolveGraphFirstMode(cwd: string): Promise<GraphFirstMode> {
   const fromEnv = process.env.SWARMVAULT_GRAPH_FIRST?.trim().toLowerCase();
@@ -281,7 +290,7 @@ export async function resolveGraphFirstMode(cwd: string): Promise<GraphFirstMode
   } catch {
     // No config or unreadable config: fall through to the default.
   }
-  return "deny";
+  return "context";
 }
 
 export interface WatchStaleness {

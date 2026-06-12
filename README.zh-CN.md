@@ -354,7 +354,7 @@ swarmvault install --agent vscode           # VS Code Copilot Chat chatmode
 swarmvault install status --agent kilo --hook
 ```
 
-对支持 hook 的 agent，安装的 hook 现在会强制 graph-first 读取，而不只是建议。对 Claude Code，`--hook` 会在会话开始时注入 graph-first 指令——代码理解类问题先用普通的 `swarmvault graph query|explain|path` 命令（避免 `--json`，其输出会大得多）、`swarmvault query`、`swarmvault context build` 或 `wiki/graph/report.md` 回答，只有在编辑源文件时才直接读取——并附带图谱新鲜度提示。`swarmvault graph query "<seed>"` 会打印带页面路径的最佳匹配列表，并内联给出最匹配 wiki 页面的摘录，因此通常一条命令就能回答“X 在哪 / 谁调用了 Y”这类问题，无需再读文件。它会拦截每个会话中第一次大范围 Grep/Glob/Bash 搜索，给出指向这些普通图谱命令及其内联摘录的引导式重定向（之后重复同一搜索即可放行，因此永远不会阻塞工作），并在 Edit/Write 工具之后在后台启动 `swarmvault graph update --file <path>` 刷新，让图谱跟随你的编辑。针对知识库工件目录（`wiki/`、`raw/`、`state/`）或单个文件的搜索永远不会被拦截。可通过 `SWARMVAULT_GRAPH_FIRST=deny|context|off`（默认 `deny`）或 `swarmvault.config.json` 中的 `hooks.graphFirst` 键控制该行为。Codex、Gemini、Copilot、OpenCode 和 Kilo 的 hook 带有同样的 graph-first 指引——会话提示加一次性搜索重定向，按各工具的 hook API 适配。
+对支持 hook 的 agent，安装的 hook 会引导 graph-first 读取，强制执行则是可选项。对 Claude Code，`--hook` 会在会话开始时注入 graph-first 指令——代码理解类问题先用普通的 `swarmvault graph query|explain|path` 命令（避免 `--json`，其输出会大得多）、`swarmvault query`、`swarmvault context build` 或 `wiki/graph/report.md` 回答，只有在编辑源文件时才直接读取——并附带图谱新鲜度提示。`swarmvault graph query "<seed>"` 会打印带页面路径的最佳匹配列表，并内联给出最匹配 wiki 页面的摘录，因此通常一条命令就能回答“X 在哪 / 谁调用了 Y”这类问题，无需再读文件。默认情况下 hook 运行在建议模式（`context`）：每个会话中第一次大范围 Grep/Glob/Bash 搜索只会得到一条指向这些普通图谱命令的一次性引导提示，不会有任何拒绝。在安装时传入 `--graph-first` 即可选择启用强制执行：此时每个会话中第一次大范围搜索会被拒绝一次，并给出指向这些普通图谱命令及其内联摘录的引导式重定向（之后重复同一搜索即可放行，因此永远不会阻塞工作）。该标志接受可选取值——`deny`（传入该标志时的默认值）、`context` 或 `off`——并把所选模式持久化为 `swarmvault.config.json` 中的 `hooks.graphFirst`；`SWARMVAULT_GRAPH_FIRST=deny|context|off` 仍可按会话覆盖。Edit/Write 工具之后，hook 会在后台启动 `swarmvault graph update --file <path>` 刷新，让图谱跟随你的编辑。针对知识库工件目录（`wiki/`、`raw/`、`state/`）或单个文件的搜索永远不会被拦截，仅过滤管道输出的搜索工具（例如 `some-command | grep …`）也不算大范围搜索。Codex、Gemini、Copilot、OpenCode 和 Kilo 的 hook 带有同样的 graph-first 指引——会话提示加一次性搜索重定向，按各工具的 hook API 适配。
 
 `swarmvault install --agent claude --mcp` 还会把 SwarmVault MCP server 注册到项目的 `.mcp.json`（`{"mcpServers":{"swarmvault":{"command":"swarmvault","args":["mcp"]}}}`）。Claude 安装还会在 `.claude/skills/swarmvault/SKILL.md` 写入项目级 skill 包；`--scope user` 会在 `~/.claude` 下一次性安装 skill、hook 和 settings，对所有仓库生效——在没有编译图谱报告的仓库中 hook 会自动跳过。
 
@@ -363,8 +363,8 @@ swarmvault install status --agent kilo --hook
 ```bash
 cd <repo>
 swarmvault init && swarmvault ingest .
-swarmvault install --agent claude --hook --mcp
-swarmvault hook install        # git hook 在 commit/checkout 时刷新
+swarmvault install --agent claude --hook --mcp --graph-first
+swarmvault hook install        # git hook 在 commit/checkout 时刷新；当被跟踪仓库位于知识库根目录之下时，可附加可选的仓库路径参数（例如 `swarmvault hook install packages/app`）
 ```
 
 `swarmvault install --agent <agent> [--scope project|user]` 可选择项目级或用户级安装；`swarmvault install status --agent <agent>` 会只读报告目标文件是否存在。
@@ -470,7 +470,7 @@ clawhub install swarmvault
 
 **可选模型提供方** - OpenAI、Anthropic、Gemini、Ollama、OpenRouter、Groq、Together、xAI、Cerebras、通用 OpenAI-compatible、自定义适配器，以及适合离线/本地默认流程的 heuristic。
 
-**Agent 集成** - 显式安装 Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Kilo、Hermes、Google Antigravity、VS Code Copilot Chat、Devin，以及扩展 skill-bundle roster 的规则。`init`、`quickstart`、`scan` 和 `clone` 默认不会写项目本地规则文件，除非你选择配置安装。可选 graph-first hooks 会对支持的 agent 强制 graph-first 读取——会话开始时注入图谱指引和新鲜度提示、一次性的大范围搜索重定向（重复同一搜索始终放行），以及 Claude Code 在编辑后自动触发的后台按文件图谱刷新，可通过 `SWARMVAULT_GRAPH_FIRST` 或 `hooks.graphFirst` 配置。Antigravity 会安装到 `.agents/rules/` 与 `.agents/workflows/`；重新安装时会清理旧的全托管 `.agent/` 文件。
+**Agent 集成** - 显式安装 Codex、Claude Code、Cursor、Goose、Pi、Gemini CLI、OpenCode、Aider、GitHub Copilot CLI、Trae、Claw/OpenClaw、Droid、Kiro、Kilo、Hermes、Google Antigravity、VS Code Copilot Chat、Devin，以及扩展 skill-bundle roster 的规则。`init`、`quickstart`、`scan` 和 `clone` 默认不会写项目本地规则文件，除非你选择配置安装。可选 graph-first hooks 会引导支持的 agent 进行 graph-first 读取——会话开始时注入图谱指引和新鲜度提示、第一次大范围搜索的一次性建议提示（或通过 `--graph-first` 选择启用强制执行后的拒绝一次重定向，重复同一搜索始终放行），以及 Claude Code 在编辑后自动触发的后台按文件图谱刷新，可通过 `SWARMVAULT_GRAPH_FIRST` 或 `hooks.graphFirst` 配置。Antigravity 会安装到 `.agents/rules/` 与 `.agents/workflows/`；重新安装时会清理旧的全托管 `.agent/` 文件。
 
 **MCP server** - `swarmvault mcp` 通过 stdio 把知识库暴露给任意兼容的代理客户端，包括 graph stats、只读图谱新鲜度检查（`graph_status`）、仅代码图谱刷新（`update_graph`，可按文件指定）、graph clustering refresh、community lookup、hyperedges、context-pack、task ledger、兼容 memory-task、vault doctor 与 retrieval health 工具。仓库也包含 Docker/registry metadata，供会验证 stdio container entrypoint 的 MCP server registry 使用。
 
@@ -553,7 +553,7 @@ clawhub install swarmvault
 | Windsurf | `swarmvault install --agent windsurf` |
 | Zencoder | `swarmvault install --agent zencoder` |
 
-Codex、Claude Code、OpenCode、Gemini CLI、Copilot 和 Kilo 还支持 `--hook`，用于强制 graph-first 读取。Claude Code 还支持 `--mcp`，可在项目 `.mcp.json` 中注册 MCP server，并支持 `--scope user` 在 `~/.claude` 下一次性安装 skill/hook/settings。项目级安装也可以为有 skills 目录的 agent 写入 skill 包；`--scope user` 会在支持时写入用户级 skill 文件。
+Codex、Claude Code、OpenCode、Gemini CLI、Copilot 和 Kilo 还支持 `--hook`，用于引导 graph-first 读取（默认建议模式；加 `--graph-first` 选择启用强制执行）。Claude Code 还支持 `--mcp`，可在项目 `.mcp.json` 中注册 MCP server，并支持 `--scope user` 在 `~/.claude` 下一次性安装 skill/hook/settings。项目级安装也可以为有 skills 目录的 agent 写入 skill 包；`--scope user` 会在支持时写入用户级 skill 文件。
 
 <!-- readme-section:worked-examples -->
 ## 示例项目
