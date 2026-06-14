@@ -6167,10 +6167,32 @@ export async function searchVault(rootDir: string, query: string, limit = 5): Pr
 
 async function rerankSearchResults(rootDir: string, query: string, results: SearchResult[], limit: number): Promise<SearchResult[]> {
   const provider = await getProviderForTask(rootDir, "queryProvider");
-  const candidates = results
-    .slice(0, Math.min(results.length, 20))
-    .map((r, i) => `[${i}] ${r.title} — ${r.snippet || r.path}`)
-    .join("\n");
+  const candidateResults = results.slice(0, Math.min(results.length, 20));
+  const candidateLines = await Promise.all(
+    candidateResults.map(async (r, i) => {
+      let snippet = r.snippet;
+      if (!snippet || snippet.trim() === "") {
+        const lowerPath = r.path.toLowerCase();
+        if (lowerPath.endsWith(".md") || lowerPath.endsWith(".mdx")) {
+          try {
+            const absolutePath = path.isAbsolute(r.path) ? r.path : path.join(rootDir, r.path);
+            if (await fileExists(absolutePath)) {
+              const rawContent = await fs.readFile(absolutePath, "utf-8");
+              const parsed = matter(rawContent);
+              const body = parsed.content.trim();
+              if (body) {
+                snippet = body.slice(0, 200).replace(/\s+/g, " ") + (body.length > 200 ? "..." : "");
+              }
+            }
+          } catch {
+            // Silently fall back to file path
+          }
+        }
+      }
+      return `[${i}] ${r.title} — ${snippet || r.path}`;
+    })
+  );
+  const candidates = candidateLines.join("\n");
   const prompt = `Given the search query: "${query}"\n\nRank these results by relevance (most relevant first).\n\n${candidates}`;
   try {
     const indices = await provider.generateStructured(
