@@ -368,6 +368,7 @@ export interface VaultConfig {
     imageProvider?: string;
     embeddingProvider?: string;
     audioProvider?: string;
+    rerankProvider?: string;
   };
   viewer: {
     port: number;

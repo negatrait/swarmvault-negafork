@@ -73,6 +73,7 @@ import {
 } from "./output-artifacts.js";
 import { loadSavedOutputPages, relatedOutputsForPage, resolveUniqueOutputSlug } from "./outputs.js";
 import { loadExistingManagedPageState, loadInsightPages, parseStoredPage } from "./pages.js";
+import { getProviderConfigEntry } from "./providers/config-store.js";
 import { getProviderForTask } from "./providers/registry.js";
 import { resolveRetrievalConfig, writeRetrievalManifest } from "./retrieval.js";
 import {
@@ -6166,6 +6167,110 @@ export async function searchVault(rootDir: string, query: string, limit = 5): Pr
 }
 
 async function rerankSearchResults(rootDir: string, query: string, results: SearchResult[], limit: number): Promise<SearchResult[]> {
+  let rerankProviderName: string | undefined;
+
+  try {
+    const { config } = await loadVaultConfig(rootDir);
+    rerankProviderName = config.tasks.rerankProvider;
+  } catch {
+    rerankProviderName = undefined;
+  }
+
+  // --- PATH A: Dedicated High-Performance Cross-Encoder Execution ---
+  if (rerankProviderName) {
+    try {
+      const providerConfigEntry = await getProviderConfigEntry(rootDir, rerankProviderName);
+
+      if (providerConfigEntry && providerConfigEntry.provider.type === "openai-compatible") {
+        const providerConfig = providerConfigEntry.provider;
+        const apiBase = providerConfig.baseUrl || "http://localhost:13305/v1";
+        const modelName = providerConfig.model || "bge-reranker-large";
+        const apiKey =
+          providerConfig.apiKeyEnv && process.env[providerConfig.apiKeyEnv] ? process.env[providerConfig.apiKeyEnv] : "local-bypass";
+
+        // Target candidate slice
+        const candidateLimit = Math.min(results.length, Math.max(limit * 2, 8), 20);
+        const candidates = results.slice(0, candidateLimit);
+
+        // Resolve raw content snippet blocks
+        const documents = await Promise.all(
+          candidates.map(async (r) => {
+            let snippet = r.snippet;
+            if (!snippet || snippet.trim() === "") {
+              const lowerPath = r.path.toLowerCase();
+              if (lowerPath.endsWith(".md") || lowerPath.endsWith(".mdx")) {
+                try {
+                  const absolutePath = path.isAbsolute(r.path) ? r.path : path.join(rootDir, r.path);
+                  if (await fileExists(absolutePath)) {
+                    const rawContent = await fs.readFile(absolutePath, "utf-8");
+                    const parsed = matter(rawContent);
+                    const body = parsed.content.trim();
+                    if (body) {
+                      snippet = body.slice(0, 200).replace(/\s+/g, " ") + (body.length > 200 ? "..." : "");
+                    }
+                  }
+                } catch {
+                  // Silently fall back to file path
+                }
+              }
+            }
+            return snippet || r.path;
+          })
+        );
+
+        // POST request payload matching standard Cohere/Lemonade /rerank contract
+        const response = await fetch(`${apiBase}/rerank`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            query: query,
+            documents: documents,
+            top_n: limit
+          }),
+          signal: AbortSignal.timeout(5000)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Reranker API returned status ${response.status}`);
+        }
+
+        const data = (await response.json()) as { results: Array<{ index: number; relevance_score: number }> };
+        const scoredResults = data.results as Array<{ index: number; relevance_score: number }>;
+
+        const reranked: SearchResult[] = [];
+        const seen = new Set<number>();
+
+        // Reconstruct sorted results mapped to cross-encoder scores
+        for (const item of scoredResults) {
+          const idx = item.index;
+          if (idx >= 0 && idx < candidates.length && !seen.has(idx)) {
+            seen.add(idx);
+            reranked.push({
+              ...candidates[idx],
+              rank: item.relevance_score
+            });
+          }
+        }
+
+        // Fill in remainder unsorted slices if output contains less results
+        for (let i = 0; i < results.length && reranked.length < limit; i++) {
+          if (!seen.has(i)) {
+            reranked.push(results[i]);
+          }
+        }
+
+        return reranked.slice(0, limit);
+      }
+    } catch (err) {
+      console.warn("[Rerank Provider] External reranker execution failed. Falling back to LLM.", err);
+    }
+  }
+
+  // --- PATH B: Legacy Autoregressive LLM Generative Fallback ---
   const provider = await getProviderForTask(rootDir, "queryProvider");
   const candidateLimit = Math.min(results.length, Math.max(limit * 2, 8), 20);
   const candidateResults = results.slice(0, candidateLimit);
