@@ -6167,7 +6167,8 @@ export async function searchVault(rootDir: string, query: string, limit = 5): Pr
 
 async function rerankSearchResults(rootDir: string, query: string, results: SearchResult[], limit: number): Promise<SearchResult[]> {
   const provider = await getProviderForTask(rootDir, "queryProvider");
-  const candidateResults = results.slice(0, Math.min(results.length, 20));
+  const candidateLimit = Math.min(results.length, Math.max(limit * 2, 8), 20);
+  const candidateResults = results.slice(0, candidateLimit);
   const candidateLines = await Promise.all(
     candidateResults.map(async (r, i) => {
       let snippet = r.snippet;
