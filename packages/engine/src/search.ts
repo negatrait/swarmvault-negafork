@@ -207,6 +207,9 @@ export function mergeSearchResults(
   semanticHits: Array<{ pageId: string; path: string; title: string; kind: string; status: string; score: number }>,
   limit: number
 ): SearchResult[] {
+  // Defensive sort to ensure RRF rank indices map correctly to scores
+  const sortedSemanticHits = [...semanticHits].sort((a, b) => b.score - a.score);
+
   const k = 60;
   const scores = new Map<string, number>();
   const resultMap = new Map<string, SearchResult>();
@@ -217,8 +220,8 @@ export function mergeSearchResults(
     resultMap.set(r.pageId, r);
   }
 
-  for (let i = 0; i < semanticHits.length; i++) {
-    const hit = semanticHits[i];
+  for (let i = 0; i < sortedSemanticHits.length; i++) {
+    const hit = sortedSemanticHits[i];
     scores.set(hit.pageId, (scores.get(hit.pageId) ?? 0) + 1 / (k + i + 1));
     if (!resultMap.has(hit.pageId)) {
       resultMap.set(hit.pageId, {
