@@ -150,10 +150,17 @@ async function assetDataUrl(rootDir: string, relativePath: string): Promise<stri
   return `data:${asset.mimeType};base64,${asset.buffer.toString("base64")}`;
 }
 
-async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
+export async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
+  let byteLength = 0;
+  const maxBytes = 10 * 1024 * 1024; // 10MB limit
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const bufferChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    byteLength += bufferChunk.length;
+    if (byteLength > maxBytes) {
+      throw new Error("Payload Too Large");
+    }
+    chunks.push(bufferChunk);
   }
   const raw = Buffer.concat(chunks).toString("utf8").trim();
   if (!raw) {
