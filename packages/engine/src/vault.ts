@@ -4485,6 +4485,74 @@ export async function readApproval(rootDir: string, approvalId: string, options?
   };
 }
 
+export async function syncOutputAssets(
+  paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
+  approvalId: string,
+  nextPage: GraphPage
+): Promise<void> {
+  if (nextPage.kind !== "output" || !nextPage.outputAssets?.length) return;
+  const outputAssetDir = path.join(paths.wikiDir, "outputs", "assets", path.basename(nextPage.path, ".md"));
+  await fs.rm(outputAssetDir, { recursive: true, force: true });
+  for (const asset of nextPage.outputAssets) {
+    const stagedAssetPath = path.join(paths.approvalsDir, approvalId, "wiki", asset.path);
+    if (!(await fileExists(stagedAssetPath))) {
+      continue;
+    }
+    const targetAssetPath = path.join(paths.wikiDir, asset.path);
+    await ensureDir(path.dirname(targetAssetPath));
+    await fs.copyFile(stagedAssetPath, targetAssetPath);
+  }
+}
+
+export async function syncStagedEntry(
+  paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
+  approvalId: string,
+  entry: ApprovalEntry,
+  bundleGraph: GraphArtifact | null,
+  nextPages: GraphPage[]
+): Promise<{ nextPage?: GraphPage; deletedPage?: GraphPage; stagedContent?: string }> {
+  if (entry.changeType !== "delete") {
+    if (!entry.nextPath) {
+      throw new Error(`Approval entry ${entry.pageId} is missing a staged path.`);
+    }
+    const stagedAbsolutePath = path.join(paths.approvalsDir, approvalId, "wiki", entry.nextPath);
+    const stagedContent = await fs.readFile(stagedAbsolutePath, "utf8");
+    const targetAbsolutePath = path.join(paths.wikiDir, entry.nextPath);
+    await ensureDir(path.dirname(targetAbsolutePath));
+    await fs.writeFile(targetAbsolutePath, stagedContent, "utf8");
+
+    if (entry.changeType === "promote" && entry.previousPath) {
+      await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
+    }
+
+    const nextPage =
+      bundleGraph?.pages.find((page) => page.id === entry.pageId && page.path === entry.nextPath) ??
+      parseStoredPage(entry.nextPath, stagedContent);
+
+    await syncOutputAssets(paths, approvalId, nextPage);
+    return { nextPage, stagedContent };
+  } else {
+    const deletedPage =
+      nextPages.find((page) => page.id === entry.pageId || page.path === entry.previousPath) ??
+      bundleGraph?.pages.find((page) => page.id === entry.pageId || page.path === entry.previousPath) ??
+      null;
+
+    if (entry.previousPath) {
+      await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
+    }
+    if (deletedPage?.kind === "output") {
+      await fs.rm(path.join(paths.wikiDir, "outputs", "assets", path.basename(deletedPage.path, ".md")), {
+        recursive: true,
+        force: true
+      });
+    }
+    if (deletedPage) {
+      return { deletedPage };
+    }
+    return {};
+  }
+}
+
 export async function acceptApproval(rootDir: string, approvalId: string, targets: string[] = []): Promise<ReviewActionResult> {
   const startedAt = new Date().toISOString();
   const { paths } = await loadVaultConfig(rootDir);
@@ -4499,57 +4567,16 @@ export async function acceptApproval(rootDir: string, approvalId: string, target
   const compileState = (await readJsonFile<CompileState>(paths.compileStatePath)) ?? emptyCompileState();
 
   for (const entry of selectedEntries) {
-    if (entry.changeType !== "delete") {
-      if (!entry.nextPath) {
-        throw new Error(`Approval entry ${entry.pageId} is missing a staged path.`);
-      }
-      const stagedAbsolutePath = path.join(paths.approvalsDir, approvalId, "wiki", entry.nextPath);
-      const stagedContent = await fs.readFile(stagedAbsolutePath, "utf8");
-      const targetAbsolutePath = path.join(paths.wikiDir, entry.nextPath);
-      await ensureDir(path.dirname(targetAbsolutePath));
-      await fs.writeFile(targetAbsolutePath, stagedContent, "utf8");
-
-      if (entry.changeType === "promote" && entry.previousPath) {
-        await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
-      }
-
-      const nextPage =
-        bundleGraph?.pages.find((page) => page.id === entry.pageId && page.path === entry.nextPath) ??
-        parseStoredPage(entry.nextPath, stagedContent);
-      if (nextPage.kind === "output" && nextPage.outputAssets?.length) {
-        const outputAssetDir = path.join(paths.wikiDir, "outputs", "assets", path.basename(nextPage.path, ".md"));
-        await fs.rm(outputAssetDir, { recursive: true, force: true });
-        for (const asset of nextPage.outputAssets) {
-          const stagedAssetPath = path.join(paths.approvalsDir, approvalId, "wiki", asset.path);
-          if (!(await fileExists(stagedAssetPath))) {
-            continue;
-          }
-          const targetAssetPath = path.join(paths.wikiDir, asset.path);
-          await ensureDir(path.dirname(targetAssetPath));
-          await fs.copyFile(stagedAssetPath, targetAssetPath);
-        }
-      }
+    const { nextPage, deletedPage } = await syncStagedEntry(paths, approvalId, entry, bundleGraph, nextPages);
+    if (nextPage) {
       nextPages = nextPages.filter(
         (page) => page.id !== entry.pageId && page.path !== entry.nextPath && (!entry.previousPath || page.path !== entry.previousPath)
       );
       nextPages.push(nextPage);
       updateCandidateHistory(compileState, nextPage);
     } else {
-      const deletedPage =
-        nextPages.find((page) => page.id === entry.pageId || page.path === entry.previousPath) ??
-        bundleGraph?.pages.find((page) => page.id === entry.pageId || page.path === entry.previousPath) ??
-        null;
-      if (entry.previousPath) {
-        await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
-      }
-      if (deletedPage?.kind === "output") {
-        await fs.rm(path.join(paths.wikiDir, "outputs", "assets", path.basename(deletedPage.path, ".md")), {
-          recursive: true,
-          force: true
-        });
-      }
       nextPages = nextPages.filter((page) => page.id !== entry.pageId && page.path !== entry.previousPath);
-      updateCandidateHistory(compileState, deletedPage, true);
+      updateCandidateHistory(compileState, deletedPage ?? null, true);
     }
     entry.status = "accepted";
   }
