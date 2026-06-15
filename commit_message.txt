@@ -1,0 +1,10 @@
+refactor(engine): split sync logic in acceptApproval to standalone helpers
+
+Extracts the monolithic inner loop body of `acceptApproval` within
+`packages/engine/src/vault.ts` into two discrete, atomic helpers:
+- `syncStagedEntry` handles file resolution, validation, parsing, and deletion.
+- `syncOutputAssets` handles moving asset directories for output pages.
+
+This successfully addresses the massive size of the approval loop
+without breaking any of the heavy implicit dependencies within the engine,
+making the codebase substantially easier to trace and reason about.
