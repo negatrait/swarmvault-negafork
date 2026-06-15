@@ -6250,12 +6250,9 @@ async function rerankSearchResults(rootDir: string, query: string, results: Sear
         // Reconstruct sorted results mapped to cross-encoder scores
         for (const item of scoredResults) {
           const idx = item.index;
-          if (idx >= 0 && idx < candidates.length && !seen.has(idx)) {
+          if (idx >= 0 && idx < results.length && !seen.has(idx)) {
             seen.add(idx);
-            reranked.push({
-              ...candidates[idx],
-              rank: item.relevance_score
-            });
+            reranked.push(results[idx]);
           }
         }
 
