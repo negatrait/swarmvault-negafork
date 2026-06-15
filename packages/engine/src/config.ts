@@ -159,7 +159,8 @@ const vaultConfigSchema = z.object({
     visionProvider: z.string().min(1),
     imageProvider: z.string().min(1).optional(),
     embeddingProvider: z.string().min(1).optional(),
-    audioProvider: z.string().min(1).optional()
+    audioProvider: z.string().min(1).optional(),
+    rerankProvider: z.string().min(1).optional()
   }),
   viewer: z
     .object({

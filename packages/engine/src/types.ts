@@ -10,7 +10,8 @@ export const providerCapabilitySchema = z.enum([
   "streaming",
   "local",
   "image_generation",
-  "audio"
+  "audio",
+  "rerank"
 ]);
 
 export type ProviderCapability = z.infer<typeof providerCapabilitySchema>;
@@ -292,6 +293,7 @@ export interface ProviderAdapter {
   embedTexts?(texts: string[]): Promise<number[][]>;
   generateImage?(request: ImageGenerationRequest): Promise<ImageGenerationResponse>;
   transcribeAudio?(request: AudioTranscriptionRequest): Promise<AudioTranscriptionResponse>;
+  rerank?(query: string, documents: string[], limit: number): Promise<Array<{ index: number; relevance_score: number }>>;
 }
 
 export interface ProviderConfig {
@@ -368,6 +370,7 @@ export interface VaultConfig {
     imageProvider?: string;
     embeddingProvider?: string;
     audioProvider?: string;
+    rerankProvider?: string;
   };
   viewer: {
     port: number;

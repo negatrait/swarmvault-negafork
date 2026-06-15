@@ -24,7 +24,8 @@ const PROVIDER_TASK_KEYS: ProviderTaskKey[] = [
   "visionProvider",
   "imageProvider",
   "embeddingProvider",
-  "audioProvider"
+  "audioProvider",
+  "rerankProvider"
 ];
 
 // Task keys the vault config schema requires; they can be reassigned but never deleted.
