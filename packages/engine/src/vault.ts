@@ -6181,7 +6181,10 @@ async function rerankSearchResults(rootDir: string, query: string, results: Sear
     try {
       const providerConfigEntry = await getProviderConfigEntry(rootDir, rerankProviderName);
 
-      if (providerConfigEntry && providerConfigEntry.provider.type === "openai-compatible") {
+      if (providerConfigEntry) {
+        if (providerConfigEntry.provider.type !== "openai-compatible") {
+          throw new Error(`Rerank provider must be of type openai-compatible.`);
+        }
         const providerConfig = providerConfigEntry.provider;
         const apiBase = providerConfig.baseUrl || "http://localhost:13305/v1";
         const modelName = providerConfig.model || "bge-reranker-large";
