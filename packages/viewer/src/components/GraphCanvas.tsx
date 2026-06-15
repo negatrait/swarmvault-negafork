@@ -238,10 +238,18 @@ export function GraphCanvas({
   const tagAllowedNodeIds = (() => {
     if (!graph || selectedTags.length === 0 || !pageTags) return null;
     const allowed = new Set<string>();
+    const requiredTags = new Set(selectedTags);
     for (const node of graph.nodes) {
       if (!node.pageId) continue;
       const tags = pageTags[node.pageId] ?? [];
-      if (selectedTags.every((tag) => tags.includes(tag))) allowed.add(node.id);
+      let match = true;
+      for (const t of requiredTags) {
+        if (!tags.includes(t)) {
+          match = false;
+          break;
+        }
+      }
+      if (match) allowed.add(node.id);
     }
     return allowed;
   })();
