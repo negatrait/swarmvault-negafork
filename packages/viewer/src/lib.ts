@@ -693,7 +693,7 @@ function embeddedScoreMatch(query: string, candidate: string): number {
   return overlap ? overlap * 10 : 0;
 }
 
-function embeddedGraphQuery(
+export function embeddedGraphQuery(
   graph: ViewerGraphArtifact,
   question: string,
   searchResults: ViewerSearchResult[],
@@ -801,9 +801,10 @@ function embeddedGraphQuery(
     visitedNodeIds.map((nodeId) => nodesById.get(nodeId)?.communityId).filter((communityId): communityId is string => Boolean(communityId)),
     (item) => item
   );
+  const visitedNodeIdsSet = new Set(visitedNodeIds);
   const hyperedgeIds = uniqueByKey(
     (graph.hyperedges ?? [])
-      .filter((hyperedge) => hyperedge.nodeIds.some((nodeId) => visitedNodeIds.includes(nodeId)))
+      .filter((hyperedge) => hyperedge.nodeIds.some((nodeId) => visitedNodeIdsSet.has(nodeId)))
       .map((hyperedge) => hyperedge.id),
     (item) => item
   );
