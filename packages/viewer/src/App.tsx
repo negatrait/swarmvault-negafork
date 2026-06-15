@@ -330,9 +330,10 @@ export function App() {
         navigate({ view: "page", params: { path: pagePath, id: pageId ?? "" } });
         if (graph && cyRef.current) {
           const graphPage = graph.pages?.find((candidate) => candidate.path === pagePath || (pageId ? candidate.id === pageId : false));
+          const graphPageNodeIdsSet = graphPage?.nodeIds ? new Set(graphPage.nodeIds) : undefined;
           const node =
             (pageId ? graph.nodes.find((candidate) => candidate.pageId === pageId) : undefined) ??
-            graph.nodes.find((candidate) => graphPage?.nodeIds?.includes(candidate.id));
+            graph.nodes.find((candidate) => graphPageNodeIdsSet?.has(candidate.id));
           if (node) {
             cyRef.current.elements().unselect();
             cyRef.current.getElementById(node.id).select();
