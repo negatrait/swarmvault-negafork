@@ -890,7 +890,7 @@ function activeAggregatePath(kind: "concept" | "entity", slug: string): string {
   return kind === "entity" ? `entities/${slug}.md` : `concepts/${slug}.md`;
 }
 
-function approvalSummary(manifest: ApprovalManifest): ApprovalSummary {
+export function approvalSummary(manifest: ApprovalManifest): ApprovalSummary {
   return {
     approvalId: manifest.approvalId,
     createdAt: manifest.createdAt,
@@ -2940,7 +2940,7 @@ function approvalManifestPath(paths: Awaited<ReturnType<typeof loadVaultConfig>>
   return path.join(paths.approvalsDir, approvalId, "manifest.json");
 }
 
-function approvalGraphPath(paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"], approvalId: string): string {
+export function approvalGraphPath(paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"], approvalId: string): string {
   return path.join(paths.approvalsDir, approvalId, "state", "graph.json");
 }
 
@@ -2955,7 +2955,7 @@ function normalizeApprovalBundleType(raw: string | undefined): ApprovalBundleTyp
   return legacy[raw] ?? (raw as ApprovalBundleType);
 }
 
-async function readApprovalManifest(
+export async function readApprovalManifest(
   paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
   approvalId: string
 ): Promise<ApprovalManifest> {
@@ -2967,7 +2967,7 @@ async function readApprovalManifest(
   return manifest;
 }
 
-async function writeApprovalManifest(
+export async function writeApprovalManifest(
   paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
   manifest: ApprovalManifest
 ): Promise<void> {
@@ -3606,7 +3606,7 @@ async function syncVaultArtifacts(
   };
 }
 
-async function refreshIndexesAndSearch(rootDir: string, pages: GraphPage[]): Promise<void> {
+export async function refreshIndexesAndSearch(rootDir: string, pages: GraphPage[]): Promise<void> {
   const { config, paths } = await loadVaultConfig(rootDir);
   const schemas = await loadVaultSchemas(rootDir);
   const compileState = await readJsonFile<CompileState>(paths.compileStatePath);
@@ -4211,7 +4211,7 @@ export async function refreshVaultAfterOutputSave(rootDir: string): Promise<void
   });
 }
 
-function resolveApprovalTargets(manifest: ApprovalManifest, targets: string[]): ApprovalEntry[] {
+export function resolveApprovalTargets(manifest: ApprovalManifest, targets: string[]): ApprovalEntry[] {
   const pendingEntries = manifest.entries.filter((entry) => entry.status === "pending");
   if (!targets.length) {
     return pendingEntries;
@@ -4229,7 +4229,7 @@ function resolveApprovalTargets(manifest: ApprovalManifest, targets: string[]): 
   return uniqueBy(resolved, (entry) => `${entry.pageId}:${entry.nextPath ?? ""}:${entry.previousPath ?? ""}`);
 }
 
-function emptyCompileState(): CompileState {
+export function emptyCompileState(): CompileState {
   return {
     generatedAt: new Date().toISOString(),
     rootSchemaHash: "",
@@ -4249,7 +4249,7 @@ function emptyCompileState(): CompileState {
   };
 }
 
-function updateCandidateHistory(compileState: CompileState, page: GraphPage | null, deleted = false): void {
+export function updateCandidateHistory(compileState: CompileState, page: GraphPage | null, deleted = false): void {
   if (!page || (page.kind !== "concept" && page.kind !== "entity")) {
     return;
   }
@@ -4263,7 +4263,7 @@ function updateCandidateHistory(compileState: CompileState, page: GraphPage | nu
   };
 }
 
-function sortGraphPages(pages: GraphPage[]): GraphPage[] {
+export function sortGraphPages(pages: GraphPage[]): GraphPage[] {
   return [...pages].sort((left, right) => left.path.localeCompare(right.path) || left.title.localeCompare(right.title));
 }
 
@@ -4298,7 +4298,7 @@ function diffLines(current: string, staged: string): ApprovalDiffLine[] {
   return lines;
 }
 
-function computeUnifiedDiff(current: string, staged: string, label: string): string {
+export function computeUnifiedDiff(current: string, staged: string, label: string): string {
   const output: string[] = [`--- a/${label}`, `+++ b/${label}`];
   for (const line of diffLines(current, staged)) {
     const prefix = line.type === "add" ? "+" : line.type === "remove" ? "-" : " ";
@@ -4342,7 +4342,7 @@ function compareFrontmatter(currentData: Record<string, unknown>, stagedData: Re
   return changes.sort((left, right) => left.key.localeCompare(right.key));
 }
 
-function computeStructuredDiff(
+export function computeStructuredDiff(
   current: string | undefined,
   staged: string | undefined,
   isBinaryAsset: boolean
@@ -4395,7 +4395,7 @@ function computeStructuredDiff(
   };
 }
 
-function computeChangeSummary(current: string | undefined, staged: string | undefined, changeType: ApprovalChangeType): string {
+export function computeChangeSummary(current: string | undefined, staged: string | undefined, changeType: ApprovalChangeType): string {
   if (changeType === "create") return "New page";
   if (changeType === "delete") return "Removed page";
   if (changeType === "promote") return "Promoted from candidate";
@@ -4422,214 +4422,6 @@ function computeChangeSummary(current: string | undefined, staged: string | unde
   else if (currentParsed.content !== stagedParsed.content) changes.push("modified content");
 
   return changes.length ? changes.join(", ") : "no visible changes";
-}
-
-export async function listApprovals(rootDir: string): Promise<ApprovalSummary[]> {
-  const { paths } = await loadVaultConfig(rootDir);
-  const manifests = await Promise.all(
-    (await fs.readdir(paths.approvalsDir, { withFileTypes: true }).catch(() => []))
-      .filter((entry) => entry.isDirectory())
-      .map(async (entry) => {
-        try {
-          return await readApprovalManifest(paths, entry.name);
-        } catch {
-          return null;
-        }
-      })
-  );
-
-  return manifests
-    .filter((manifest): manifest is ApprovalManifest => Boolean(manifest))
-    .map(approvalSummary)
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-}
-
-export async function readApproval(rootDir: string, approvalId: string, options?: { diff?: boolean }): Promise<ApprovalDetail> {
-  const { paths } = await loadVaultConfig(rootDir);
-  const manifest = await readApprovalManifest(paths, approvalId);
-  const details = await Promise.all(
-    manifest.entries.map(async (entry) => {
-      const currentPath = entry.previousPath ?? entry.nextPath;
-      const currentContent = currentPath
-        ? await fs.readFile(path.join(paths.wikiDir, currentPath), "utf8").catch(() => undefined)
-        : undefined;
-      const stagedContent = entry.nextPath
-        ? await fs.readFile(path.join(paths.approvalsDir, approvalId, "wiki", entry.nextPath), "utf8").catch(() => undefined)
-        : undefined;
-      const detail: ApprovalEntryDetail = {
-        ...entry,
-        currentContent,
-        stagedContent
-      };
-      detail.changeSummary = computeChangeSummary(detail.currentContent, detail.stagedContent, detail.changeType);
-
-      const isBinaryAsset = detail.kind === "output";
-      const structured = computeStructuredDiff(detail.currentContent, detail.stagedContent, isBinaryAsset);
-      if (structured) {
-        detail.structuredDiff = structured;
-        const protectedChanges = structured.frontmatterChanges.filter((change) => change.protected);
-        if (protectedChanges.length) {
-          detail.warnings = ["protected_frontmatter_changed"];
-        }
-      }
-      if (options?.diff && detail.currentContent && detail.stagedContent && !isBinaryAsset) {
-        detail.diff = computeUnifiedDiff(detail.currentContent, detail.stagedContent, detail.nextPath ?? detail.pageId);
-      }
-      return detail;
-    })
-  );
-
-  return {
-    ...approvalSummary(manifest),
-    entries: details
-  };
-}
-
-export async function syncOutputAssets(
-  paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
-  approvalId: string,
-  nextPage: GraphPage
-): Promise<void> {
-  if (nextPage.kind !== "output" || !nextPage.outputAssets?.length) return;
-  const outputAssetDir = path.join(paths.wikiDir, "outputs", "assets", path.basename(nextPage.path, ".md"));
-  await fs.rm(outputAssetDir, { recursive: true, force: true });
-  for (const asset of nextPage.outputAssets) {
-    const stagedAssetPath = path.join(paths.approvalsDir, approvalId, "wiki", asset.path);
-    if (!(await fileExists(stagedAssetPath))) {
-      continue;
-    }
-    const targetAssetPath = path.join(paths.wikiDir, asset.path);
-    await ensureDir(path.dirname(targetAssetPath));
-    await fs.copyFile(stagedAssetPath, targetAssetPath);
-  }
-}
-
-export async function syncStagedEntry(
-  paths: Awaited<ReturnType<typeof loadVaultConfig>>["paths"],
-  approvalId: string,
-  entry: ApprovalEntry,
-  bundleGraph: GraphArtifact | null
-): Promise<{ nextPage?: GraphPage; deletedPage?: GraphPage; stagedContent?: string }> {
-  if (entry.changeType !== "delete") {
-    if (!entry.nextPath) {
-      throw new Error(`Approval entry ${entry.pageId} is missing a staged path.`);
-    }
-    const stagedAbsolutePath = path.join(paths.approvalsDir, approvalId, "wiki", entry.nextPath);
-    const stagedContent = await fs.readFile(stagedAbsolutePath, "utf8");
-    const targetAbsolutePath = path.join(paths.wikiDir, entry.nextPath);
-    await ensureDir(path.dirname(targetAbsolutePath));
-    await fs.writeFile(targetAbsolutePath, stagedContent, "utf8");
-
-    if (entry.changeType === "promote" && entry.previousPath) {
-      await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
-    }
-
-    const nextPage =
-      bundleGraph?.pages.find((page) => page.id === entry.pageId && page.path === entry.nextPath) ??
-      parseStoredPage(entry.nextPath, stagedContent);
-
-    await syncOutputAssets(paths, approvalId, nextPage);
-    return { nextPage, stagedContent };
-  } else {
-    const deletedPage = bundleGraph?.pages.find((page) => page.id === entry.pageId);
-    if (entry.previousPath) {
-      await fs.rm(path.join(paths.wikiDir, entry.previousPath), { force: true });
-    }
-    return { deletedPage };
-  }
-}
-
-export async function acceptApproval(rootDir: string, approvalId: string, targets: string[] = []): Promise<ReviewActionResult> {
-  const startedAt = new Date().toISOString();
-  const { paths } = await loadVaultConfig(rootDir);
-  const manifest = await readApprovalManifest(paths, approvalId);
-  const selectedEntries = resolveApprovalTargets(manifest, targets);
-  const bundleGraph = await readJsonFile<GraphArtifact>(approvalGraphPath(paths, approvalId));
-  const currentGraph = await readJsonFile<GraphArtifact>(paths.graphPath);
-  const basePages =
-    currentGraph?.pages ??
-    (bundleGraph?.pages ?? []).filter((page) => page.kind === "index" || page.kind === "output" || page.kind === "insight");
-  let nextPages = [...basePages];
-  const compileState = (await readJsonFile<CompileState>(paths.compileStatePath)) ?? emptyCompileState();
-
-  for (const entry of selectedEntries) {
-    const { nextPage, deletedPage } = await syncStagedEntry(paths, approvalId, entry, bundleGraph);
-    if (nextPage) {
-      nextPages = nextPages.filter(
-        (page) => page.id !== entry.pageId && page.path !== entry.nextPath && (!entry.previousPath || page.path !== entry.previousPath)
-      );
-      nextPages.push(nextPage);
-      updateCandidateHistory(compileState, nextPage);
-    } else {
-      nextPages = nextPages.filter((page) => page.id !== entry.pageId && page.path !== entry.previousPath);
-      updateCandidateHistory(compileState, deletedPage ?? null, true);
-    }
-    entry.status = "accepted";
-  }
-
-  const nextGraph: GraphArtifact = {
-    generatedAt: new Date().toISOString(),
-    nodes: currentGraph?.nodes ?? bundleGraph?.nodes ?? [],
-    edges: currentGraph?.edges ?? bundleGraph?.edges ?? [],
-    hyperedges: currentGraph?.hyperedges ?? bundleGraph?.hyperedges ?? [],
-    sources: currentGraph?.sources ?? bundleGraph?.sources ?? [],
-    pages: sortGraphPages(nextPages)
-  };
-  compileState.generatedAt = nextGraph.generatedAt;
-
-  await writeJsonFile(paths.graphPath, nextGraph);
-  await writeJsonFile(paths.compileStatePath, compileState);
-  await refreshIndexesAndSearch(rootDir, nextGraph.pages);
-  await writeApprovalManifest(paths, manifest);
-  if (manifest.sourceSessionId) {
-    await updateGuidedSourceSessionStatus(rootDir, manifest.sourceSessionId, "accepted");
-  }
-  await recordSession(rootDir, {
-    operation: "review",
-    title: `Accepted review entries from ${approvalId}`,
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    success: true,
-    relatedPageIds: selectedEntries.map((entry) => entry.pageId),
-    changedPages: selectedEntries.flatMap((entry) =>
-      [entry.nextPath, entry.previousPath].filter((value): value is string => Boolean(value))
-    ),
-    lines: selectedEntries.map((entry) => `accepted=${entry.pageId}`)
-  });
-
-  return {
-    ...approvalSummary(manifest),
-    updatedEntries: selectedEntries.map((entry) => entry.pageId)
-  };
-}
-
-export async function rejectApproval(rootDir: string, approvalId: string, targets: string[] = []): Promise<ReviewActionResult> {
-  const startedAt = new Date().toISOString();
-  const { paths } = await loadVaultConfig(rootDir);
-  const manifest = await readApprovalManifest(paths, approvalId);
-  const selectedEntries = resolveApprovalTargets(manifest, targets);
-  for (const entry of selectedEntries) {
-    entry.status = "rejected";
-  }
-  await writeApprovalManifest(paths, manifest);
-  if (manifest.sourceSessionId) {
-    await updateGuidedSourceSessionStatus(rootDir, manifest.sourceSessionId, "rejected");
-  }
-  await recordSession(rootDir, {
-    operation: "review",
-    title: `Rejected review entries from ${approvalId}`,
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    success: true,
-    relatedPageIds: selectedEntries.map((entry) => entry.pageId),
-    changedPages: [],
-    lines: selectedEntries.map((entry) => `rejected=${entry.pageId}`)
-  });
-
-  return {
-    ...approvalSummary(manifest),
-    updatedEntries: selectedEntries.map((entry) => entry.pageId)
-  };
 }
 
 export async function listCandidates(rootDir: string): Promise<CandidateRecord[]> {
@@ -7117,3 +6909,5 @@ export async function consolidateVault(rootDir: string, options: { dryRun?: bool
   const { config } = await loadVaultConfig(rootDir);
   return runConsolidation(rootDir, config.consolidation ?? {}, undefined, { dryRun: options.dryRun ?? false });
 }
+
+export { acceptApproval, listApprovals, readApproval, rejectApproval } from "./vault-approvals.js";
