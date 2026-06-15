@@ -70,3 +70,4 @@
 - Direct pushes to main are blocked.
 - Development must happen on feature branches.
 - Tasks must always conclude with a pull request to main.
+- Performance benchmarking: Use `cd packages/viewer && pnpm exec tsx benchmark.ts` to measure `embeddedGraphQuery` performance.
