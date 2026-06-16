@@ -5195,10 +5195,16 @@ async function initLiteVault(rootDir: string, options: InitOptions): Promise<voi
 }
 
 /**
- * Bootstraps a SwarmVault workspace (config, core wiki folders, agents) based on the active profile.
+ * @summary Bootstraps a SwarmVault workspace based on the active profile.
+ *
+ * @remarks
+ * Sets up core configuration, wiki folders, and agents.
  *
  * Future Refactoring Note:
  * Extract the heavy file I/O for bootstrapping markdown files into profile-specific template generators to separate configuration from file creation.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Initialization configuration.
  */
 export async function initVault(rootDir: string, options: InitOptions = {}): Promise<void> {
   if (options.lite) {
@@ -5382,10 +5388,17 @@ async function runConfiguredBenchmark(rootDir: string, config: VaultConfig): Pro
 }
 
 /**
- * Executes the core build pipeline: ingests sources, extracts knowledge graph nodes/edges using LLMs, detects contradictions, runs linters, and emits the final graph artifact.
+ * @summary Executes the core knowledge graph build pipeline.
+ *
+ * @remarks
+ * Orchestrates source ingestion, LLM-driven graph extraction, conflict detection, linting, and artifact emission.
  *
  * Future Refactoring Note:
  * This function is massive. Break down the major phases (ingestion, LLM extraction, conflict detection, linting) into discrete, testable pipeline steps.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Compilation configuration.
+ * @returns The final state and graph result of the compilation.
  */
 export async function compileVault(rootDir: string, options: CompileOptions = {}): Promise<CompileResult> {
   const startedAt = new Date().toISOString();
