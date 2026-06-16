@@ -276,9 +276,11 @@ export async function pushGraphNeo4j(rootDir: string, options: GraphPushInternal
       });
       edgeGroups.set(edge.relation, rows);
     }
-    for (const [relation, rows] of [...edgeGroups.entries()].sort((left, right) => left[0].localeCompare(right[0]))) {
-      await writeEdgeRows(session, resolved.vaultId, rows, resolved.batchSize, relation);
-    }
+    await Promise.all(
+      [...edgeGroups.entries()]
+        .sort((left, right) => left[0].localeCompare(right[0]))
+        .map(([relation, rows]) => writeEdgeRows(session, resolved.vaultId, rows, resolved.batchSize, relation))
+    );
 
     const memberRows = filteredGraph.hyperedges.flatMap((hyperedge) =>
       hyperedge.nodeIds.map((nodeId) => ({
