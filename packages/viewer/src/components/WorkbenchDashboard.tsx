@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useClipboard } from "../hooks/useClipboard";
 import type { ViewerActionResult, ViewerDoctorReport } from "../lib";
 
 type WorkbenchActionResult = ViewerActionResult | ViewerDoctorReport | null | undefined;
@@ -109,6 +110,7 @@ export function WorkbenchDashboard({
   const [target, setTarget] = useState("");
   const [budget, setBudget] = useState("8000");
   const [receipt, setReceipt] = useState<string | null>(null);
+  const { copyToClipboard } = useClipboard();
 
   const canCapture = captureUrl.trim().length > 0 || captureText.trim().length > 0;
   const canUseGoal = goal.trim().length > 0;
@@ -179,8 +181,9 @@ export function WorkbenchDashboard({
                     type="button"
                     className="btn btn-ghost"
                     onClick={() => {
-                      void navigator.clipboard?.writeText(recommendation.command ?? "");
-                      setReceipt(`Copied ${recommendation.command}`);
+                      void copyToClipboard(recommendation.command ?? "").then((success) => {
+                        if (success) setReceipt(`Copied ${recommendation.command}`);
+                      });
                     }}
                   >
                     Copy
@@ -334,8 +337,9 @@ export function WorkbenchDashboard({
                           type="button"
                           className="btn btn-ghost"
                           onClick={() => {
-                            void navigator.clipboard?.writeText(action.command);
-                            setReceipt(`Copied ${action.command}`);
+                            void copyToClipboard(action.command).then((success) => {
+                              if (success) setReceipt(`Copied ${action.command}`);
+                            });
                           }}
                         >
                           Copy

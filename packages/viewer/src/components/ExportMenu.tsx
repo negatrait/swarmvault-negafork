@@ -1,5 +1,6 @@
 import type { Core } from "cytoscape";
 import { useState } from "react";
+import { useClipboard } from "../hooks/useClipboard";
 import { buildSubgraphExport, downloadDataUrl, downloadText, type ViewerGraphArtifact } from "../lib";
 
 type ExportMenuProps = {
@@ -30,6 +31,7 @@ function exportCanvasSvg(cy: Core): string | null {
 
 export function ExportMenu({ cyRef, graph, selectedNodeIds, pageMarkdown }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
+  const { copyToClipboard } = useClipboard();
 
   const handlePng = () => {
     const cy = cyRef.current;
@@ -58,9 +60,8 @@ export function ExportMenu({ cyRef, graph, selectedNodeIds, pageMarkdown }: Expo
   const handleCopyMarkdown = async () => {
     if (!pageMarkdown) return;
     const text = `# ${pageMarkdown.title}\n\n${pageMarkdown.content}`;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
+    const success = await copyToClipboard(text);
+    if (!success) {
       downloadText(`${pageMarkdown.title.replace(/[^a-z0-9-_.]+/gi, "-") || "page"}.md`, text, "text/markdown");
     }
     setOpen(false);
