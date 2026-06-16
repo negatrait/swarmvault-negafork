@@ -5194,6 +5194,18 @@ async function initLiteVault(rootDir: string, options: InitOptions): Promise<voi
   }
 }
 
+/**
+ * @summary Bootstraps a SwarmVault workspace based on the active profile.
+ *
+ * @remarks
+ * Sets up core configuration, wiki folders, and agents.
+ *
+ * Future Refactoring Note:
+ * Extract the heavy file I/O for bootstrapping markdown files into profile-specific template generators to separate configuration from file creation.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Initialization configuration.
+ */
 export async function initVault(rootDir: string, options: InitOptions = {}): Promise<void> {
   if (options.lite) {
     await initLiteVault(rootDir, options);
@@ -5375,6 +5387,19 @@ async function runConfiguredBenchmark(rootDir: string, config: VaultConfig): Pro
   }
 }
 
+/**
+ * @summary Executes the core knowledge graph build pipeline.
+ *
+ * @remarks
+ * Orchestrates source ingestion, LLM-driven graph extraction, conflict detection, linting, and artifact emission.
+ *
+ * Future Refactoring Note:
+ * This function is massive. Break down the major phases (ingestion, LLM extraction, conflict detection, linting) into discrete, testable pipeline steps.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Compilation configuration.
+ * @returns The final state and graph result of the compilation.
+ */
 export async function compileVault(rootDir: string, options: CompileOptions = {}): Promise<CompileResult> {
   const startedAt = new Date().toISOString();
   const { config, paths } = await initWorkspace(rootDir);
@@ -5760,6 +5785,19 @@ export async function compileVault(rootDir: string, options: CompileOptions = {}
   };
 }
 
+/**
+ * @summary Queries the vault using LLMs with context from the knowledge graph.
+ *
+ * @remarks
+ * Uses embeddings, BM25 text search, and structural graph traversal to build a context pack, then queries an LLM to answer the provided question.
+ *
+ * Future Refactoring Note:
+ * Context retrieval and the final LLM prompt generation are tightly coupled here. Refactor retrieval into a standalone utility that returns a standardized context payload.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param rawOptions - Query parameters including the question and filters.
+ * @returns The query result with the LLM's answer and citations.
+ */
 export async function queryVault(rootDir: string, rawOptions: QueryOptions): Promise<QueryResult> {
   const question = normalizeWhitespace(rawOptions.question);
   if (!question) {
@@ -5884,6 +5922,19 @@ export async function queryVault(rootDir: string, rawOptions: QueryOptions): Pro
   };
 }
 
+/**
+ * @summary Runs an exploratory multi-step LLM query against the vault.
+ *
+ * @remarks
+ * Orchestrates a series of LLM queries where each step can dynamically adjust its focus based on previous steps, gathering deeper context.
+ *
+ * Future Refactoring Note:
+ * The loop logic controlling the exploration steps is complex. Extract the condition evaluation and step execution into a dedicated state machine or iterator.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param rawOptions - Exploration parameters including the initial question and step limits.
+ * @returns The result of the exploration session including all steps.
+ */
 export async function exploreVault(rootDir: string, rawOptions: ExploreOptions): Promise<ExploreResult> {
   const question = normalizeWhitespace(rawOptions.question);
   if (!question) {
@@ -6160,6 +6211,20 @@ export async function exploreVault(rootDir: string, rawOptions: ExploreOptions):
   };
 }
 
+/**
+ * @summary Searches the vault using semantic embeddings and text retrieval.
+ *
+ * @remarks
+ * Combines exact keyword matching with vector-based semantic search to find relevant pages and chunks.
+ *
+ * Future Refactoring Note:
+ * Search scoring logic should be parameterized so different ranking algorithms (or external rerankers) can be injected cleanly.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param query - The search query string.
+ * @param limit - The maximum number of results to return.
+ * @returns A list of search results sorted by relevance.
+ */
 export async function searchVault(rootDir: string, query: string, limit = 5): Promise<SearchResult[]> {
   const { paths, config } = await loadVaultConfig(rootDir);
   if (!(await fileExists(paths.searchDbPath))) {
@@ -6381,6 +6446,19 @@ async function runResolvedGraphQuery(
   });
 }
 
+/**
+ * @summary Executes a structural graph query against the compiled vault graph.
+ *
+ * @remarks
+ * Uses graph traversal algorithms to find paths, neighbors, and patterns without LLM inference.
+ *
+ * Future Refactoring Note:
+ * Consider separating the graph query DSL parsing from the actual Graphology execution engine for better testability.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Graph query options including filters and traversal rules.
+ * @returns The raw graph query result.
+ */
 export async function queryGraphVault(
   rootDir: string,
   rawQuestion: string,
@@ -6398,6 +6476,19 @@ export async function queryGraphVault(
   return runResolvedGraphQuery(rootDir, graph, question, options);
 }
 
+/**
+ * @summary Runs a performance and quality benchmark suite against the vault.
+ *
+ * @remarks
+ * Evaluates LLM query accuracy, context retrieval latency, and graph traversal performance against configured baselines.
+ *
+ * Future Refactoring Note:
+ * Benchmarking currently relies on hardcoded baseline formats. Migrate this to consume standard, external benchmark manifest files.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Benchmarking configuration options.
+ * @returns The generated benchmark artifact with metrics and results.
+ */
 export async function benchmarkVault(rootDir: string, options: BenchmarkOptions = {}): Promise<BenchmarkArtifact> {
   const { config, paths } = await loadVaultConfig(rootDir);
   const graph = await ensureCompiledGraph(rootDir);
@@ -6518,26 +6609,92 @@ export async function benchmarkVault(rootDir: string, options: BenchmarkOptions 
   return refreshedArtifact;
 }
 
+/**
+ * @summary Finds the shortest path between two nodes in the knowledge graph.
+ *
+ * @remarks
+ * Uses Dijkstra's algorithm over the compiled graphology instance to determine the most direct relational path.
+ *
+ * Future Refactoring Note:
+ * Move all pure graph algorithms (like this pathfinder) into a dedicated `graph-algorithms.ts` utility module.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param from - The starting node ID.
+ * @param to - The target node ID.
+ * @returns The computed path result.
+ */
 export async function pathGraphVault(rootDir: string, from: string, to: string): Promise<GraphPathResult> {
   const graph = await ensureCompiledGraph(rootDir);
   return shortestGraphPath(graph, from, to);
 }
 
+/**
+ * @summary Generates a human-readable explanation of a specific graph node.
+ *
+ * @remarks
+ * Summarizes the node's properties, immediate neighbors, and its role within its calculated community.
+ *
+ * Future Refactoring Note:
+ * The explanation formatting is tightly coupled to the retrieval logic. Separate data fetching from the string formatting logic.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param target - The ID of the target node.
+ * @returns The explanation payload.
+ */
 export async function explainGraphVault(rootDir: string, target: string): Promise<GraphExplainResult> {
   const graph = await ensureCompiledGraph(rootDir);
   return explainGraphTarget(graph, target);
 }
 
+/**
+ * @summary Retrieves hyperedges (complex n-ary relationships) from the graph.
+ *
+ * @remarks
+ * Filters and ranks hyperedges based on their connectivity and relevance to an optional target node.
+ *
+ * Future Refactoring Note:
+ * Hyperedge representation currently relies on synthetic intermediary nodes. Consider standardizing the hyperedge abstraction natively if Graphology supports it.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param target - An optional target node ID to filter by.
+ * @param limit - The maximum number of hyperedges to return.
+ * @returns A list of computed hyperedges.
+ */
 export async function listGraphHyperedges(rootDir: string, target?: string, limit = 25): Promise<GraphHyperedge[]> {
   const graph = await ensureCompiledGraph(rootDir);
   return listHyperedges(graph, target, limit);
 }
 
+/**
+ * @summary Computes aggregate statistics for the compiled vault graph.
+ *
+ * @remarks
+ * Calculates node counts, edge distributions, density, and community metrics for dashboard reporting.
+ *
+ * Future Refactoring Note:
+ * Cache these statistics during the compile phase rather than recomputing them dynamically on every request.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @returns The computed graph statistics.
+ */
 export async function graphStatsVault(rootDir: string): Promise<GraphStatsResult> {
   const graph = await ensureCompiledGraph(rootDir);
   return graphStats(graph);
 }
 
+/**
+ * @summary Validates the structural integrity of the knowledge graph.
+ *
+ * @remarks
+ * Checks for orphaned nodes, invalid edge references, and schema violations within the compiled graph artifact.
+ *
+ * Future Refactoring Note:
+ * Validation rules are currently hardcoded. Transition to a plugin-based validation system where custom rules can be registered.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param options - Validation configuration options.
+ * @returns The validation result containing warnings and errors.
+ */
 export async function validateGraphVault(
   rootDir: string,
   options: { graphPath?: string; strict?: boolean } = {}
