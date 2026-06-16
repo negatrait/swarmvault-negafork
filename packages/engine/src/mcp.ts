@@ -1042,6 +1042,20 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
   return server;
 }
 
+/**
+ * @summary Starts a Model Context Protocol (MCP) server for the vault.
+ *
+ * @remarks
+ * Exposes vault capabilities (querying, exploration, graph analysis) over standard I/O streams using the MCP specification.
+ *
+ * Future Refactoring Note:
+ * Tool definitions are currently embedded heavily within `createMcpServer`. Consider moving each tool's schema and handler into isolated command modules for better maintainability.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param stdin - Optional custom standard input stream (defaults to process.stdin).
+ * @param stdout - Optional custom standard output stream (defaults to process.stdout).
+ * @returns An object containing a `close` method to terminate the server.
+ */
 export async function startMcpServer(rootDir: string, stdin?: Readable, stdout?: Writable): Promise<{ close: () => Promise<void> }> {
   const server = await createMcpServer(rootDir);
   const transport = new StdioServerTransport(stdin, stdout);
