@@ -5194,6 +5194,23 @@ async function initLiteVault(rootDir: string, options: InitOptions): Promise<voi
   }
 }
 
+/**
+ * Initializes a new SwarmVault workspace, creating the foundational file structure, default configuration, and core markdown indexes based on the chosen profile.
+ *
+ * Inner Workings:
+ * - Delegates to `initLiteVault` for zero-configuration "lite" mode.
+ * - Otherwise, resolves the workspace configuration via `initWorkspace`.
+ * - Installs agent rules if requested (`options.installAgentRules`).
+ * - Bootstraps core wiki folders (`wiki/insights/`, `wiki/projects/`, etc.) with their initial index markdown files and frontmatter.
+ * - Respects the active profile's `guidedSessionMode` to tailor the instructions in the generated human-authored "Insights" index.
+ * - Handles Obsidian `.obsidian` directory setup if `options.obsidian` is true.
+ *
+ * Future Refactoring Note:
+ * This function handles both configuration resolution and extensive file I/O for bootstrapping default markdown files. To simplify this during refactoring, extract the default markdown file generation logic into separate profile-specific template generators.
+ *
+ * @param rootDir The root directory of the workspace.
+ * @param options Initialization configuration.
+ */
 export async function initVault(rootDir: string, options: InitOptions = {}): Promise<void> {
   if (options.lite) {
     await initLiteVault(rootDir, options);
