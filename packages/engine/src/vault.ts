@@ -5195,21 +5195,10 @@ async function initLiteVault(rootDir: string, options: InitOptions): Promise<voi
 }
 
 /**
- * Initializes a new SwarmVault workspace, creating the foundational file structure, default configuration, and core markdown indexes based on the chosen profile.
- *
- * Inner Workings:
- * - Delegates to `initLiteVault` for zero-configuration "lite" mode.
- * - Otherwise, resolves the workspace configuration via `initWorkspace`.
- * - Installs agent rules if requested (`options.installAgentRules`).
- * - Bootstraps core wiki folders (`wiki/insights/`, `wiki/projects/`, etc.) with their initial index markdown files and frontmatter.
- * - Respects the active profile's `guidedSessionMode` to tailor the instructions in the generated human-authored "Insights" index.
- * - Handles Obsidian `.obsidian` directory setup if `options.obsidian` is true.
+ * Bootstraps a SwarmVault workspace (config, core wiki folders, agents) based on the active profile.
  *
  * Future Refactoring Note:
- * This function handles both configuration resolution and extensive file I/O for bootstrapping default markdown files. To simplify this during refactoring, extract the default markdown file generation logic into separate profile-specific template generators.
- *
- * @param rootDir The root directory of the workspace.
- * @param options Initialization configuration.
+ * Extract the heavy file I/O for bootstrapping markdown files into profile-specific template generators to separate configuration from file creation.
  */
 export async function initVault(rootDir: string, options: InitOptions = {}): Promise<void> {
   if (options.lite) {
@@ -5392,6 +5381,12 @@ async function runConfiguredBenchmark(rootDir: string, config: VaultConfig): Pro
   }
 }
 
+/**
+ * Executes the core build pipeline: ingests sources, extracts knowledge graph nodes/edges using LLMs, detects contradictions, runs linters, and emits the final graph artifact.
+ *
+ * Future Refactoring Note:
+ * This function is massive. Break down the major phases (ingestion, LLM extraction, conflict detection, linting) into discrete, testable pipeline steps.
+ */
 export async function compileVault(rootDir: string, options: CompileOptions = {}): Promise<CompileResult> {
   const startedAt = new Date().toISOString();
   const { config, paths } = await initWorkspace(rootDir);
