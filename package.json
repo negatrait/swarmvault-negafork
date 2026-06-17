@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "build": "pnpm --filter @swarmvaultai/viewer build && pnpm --filter @swarmvaultai/engine build && pnpm --filter @swarmvaultai/cli build",
+    "build": "cd cmd/swarmvault-native && go build -o ../../bin/swarmvault-native . && cd ../.. && pnpm --filter @swarmvaultai/viewer build && pnpm --filter @swarmvaultai/engine build && pnpm --filter @swarmvaultai/cli build",
     "test": "node ./scripts/check-published-manifests.mjs && node --test ./scripts/release-preflight-summary.test.mjs && pnpm -r test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
