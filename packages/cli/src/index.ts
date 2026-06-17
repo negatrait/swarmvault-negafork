@@ -297,8 +297,12 @@ function topCountEntries(record: Record<string, number>, limit = 8): Array<[stri
     .slice(0, limit);
 }
 
-function emitJson(data: unknown): void {
-  process.stdout.write(`${JSON.stringify(data)}\n`);
+function emitJson(data: unknown): boolean {
+  if (isJson()) {
+    process.stdout.write(`${JSON.stringify(data)}\n`);
+    return true;
+  }
+  return false;
 }
 
 function log(message: string): void {
@@ -776,10 +780,7 @@ async function runGraphUpdateCommand(
     overrideRoots,
     files
   });
-  if (isJson()) {
-    emitJson(result);
-    return;
-  }
+  if (emitJson(result)) return;
   if (result.queuedFiles?.length && result.scannedCount === 0) {
     log(`Another refresh holds the lock. Queued ${result.queuedFiles.length} file(s) for the active refresh to fold in.`);
     return;
@@ -798,10 +799,7 @@ async function runGraphUpdateCommand(
 async function showGraphStatusCommand(targetPath: string | undefined): Promise<void> {
   const overrideRoots = targetPath ? [path.resolve(process.cwd(), targetPath)] : undefined;
   const status = await getGraphStatus(process.cwd(), { repoRoots: overrideRoots });
-  if (isJson()) {
-    emitJson(status);
-    return;
-  }
+  if (emitJson(status)) return;
   log(`Graph: ${status.graphExists ? status.graphPath : `missing (${status.graphPath})`}`);
   log(`Report: ${status.reportExists ? status.reportPath : `missing (${status.reportPath})`}`);
   log(`Tracked repo roots: ${status.trackedRepoRoots.length ? status.trackedRepoRoots.join(", ") : "none"}`);
@@ -828,10 +826,7 @@ async function runGraphClusterCommand(options: { resolution?: string }, rootDir 
     throw new Error("--resolution must be a positive number.");
   }
   const result = await refreshGraphClusters(rootDir, { resolution });
-  if (isJson()) {
-    emitJson(result);
-    return;
-  }
+  if (emitJson(result)) return;
   log(
     `Refreshed ${result.communityCount} communities across ${result.nodeCount} nodes and ${result.edgeCount} edges. Report: ${result.reportPath}`
   );
@@ -843,10 +838,7 @@ async function runGraphTreeCommand(options: { output?: string; root?: string; la
     label: options.label,
     maxChildren: parsePositiveInt(options.maxChildren, 250)
   });
-  if (isJson()) {
-    emitJson(result);
-    return;
-  }
+  if (emitJson(result)) return;
   log(`Graph tree: ${result.outputPath}`);
   log(`Sources: ${result.sourceCount}; nodes: ${result.nodeCount}.`);
 }
@@ -857,10 +849,7 @@ async function runGraphMergeCommand(graphPaths: string[], options: { out: string
     path.resolve(process.cwd(), options.out),
     { label: options.label }
   );
-  if (isJson()) {
-    emitJson(result);
-    return;
-  }
+  if (emitJson(result)) return;
   log(
     `Merged ${result.inputGraphs.length} graph${result.inputGraphs.length === 1 ? "" : "s"} into ${result.outputPath}. Nodes ${result.graph.nodes.length}, edges ${result.graph.edges.length}.`
   );
@@ -1145,10 +1134,7 @@ program
   .description("Show the safest next command for this directory without changing files.")
   .action(async () => {
     const report = await buildNextCommandReport(process.cwd());
-    if (isJson()) {
-      emitJson(report);
-      return;
-    }
+    if (emitJson(report)) return;
     printNextCommandReport(report);
   });
 
@@ -1707,10 +1693,7 @@ program
   .option("--dry-run", "Return decisions without writing any files", false)
   .action(async (options: { dryRun?: boolean }) => {
     const result = await consolidateVault(process.cwd(), { dryRun: options.dryRun ?? false });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(
       `${options.dryRun ? "Would consolidate" : "Consolidated"} ${result.newPages.length} new tier page(s); ${result.promoted.length} promotion(s).`
     );
@@ -1852,10 +1835,7 @@ context
         format: options.format,
         memoryTaskId: options.task ?? options.memory
       });
-      if (isJson()) {
-        emitJson(result);
-        return;
-      }
+      if (emitJson(result)) return;
       log(result.rendered);
       log(`Saved context pack to ${result.markdownPath}`);
       log(`Saved context artifact to ${result.artifactPath}`);
@@ -1867,10 +1847,7 @@ context
   .description("List saved context packs.")
   .action(async () => {
     const packs = await listContextPacks(process.cwd());
-    if (isJson()) {
-      emitJson(packs);
-      return;
-    }
+    if (emitJson(packs)) return;
     if (!packs.length) {
       log("No context packs.");
       return;
@@ -1906,10 +1883,7 @@ context
     if (!deleted) {
       throw new Error(`Context pack not found: ${id}`);
     }
-    if (isJson()) {
-      emitJson(deleted);
-      return;
-    }
+    if (emitJson(deleted)) return;
     log(`Deleted context pack ${deleted.id}.`);
   });
 
@@ -1931,10 +1905,7 @@ memory
       agent: options.agent,
       contextPackId: options.contextPack
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.task.id);
     log(`Saved memory task to ${result.markdownPath}`);
   });
@@ -1981,10 +1952,7 @@ memory
         gitRef: options.gitRef,
         status: options.status
       });
-      if (isJson()) {
-        emitJson(result);
-        return;
-      }
+      if (emitJson(result)) return;
       log(`Updated memory task ${result.task.id}.`);
     }
   );
@@ -2000,10 +1968,7 @@ memory
       outcome: options.outcome,
       followUp: options.followUp
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`Finished memory task ${result.task.id}.`);
   });
 
@@ -2012,10 +1977,7 @@ memory
   .description("List saved agent memory tasks.")
   .action(async () => {
     const tasks = await listMemoryTasks(process.cwd());
-    if (isJson()) {
-      emitJson(tasks);
-      return;
-    }
+    if (emitJson(tasks)) return;
     if (!tasks.length) {
       log("No memory tasks.");
       return;
@@ -2034,10 +1996,7 @@ memory
     if (!task) {
       throw new Error(`Memory task not found: ${id}`);
     }
-    if (isJson()) {
-      emitJson(task);
-      return;
-    }
+    if (emitJson(task)) return;
     log(`Task: ${task.title}`);
     log(`Status: ${task.status}`);
     log(`Goal: ${task.goal}`);
@@ -2078,10 +2037,7 @@ task
       agent: options.agent,
       contextPackId: options.contextPack
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.task.id);
     log(`Saved task to ${result.markdownPath}`);
   });
@@ -2128,10 +2084,7 @@ task
         gitRef: options.gitRef,
         status: options.status
       });
-      if (isJson()) {
-        emitJson(result);
-        return;
-      }
+      if (emitJson(result)) return;
       log(`Updated task ${result.task.id}.`);
     }
   );
@@ -2147,10 +2100,7 @@ task
       outcome: options.outcome,
       followUp: options.followUp
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`Finished task ${result.task.id}.`);
   });
 
@@ -2159,10 +2109,7 @@ task
   .description("List saved agent tasks.")
   .action(async () => {
     const tasks = await listMemoryTasks(process.cwd());
-    if (isJson()) {
-      emitJson(tasks);
-      return;
-    }
+    if (emitJson(tasks)) return;
     if (!tasks.length) {
       log("No tasks.");
       return;
@@ -2181,10 +2128,7 @@ task
     if (!entry) {
       throw new Error(`Task not found: ${id}`);
     }
-    if (isJson()) {
-      emitJson(entry);
-      return;
-    }
+    if (emitJson(entry)) return;
     log(`Task: ${entry.title}`);
     log(`Status: ${entry.status}`);
     log(`Goal: ${entry.goal}`);
@@ -2286,10 +2230,7 @@ exportCommand
       maxFullChars: parsePositiveInt(options.maxFullChars, 5_000_000),
       pageSiblings: options.pageSiblings ?? true
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`Exported AI handoff pack to ${result.outputDir}`);
     log(`Files: ${result.files.length}; pages: ${result.pageCount}; nodes: ${result.nodeCount}; edges: ${result.edgeCount}`);
     if (result.truncatedFullText) {
@@ -2316,10 +2257,7 @@ program
       decay: options.decay ?? false,
       tiers: options.tiers ?? false
     });
-    if (isJson()) {
-      emitJson(findings);
-      return;
-    }
+    if (emitJson(findings)) return;
     if (!findings.length) {
       log("No findings.");
       return;
@@ -2370,10 +2308,7 @@ graph
   .description("Summarize compiled graph counts, node types, evidence classes, and relation mix.")
   .action(async () => {
     const stats = await graphStatsVault(process.cwd());
-    if (isJson()) {
-      emitJson(stats);
-      return;
-    }
+    if (emitJson(stats)) return;
     log(
       `Graph stats: ${stats.counts.nodes} nodes, ${stats.counts.edges} edges, ${stats.counts.pages} pages, ${stats.counts.hyperedges} hyperedges, ${stats.counts.communities} communities.`
     );
@@ -2617,10 +2552,7 @@ graph
         typeof options.svg === "string" ? path.resolve(process.cwd(), options.svg) : path.join(paths.wikiDir, "graph", "share-card.svg");
       await mkdir(path.dirname(svgPath), { recursive: true });
       await writeFile(svgPath, renderGraphShareSvg(artifact), "utf8");
-      if (isJson()) {
-        emitJson({ ...artifact, svgPath });
-        return;
-      }
+      if (emitJson({ ...artifact, svgPath })) return;
       log(`Wrote SVG share card to ${svgPath}`);
       return;
     }
@@ -2628,17 +2560,11 @@ graph
       const bundlePath =
         typeof options.bundle === "string" ? path.resolve(process.cwd(), options.bundle) : path.join(paths.wikiDir, "graph", "share-kit");
       const bundleFiles = await writeShareBundle(bundlePath, renderGraphShareBundleFiles(artifact));
-      if (isJson()) {
-        emitJson({ ...artifact, bundlePath, bundleFiles });
-        return;
-      }
+      if (emitJson({ ...artifact, bundlePath, bundleFiles })) return;
       log(`Wrote share kit to ${bundlePath}`);
       return;
     }
-    if (isJson()) {
-      emitJson(artifact);
-      return;
-    }
+    if (emitJson(artifact)) return;
     log(options.post ? artifact.shortPost : renderGraphShareMarkdown(artifact));
   });
 
@@ -2684,10 +2610,7 @@ graph
         budget,
         filters
       });
-      if (isJson()) {
-        emitJson(result);
-        return;
-      }
+      if (emitJson(result)) return;
       log(result.summary);
       // Inline the top match's wiki page so one query answers most
       // where-is/what-calls questions without a follow-up file read.
@@ -2712,10 +2635,7 @@ graph
   .argument("<to>", "Target node/page label or id")
   .action(async (from: string, to: string) => {
     const result = await pathGraphVault(process.cwd(), from, to);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.summary);
   });
 
@@ -2725,10 +2645,7 @@ graph
   .argument("<target>", "Node/page label or id")
   .action(async (target: string) => {
     const result = await explainGraphVault(process.cwd(), target);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.summary);
   });
 
@@ -2738,10 +2655,7 @@ graph
   .argument("<target>", "Symbol label or node id")
   .action(async (target: string) => {
     const result = await listGraphCallers(process.cwd(), target);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.summary);
   });
 
@@ -2752,10 +2666,7 @@ graph
   .action(async (options: { limit?: string }) => {
     const limit = parsePositiveInt(options.limit, 10);
     const result = await listGodNodes(process.cwd(), limit);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     for (const node of result) {
       log(`${node.label} degree=${node.degree ?? 0} bridge=${node.bridgeScore ?? 0}`);
     }
@@ -2769,10 +2680,7 @@ graph
   .action(async (target: string, options: { depth?: string }) => {
     const depth = parsePositiveInt(options.depth, 3);
     const result = await blastRadiusVault(process.cwd(), target, { maxDepth: depth });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.summary);
     for (const mod of result.affectedModules) {
       log(`  ${"  ".repeat(mod.depth - 1)}${mod.label} (depth ${mod.depth})`);
@@ -2794,10 +2702,7 @@ graph
       limit: parsePositiveInt(options.limit, 25),
       maxDepth: parsePositiveInt(options.maxDepth, 25)
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(result.summary);
     for (const cycle of result.cycles) {
       log(`- ${cycle.labels.join(" -> ")} -> ${cycle.labels[0]} (${cycle.relations.join(", ")})`);
@@ -2811,10 +2716,7 @@ graph
   .argument("<replacedById>", "Page id or path of the replacement page")
   .action(async (pageId: string, replacedById: string) => {
     const result = await createSupersessionEdge(process.cwd(), pageId, replacedById);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`Superseded ${result.oldPageId} by ${result.newPageId} (edge ${result.edgeId}).`);
   });
 
@@ -2824,10 +2726,7 @@ review
   .description("List staged approval bundles and their resolution status.")
   .action(async () => {
     const approvals = await listApprovals(process.cwd());
-    if (isJson()) {
-      emitJson(approvals);
-      return;
-    }
+    if (emitJson(approvals)) return;
     if (!approvals.length) {
       log("No approval bundles.");
       return;
@@ -2846,10 +2745,7 @@ review
   .option("--diff", "Show unified diff for each entry", false)
   .action(async (approvalId: string, options: { diff?: boolean }) => {
     const approval = await readApproval(process.cwd(), approvalId, { diff: options.diff });
-    if (isJson()) {
-      emitJson(approval);
-      return;
-    }
+    if (emitJson(approval)) return;
     log(
       `${approval.approvalId}${approval.bundleType ? ` [${approval.bundleType}]` : ""}${approval.title ? ` ${approval.title}` : ""} pending=${approval.pendingCount} accepted=${approval.acceptedCount} rejected=${approval.rejectedCount}`
     );
@@ -2900,10 +2796,7 @@ candidate
   .description("List staged concept and entity candidates.")
   .action(async () => {
     const candidates = await listCandidates(process.cwd());
-    if (isJson()) {
-      emitJson(candidates);
-      return;
-    }
+    if (emitJson(candidates)) return;
     if (!candidates.length) {
       log("No candidates.");
       return;
@@ -2945,10 +2838,7 @@ candidate
   .option("--dry-run", "Score candidates without moving files", false)
   .action(async (options: { dryRun?: boolean }) => {
     const result = await runAutoPromotion(process.cwd(), { dryRun: options.dryRun ?? false });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(
       `${result.dryRun ? "Dry-run" : "Promoted"} ${result.promotedPageIds.length} of ${result.decisions.length} candidates. Session: ${result.sessionPath ?? "none"}`
     );
@@ -2963,10 +2853,7 @@ candidate
   .description("Show promotion scores for staged candidates without promoting.")
   .action(async () => {
     const decisions = await previewCandidatePromotions(process.cwd());
-    if (isJson()) {
-      emitJson(decisions);
-      return;
-    }
+    if (emitJson(decisions)) return;
     if (!decisions.length) {
       log("No candidates to score.");
       return;
@@ -2995,10 +2882,7 @@ provider
     }
     const status = await summarizeLocalWhisperSetup({ modelName });
 
-    if (isJson()) {
-      emitJson({ ...status, apply: Boolean(options.apply), configWrite: null });
-      return;
-    }
+    if (emitJson({ ...status, apply: Boolean(options.apply), configWrite: null })) return;
 
     log(`whisper.cpp binary: ${status.binary.found ? status.binary.path : "NOT FOUND"}`);
     if (!status.binary.found) {
@@ -3105,10 +2989,7 @@ provider
         },
         tasks: options.task?.map(parseProviderTask)
       });
-      if (isJson()) {
-        emitJson(result);
-        return;
-      }
+      if (emitJson(result)) return;
       log(`${result.added ? "Added" : result.updated ? "Updated" : "Kept"} provider ${result.providerId} in ${result.configPath}.`);
       if (result.updatedTasks.length) {
         log(`Assigned tasks: ${result.updatedTasks.join(", ")}`);
@@ -3121,10 +3002,7 @@ provider
   .description("List configured providers and task assignments.")
   .action(async () => {
     const entries = await listProviderConfigEntries(process.cwd());
-    if (isJson()) {
-      emitJson(entries);
-      return;
-    }
+    if (emitJson(entries)) return;
     if (!entries.length) {
       log("No providers configured.");
       return;
@@ -3145,10 +3023,7 @@ provider
     if (!entry) {
       throw new Error(`Provider ${id} is not configured.`);
     }
-    if (isJson()) {
-      emitJson(entry);
-      return;
-    }
+    if (emitJson(entry)) return;
     log(`${entry.id}`);
     log(`type=${entry.type}`);
     log(`model=${entry.model}`);
@@ -3169,10 +3044,7 @@ provider
       providerId: id,
       fallbackProviderId: options.fallback
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`${result.removed ? "Removed" : "No provider named"} ${id}.`);
     if (result.reassignedTasks.length) {
       log(`Reassigned tasks to ${result.fallbackProviderId}: ${result.reassignedTasks.join(", ")}`);
@@ -3267,10 +3139,7 @@ watch
   .description("Print the effective watched repo roots resolved from config and auto-discovery.")
   .action(async () => {
     const roots = await listWatchedRoots(process.cwd());
-    if (isJson()) {
-      emitJson({ roots });
-      return;
-    }
+    if (emitJson({ roots })) return;
     if (roots.length === 0) {
       log("No watched repo roots.");
       return;
@@ -3285,10 +3154,7 @@ watch
   .description("Persist a repo root into swarmvault.config.json watch.repoRoots.")
   .action(async (pathValue: string) => {
     const resolved = await addWatchedRoot(process.cwd(), pathValue);
-    if (isJson()) {
-      emitJson({ added: resolved });
-      return;
-    }
+    if (emitJson({ added: resolved })) return;
     log(`Watching ${resolved}`);
   });
 
@@ -3297,19 +3163,13 @@ watch
   .description("Remove a repo root from swarmvault.config.json watch.repoRoots.")
   .action(async (pathValue: string) => {
     const removed = await removeWatchedRoot(process.cwd(), pathValue);
-    if (isJson()) {
-      emitJson({ removed });
-      return;
-    }
+    if (emitJson({ removed })) return;
     log(removed ? `Removed ${pathValue}` : `${pathValue} was not in watch.repoRoots.`);
   });
 
 async function showWatchStatus(): Promise<void> {
   const result = await getWatchStatus(process.cwd());
-  if (isJson()) {
-    emitJson(result);
-    return;
-  }
+  if (emitJson(result)) return;
   log(`Watched repo roots: ${result.watchedRepoRoots.length}`);
   log(`Pending semantic refresh: ${result.pendingSemanticRefresh.length}`);
   for (const entry of result.pendingSemanticRefresh.slice(0, 8)) {
@@ -3369,10 +3229,7 @@ hook
   .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
   .action(async (repo: string | undefined) => {
     const status = await installGitHooks(process.cwd(), { repoPath: repo });
-    if (isJson()) {
-      emitJson(status);
-      return;
-    }
+    if (emitJson(status)) return;
     log(`Installed hooks in ${status.repoRoot}`);
   });
 
@@ -3382,10 +3239,7 @@ hook
   .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
   .action(async (repo: string | undefined) => {
     const status = await uninstallGitHooks(process.cwd(), { repoPath: repo });
-    if (isJson()) {
-      emitJson(status);
-      return;
-    }
+    if (emitJson(status)) return;
     log(`Removed SwarmVault hook blocks from ${status.repoRoot ?? "the current workspace"}`);
   });
 
@@ -3395,10 +3249,7 @@ hook
   .argument("[repo]", "Optional git repo path when the tracked repo lives below the vault root")
   .action(async (repo: string | undefined) => {
     const status = await getGitHookStatus(process.cwd(), { repoPath: repo });
-    if (isJson()) {
-      emitJson(status);
-      return;
-    }
+    if (emitJson(status)) return;
     if (!status.repoRoot) {
       log("No git repository found.");
       return;
@@ -3414,10 +3265,7 @@ schedule
   .description("List configured schedule jobs and their next run state.")
   .action(async () => {
     const schedules = await listSchedules(process.cwd());
-    if (isJson()) {
-      emitJson(schedules);
-      return;
-    }
+    if (emitJson(schedules)) return;
     if (!schedules.length) {
       log("No schedules configured.");
       return;
@@ -3435,10 +3283,7 @@ schedule
   .argument("<jobId>", "Schedule identifier")
   .action(async (jobId: string) => {
     const result = await runSchedule(process.cwd(), jobId);
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(
       `${jobId} ${result.success ? "completed" : "failed"} (${result.taskType})${result.approvalId ? ` approval=${result.approvalId}` : ""}${
         result.error ? ` error=${result.error}` : ""
@@ -3475,10 +3320,7 @@ program
   .action(async (options: { target?: string; apply?: boolean; dryRun?: boolean }) => {
     const dryRun = options.dryRun === true ? true : options.apply !== true;
     const result = await runMigration(process.cwd(), { targetVersion: options.target, dryRun });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(
       `Vault version: ${result.fromVersion ?? "unknown"} → ${result.toVersion} (${result.planned} step${result.planned === 1 ? "" : "s"} planned, ${result.applied.length} applied, ${result.skipped.length} skipped${dryRun ? "; dry-run" : ""})`
     );
@@ -3522,10 +3364,7 @@ install
       mcp: options.mcp ?? false,
       scope
     });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`${result.agent} ${result.installed ? "installed" : "not installed"} (${result.scope}${result.hook ? ", hook" : ""})`);
     for (const target of result.targets) {
       log(`${target.exists ? "ok" : "missing"} ${target.path}`);
@@ -3836,10 +3675,7 @@ program
 
     const diff = graphDiff(previousGraph, currentGraph);
 
-    if (isJson()) {
-      emitJson(diff);
-      return;
-    }
+    if (emitJson(diff)) return;
 
     if (diff.summary === "No changes") {
       log("No changes since last commit.");
@@ -3909,10 +3745,7 @@ program
   .option("--repair", "Run safe repairs such as rebuilding stale retrieval artifacts", false)
   .action(async (options: { repair?: boolean }) => {
     const report = await doctorVault(process.cwd(), { repair: options.repair });
-    if (isJson()) {
-      emitJson(report);
-      return;
-    }
+    if (emitJson(report)) return;
     log(`Vault health: ${report.status}${report.repaired.length ? ` (repaired: ${report.repaired.join(", ")})` : ""}`);
     log(
       `Sources ${report.counts.sources} | Managed ${report.counts.managedSources} | Pages ${report.counts.pages} | Nodes ${report.counts.nodes} | Edges ${report.counts.edges}`
@@ -3945,10 +3778,7 @@ retrieval
   .description("Show retrieval index health and configuration.")
   .action(async () => {
     const status = await getRetrievalStatus(process.cwd());
-    if (isJson()) {
-      emitJson(status);
-      return;
-    }
+    if (emitJson(status)) return;
     log(`Retrieval backend: ${status.configured.backend}`);
     log(`Index: ${status.indexExists ? "present" : "missing"} (${status.indexPath})`);
     log(`Manifest: ${status.manifestExists ? "present" : "missing"} (${status.manifestPath})`);
@@ -3965,10 +3795,7 @@ retrieval
   .description("Rebuild the local retrieval index from the current graph.")
   .action(async () => {
     const status = await rebuildRetrievalIndex(process.cwd());
-    if (isJson()) {
-      emitJson(status);
-      return;
-    }
+    if (emitJson(status)) return;
     log(`Rebuilt retrieval index at ${status.indexPath}`);
     log(`Pages indexed: ${status.pageCount}`);
   });
@@ -3979,10 +3806,7 @@ retrieval
   .option("--repair", "Rebuild stale or missing retrieval artifacts", false)
   .action(async (options: { repair?: boolean }) => {
     const result = await doctorRetrieval(process.cwd(), { repair: options.repair });
-    if (isJson()) {
-      emitJson(result);
-      return;
-    }
+    if (emitJson(result)) return;
     log(`Retrieval health: ${result.ok ? "ok" : "needs attention"}`);
     if (result.repaired) {
       log("Repaired retrieval index.");
