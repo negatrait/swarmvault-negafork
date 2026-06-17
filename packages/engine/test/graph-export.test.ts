@@ -3,8 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import matter from "gray-matter";
 import { afterEach, describe, expect, it } from "vitest";
-import { exportGraphFormat, exportObsidianVault, initVault } from "../src/index.js";
-import type { GraphArtifact, GraphNode, GraphPage } from "../src/types.js";
+import { exportGraphFormat, exportObsidianVault, initVault, synthesizeHyperedgeHubs } from "../src/index.js";
+import type { GraphArtifact, GraphHyperedge, GraphNode, GraphPage } from "../src/types.js";
 
 const tempDirs: string[] = [];
 
@@ -417,5 +417,102 @@ describe("obsidian vault export", () => {
     expect(html).toContain("Alpha Source");
     expect(html).toContain("Authentication");
     expect(html).toContain("mentions");
+  });
+});
+
+function makeHyperedge(overrides: Partial<GraphHyperedge> & { id: string; nodeIds: string[] }): GraphHyperedge {
+  return {
+    label: "Group pattern",
+    relation: "participate_in",
+    evidenceClass: "inferred",
+    confidence: 0.6,
+    sourcePageIds: [],
+    why: "co-occur",
+    ...overrides
+  };
+}
+
+function sampleGraphWithHyperedges(): GraphArtifact {
+  const baseGraph = sampleGraph();
+  const hyperedges = [
+    makeHyperedge({ id: "hyper:participate-1", relation: "participate_in", nodeIds: ["source:alpha", "concept:auth", "entity:orphan"] }),
+    makeHyperedge({ id: "hyper:implement-1", relation: "implement", nodeIds: ["source:alpha", "concept:auth"] }),
+    // Degenerate: one participant → must be skipped.
+    makeHyperedge({ id: "hyper:form-lonely", relation: "form", nodeIds: ["rationale:long"] })
+  ];
+  return { ...baseGraph, hyperedges };
+}
+
+describe("synthesizeHyperedgeHubs", () => {
+  it("returns one hub per hyperedge and one edge per participant", () => {
+    const graph = sampleGraphWithHyperedges();
+    const { hubNodes, hubEdges } = synthesizeHyperedgeHubs(graph.hyperedges, graph.nodes);
+
+    // 2 valid hyperedges (3-way + 2-way) — the 1-participant one is filtered.
+    expect(hubNodes).toHaveLength(2);
+    expect(hubEdges).toHaveLength(3 + 2);
+
+    for (const hub of hubNodes) {
+      const edgesForHub = hubEdges.filter((edge) => edge.hyperedgeId === hub.hyperedgeId);
+      expect(edgesForHub).toHaveLength(hub.participantIds.length);
+    }
+  });
+
+  it("skips degenerate hyperedges with fewer than two participants", () => {
+    const graph = sampleGraphWithHyperedges();
+    const { hubNodes } = synthesizeHyperedgeHubs(graph.hyperedges, graph.nodes);
+    expect(hubNodes.some((hub) => hub.hyperedgeId === "hyper:form-lonely")).toBe(false);
+  });
+
+  it("skips participants that aren't in the visible node set", () => {
+    const graph = sampleGraphWithHyperedges();
+    // Only expose two nodes — the 3-way participate_in hyperedge should
+    // degrade to a 2-participant hub instead of being skipped entirely.
+    const visibleNodes = graph.nodes.filter((node) => node.id === "source:alpha" || node.id === "concept:auth");
+    const { hubNodes, hubEdges } = synthesizeHyperedgeHubs(graph.hyperedges, visibleNodes);
+    const participateHub = hubNodes.find((hub) => hub.hyperedgeId === "hyper:participate-1");
+    expect(participateHub?.participantIds).toEqual(["source:alpha", "concept:auth"]);
+    const participateEdges = hubEdges.filter((edge) => edge.hyperedgeId === "hyper:participate-1");
+    expect(participateEdges).toHaveLength(2);
+  });
+
+  it("formats hub ids as hyper:<hyperedgeId> and uses the relation as the label", () => {
+    const graph = sampleGraphWithHyperedges();
+    const { hubNodes, hubEdges } = synthesizeHyperedgeHubs(graph.hyperedges, graph.nodes);
+
+    const participateHub = hubNodes.find((hub) => hub.hyperedgeId === "hyper:participate-1");
+    expect(participateHub?.id).toBe("hyper:hyper:participate-1");
+    expect(participateHub?.label).toBe("participate_in");
+
+    const implementHub = hubNodes.find((hub) => hub.hyperedgeId === "hyper:implement-1");
+    expect(implementHub?.label).toBe("implement");
+
+    // Hub edges reuse the hub id as the source and point at real participants.
+    for (const edge of hubEdges) {
+      expect(edge.source.startsWith("hyper:")).toBe(true);
+      expect(edge.id.startsWith("hyper-edge:")).toBe(true);
+    }
+  });
+
+  it("embeds hub nodes and hub edges in the standalone HTML export payload", async () => {
+    const root = await createTempWorkspace();
+    await initVault(root);
+    const graph = sampleGraphWithHyperedges();
+    await writeGraph(root, graph);
+
+    const outputPath = path.join(root, "graph.html");
+    await exportGraphFormat(root, "html-standalone", outputPath);
+    const html = await fs.readFile(outputPath, "utf8");
+
+    // The embedded JSON payload should mention the synthesized hub ids and the
+    // relation labels. The vis.js inline JS keys on isHub/isHubEdge to style
+    // them, so both flags should be serialized.
+    expect(html).toContain(`"id":"hyper:hyper:participate-1"`);
+    expect(html).toContain(`"id":"hyper:hyper:implement-1"`);
+    expect(html).toContain(`"isHub":true`);
+    expect(html).toContain(`"isHubEdge":true`);
+    expect(html).toContain(`"label":"participate_in"`);
+    // The degenerate one-participant hyperedge must not leak into the payload.
+    expect(html).not.toContain("hyper:hyper:form-lonely");
   });
 });
