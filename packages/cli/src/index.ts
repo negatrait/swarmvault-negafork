@@ -406,6 +406,24 @@ function dedupeNextRecommendations(recommendations: NextCommandRecommendation[])
     .sort((left, right) => rank[left.priority] - rank[right.priority] || left.command.localeCompare(right.command));
 }
 
+/**
+ * @summary Generates a context-aware report recommending the next CLI actions for a workspace.
+ *
+ * @remarks
+ * Evaluates the current state of the SwarmVault workspace (uninitialized, initialized, or compiled)
+ * by safely checking configuration files, schema presence, and graph compilation artifacts. It stitches
+ * together diagnostics from `getGraphStatus` and `doctorVault` to provide prioritized, actionable
+ * command recommendations for the user.
+ *
+ * Future Refactoring Note:
+ * The complex workspace state detection (e.g., fallback paths, checking `configExists` and `schemaExists` manually)
+ * and the merging of `getGraphStatus` with `doctorVault` should be consolidated entirely inside the engine's
+ * `doctorVault` function. This function should ultimately just handle mapping the diagnostic results to CLI
+ * recommendations and formatting the report.
+ *
+ * @param rootDir - The absolute path to the workspace root directory.
+ * @returns A structured report detailing the current status, paths, counts, health checks, and prioritized command recommendations.
+ */
 async function buildNextCommandReport(rootDir: string): Promise<NextCommandReport> {
   const generatedAt = new Date().toISOString();
   const fallbackPaths = resolvePaths(rootDir, defaultVaultConfig());
@@ -851,6 +869,24 @@ async function runGraphMergeCommand(graphPaths: string[], options: { out: string
   }
 }
 
+/**
+ * @summary Orchestrates the "quickstart" scan command: initializes, ingests, and compiles a workspace.
+ *
+ * @remarks
+ * This function wraps the full ingestion pipeline for the CLI. It ensures the vault is initialized,
+ * processes local files, directories, or remote repository URLs using `addManagedSource` or `ingestScanInput`,
+ * and subsequently triggers a full graph compilation. It handles various terminal output formats (JSON vs Text)
+ * and optionally starts the graph viewer or an MCP server.
+ *
+ * Future Refactoring Note:
+ * The ingestion return types from `addManagedSource` and `ingestScanInput` should be unified or wrapped
+ * in a common interface. Currently, the function relies on fragile property checks (e.g., `"source" in result`,
+ * `"inputDir" in result`) to branch its logging logic. Simplifying these return types will make the execution
+ * flow and logging transparent.
+ *
+ * @param input - The target to scan: a local file, directory, or public Git repository URL.
+ * @param options - Configuration options for the scan execution, including viewer and checkout parameters.
+ */
 async function runScanCommand(
   input: string,
   options: {
