@@ -7,26 +7,72 @@ This document analyzes the strategies and benefits of porting sections of SwarmV
 1. **Shrink the Memory Footprint:** Reduce memory consumption, particularly during massive graph ingestion and compilation.
 2. **Standalone Binary:** Enable compilation into a high-performance, statically linked, standalone CLI executable that requires zero runtime dependencies (no Node.js runtime required).
 
-*Note: WebAssembly (WASM) has been formally de-prioritized as a constraint. Because WASM compatibility is no longer a strict requirement for our roadmap, it allows us to choose a primary language solely optimized for standalone CLI distribution and developer velocity.*
+We are explicitly rejecting two traditional extremes:
+1. **The Greenfield Rewrite:** Re-architecting from scratch in Go is rejected. It introduces massive regression risks, delays value delivery, and violates Hyrum's Law by discarding decades of implicit edge cases, parser workarounds, and bug fixes built into our TS codebase.
+2. **The Loose Polyglot Bridge:** Maintaining a heavy inter-process JSON bridge long-term is rejected. It introduces performance bottlenecks and double-tooling maintenance overhead.
 
-## Language Analysis (Go as Primary Path)
+Instead, we are adopting a **Structural Port**, modeled directly on Microsoft's port of the TypeScript compiler and typechecker to Go (`tsgo`). We will translate our TypeScript codebase module-by-module into Go while **deliberately preserving the original directory structures, data models, logic flow, and function contracts 1:1**.
 
-With WASM constraints removed, **Go** is the primary recommended path for our standalone CLI pivot. It eliminates the high cognitive load and complex compilation chains associated with Rust, while delivering the performance profile we need.
+## A. Directory & Package Mirroring Strategy
 
-*   **Key Benefits of Go for SwarmVault:**
-    *   **Graph Representation Simplicity:** Go’s garbage collection and straightforward pointer model allow us to write traditional node-and-link graph structures cleanly. This bypasses Rust’s strict borrow-checker hurdles when dealing with cyclical or heavily interconnected graph data.
-    *   **Frictionless Cross-Compilation:** Go provides out-of-the-box support for compiling native binaries across macOS (Intel/M-series), Linux, and Windows with simple environment variables (`GOOS`/`GOARCH`), requiring zero external C-toolchains.
-    *   **High Concurrency Performance:** Goroutines and channels are perfect for fast parallel document parsing, chunking, and managing rate-limited LLM API ingestion.
-    *   **Low Overhead:** Go produces standalone binary sizes of 10–15MB, which are optimal for CLI distribution. The memory footprint during heavy operations is vastly smaller and more predictable than the V8/Node.js runtime.
+To ensure developers can instantly map logic between the two codebases during the migration, the Go codebase must mirror the TypeScript codebase directory layout exactly:
+- `src/parser/markdown.ts` -> `internal/parser/markdown.go`
+- `src/graph/louvain.ts` -> `internal/graph/louvain.go`
+
+## B. Data Model & Contract Mapping (TS to Go)
+
+Direct translation rules must be followed to show how TypeScript concepts map to idiomatic yet structurally equivalent Go:
+- TS Interfaces and Type aliases map to Go `struct` and `interface` models.
+- TS `Promise` and asynchronous structures map to Go's synchronous execution paths (leveraging Go's runtime scheduler) or direct goroutine/channel pipelines where high concurrency is required.
+- Do not let the Go code deviate into entirely new design patterns; preserve the algorithmic flow to ensure logic remains easily verifiable.
+
+### Example Code Structure
+
+This is a conceptual illustration of this 1:1 structural mapping:
+
+**TypeScript Source (`src/graph/community.ts`):**
+```typescript
+export interface GraphNode {
+  id: string;
+  weight: number;
+}
+
+export function detectCommunities(nodes: GraphNode[], resolution: number): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const node of nodes) {
+    result[node.id] = Math.floor(node.weight * resolution);
+  }
+  return result;
+}
+```
+
+**Ported Go Code (`internal/graph/community.go`):**
+```go
+package graph
+
+type GraphNode struct {
+	ID     string  `json:"id"`
+	Weight float64 `json:"weight"`
+}
+
+func DetectCommunities(nodes []GraphNode, resolution float64) map[string]int {
+	result := make(map[string]int)
+	for _, node := range nodes {
+		result[node.ID] = int(node.Weight * resolution)
+	}
+	return result
+}
+```
 
 ## Incremental Migration Architecture (The "Sidecar" Strategy)
 
-Migrating the entire codebase at once is risky and disruptive. Instead, we will adopt the **Subprocess/CLI Sidecar Bridge Pattern** to migrate "one function at a time."
+Migrating the entire codebase at once is risky and disruptive. Instead, we will adopt the **Subprocess/CLI Sidecar Bridge Pattern** to migrate "one function at a time." The roadmap must detail how we swap TS code for Go code safely through the **Incremental "Toggled" Release Loop**:
 
-1.  **The Orchestrator:** The existing TypeScript codebase remains the primary application orchestrator.
-2.  **The Sidecar:** The new Go CLI exposes specific subcommands for individual ported modules (e.g., `swarmvault-native detect-communities`).
-3.  **The Bridge:** The TypeScript codebase spawns the Go binary as a subprocess. Input data is streamed or passed as JSON via `stdin`, and the Go process returns results as JSON via `stdout`.
-4.  **The Shrinking Shell:** As more functions are migrated to Go subcommands, the TypeScript shell shrinks. Eventually, the TypeScript application is fully deprecated, resulting in a 100% native Go application.
+1. **Port the Module:** Translate the module 1:1 from TS to Go.
+2. **Expose Subcommand:** Expose the ported module as a subcommand in the emerging Go CLI.
+3. **Bridge & Toggle:** Update the TS codebase to delegate to the Go CLI subcommand via a child subprocess. Keep the legacy TS implementation behind an environment variable toggle (e.g., `USE_GO_PARSER=true`).
+4. **Assert & Validate:** Run live data through both paths, validating output parity.
+5. **Deprecate:** Remove the legacy TS module once performance and accuracy are proven.
 
 ## High-Impact Areas for Porting
 
@@ -95,8 +141,7 @@ func main() {
 		// Receive graph payload via stdin
 		if err := json.NewDecoder(os.Stdin).Decode(&data); err != nil {
 			// Write strictly to stderr to preserve stdout for valid JSON
-			fmt.Fprintf(os.Stderr, "Error decoding JSON: %v
-", err)
+			fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
 			os.Exit(1)
 		}
 
