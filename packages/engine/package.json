@@ -37,7 +37,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "test -f ../viewer/dist/index.html || pnpm --dir ../viewer build; tsup src/index.ts --format esm --dts && tsup --config tsup.hooks.config.ts && node ../../scripts/copy-engine-grammar-assets.mjs && rm -rf dist/viewer && mkdir -p dist/viewer && cp -R ../viewer/dist/. dist/viewer/",
