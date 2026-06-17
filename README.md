@@ -646,3 +646,6 @@ See [SCALE.md](SCALE.md) for tested operating envelopes across small, medium, an
 ## License
 
 MIT
+
+### Go Native Sidecar (Migration in Progress)
+The project is currently incrementally migrating core execution engines to a standalone Go executable (`cmd/swarmvault-native`). Development within this directory requires `go` (version 1.24+).

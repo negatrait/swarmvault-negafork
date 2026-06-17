@@ -71,3 +71,6 @@
 - Development must happen on feature branches.
 - Tasks must always conclude with a pull request to main.
 - Performance benchmarking: Use `cd packages/viewer && pnpm exec tsx benchmark.ts` to measure `embeddedGraphQuery` performance.
+
+### Go Module (Sidecar Migration)
+*   When working on the Go sidecar (`cmd/swarmvault-native`), remember that it operates as a distinct module. Running `go` commands (like `go test`, `go build`) should always be executed from within the `cmd/swarmvault-native` directory, not the repository root.

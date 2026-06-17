@@ -81,3 +81,7 @@ During Phase 3 and Phase 4, the TypeScript implementation will not be immediatel
 
 *   **Feature Flags:** We will utilize environment variables (e.g., `SWARMVAULT_USE_TS_FALLBACK=1`) to allow end users to force the CLI to use the old Node.js implementations if the Go sidecar fails in their specific environment or on edge-case data.
 *   **Automatic Fallback:** The IPC bridge should be wrapped in a `try/catch`. If the Go subprocess crashes (e.g., exit code > 0) or times out, the orchestrator should automatically log a warning to `stderr` and transparently fall back to the TS implementation to ensure the user's workflow is not interrupted.
+
+### Architectual Considerations (Learnings from Phase 1.1)
+*   **Go Test Context:** When running `go test`, the working directory must be the module root (`cmd/swarmvault-native`) rather than the monorepo root. This is because the Go module is nested and not part of a root-level workspace.
+*   **Module Naming:** Ensure the `go.mod` file uses the exact target repository (`github.com/negatrait/swarmvault-negafork/cmd/swarmvault-native`) to prevent import and module resolution issues down the line.
