@@ -424,6 +424,7 @@ function dedupeNextRecommendations(recommendations: NextCommandRecommendation[])
  * @param rootDir - The absolute path to the workspace root directory.
  * @returns A structured report detailing the current status, paths, counts, health checks, and prioritized command recommendations.
  */
+// TODO: Simplify and extract workspace state and config fallback checking. The fallback configuration generation, file access checks, and schema validation should be wrapped in an isolated function.
 async function buildNextCommandReport(rootDir: string): Promise<NextCommandReport> {
   const generatedAt = new Date().toISOString();
   const fallbackPaths = resolvePaths(rootDir, defaultVaultConfig());
@@ -887,6 +888,7 @@ async function runGraphMergeCommand(graphPaths: string[], options: { out: string
  * @param input - The target to scan: a local file, directory, or public Git repository URL.
  * @param options - Configuration options for the scan execution, including viewer and checkout parameters.
  */
+// TODO: Unify the return shapes of ingestScanInput and addManagedSource to remove property-checking branch logic. Return a common result interface for ingest workflows.
 async function runScanCommand(
   input: string,
   options: {
@@ -4039,6 +4041,7 @@ program.hook("preAction", (_command, actionCommand) => {
   activeCommand = actionCommand;
 });
 
+// TODO: De-monolith this file. Extract the "graph", "source", and "context" subcommand handlers into their own focused module files in the cli/src directory.
 program.parseAsync(process.argv).catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   if (isJson()) {
