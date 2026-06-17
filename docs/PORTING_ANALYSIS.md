@@ -46,13 +46,33 @@ Reading large PDFs, DOCX, and processing Markdown to AST creates thousands of sm
 
 ---
 
-## Example Snippets: The Sidecar Bridge Pattern
+## Best Practices to Follow (Verified Node.js stdio patterns)
 
-This example demonstrates how porting a memory-heavy graph operation using the Subprocess Bridge Pattern would look.
+When implementing the Sidecar strategy, adhere to these established patterns for Node.js `child_process.spawn`:
 
-### 1. Go CLI Subcommand (The Sidecar)
+1.  **Strict stdio configuration:** Avoid using default `'pipe'` for file descriptors you do not intend to use. Explicitly map `stdio: ["pipe", "pipe", "pipe"]` (or `"ignore"` for stdin if passing arguments via CLI flags) to guarantee structured IPC.
+2.  **Buffer memory limits:** When expecting large JSON payloads from the Go sidecar over `stdout`, use streaming parsers or chunk accumulation (e.g., `child.stdout.on("data", ...)`). Do not rely solely on `exec` due to its restrictive buffer limits.
+3.  **Error channel segregation:** Always pass structured JSON results back on `stdout` and reserve `stderr` purely for logging, error tracing, and debugging text. This prevents malformed JSON parsing errors.
+
+---
+
+## Common Pitfalls to Avoid
+
+When executing this migration, particularly in our current environment, watch out for:
+
+1.  **pnpm workspace hoisting hurdles:** The Node.js `spawn` execution environment (especially `process.env.PATH` and `cwd`) can be unpredictable when running within a hoisted pnpm monorepo. **Always resolve absolute paths** to the compiled Go sidecar binary before calling `spawn()`. Do not rely on relative paths or `npx/pnpm exec` wrappers for the Go binary.
+2.  **Dangling subprocesses:** If the TypeScript orchestrator crashes or is forcibly killed by the user, spawned Go subprocesses might become orphaned. Implement structured teardown hooks (listening to Node's `SIGTERM`/`SIGINT`) to explicitly call `child.kill()` on active sidecars.
+3.  **Cross-platform binary resolution:** Ensure the TypeScript wrapper dynamically resolves the correct binary extension (e.g., `.exe` on Windows) and verifies the Go binary exists and has execute permissions before spawning.
+
+---
+
+## Example Snippets: Real Codebase Patterns
+
+These 3 examples reflect real code patterns currently used in SwarmVault (`packages/engine/src/...`) adapted for the new Go sidecar architecture.
+
+### Example 1: The Go CLI Sidecar (JSON via stdio)
 ```go
-// main.go
+// cmd/swarmvault-native/main.go
 package main
 
 import (
@@ -61,26 +81,20 @@ import (
 	"os"
 )
 
-type GraphData struct {
+type GraphPayload struct {
 	Nodes []Node `json:"nodes"`
 	Edges []Edge `json:"edges"`
 }
-
-type Node struct {
-	ID string `json:"id"`
-}
-
-type Edge struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
-}
+type Node struct{ ID string `json:"id"` }
+type Edge struct{ Source, Target string `json:"source", "target"` }
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "detect-communities" {
-		var data GraphData
+		var data GraphPayload
 
 		// Receive graph payload via stdin
 		if err := json.NewDecoder(os.Stdin).Decode(&data); err != nil {
+			// Write strictly to stderr to preserve stdout for valid JSON
 			fmt.Fprintf(os.Stderr, "Error decoding JSON: %v
 ", err)
 			os.Exit(1)
@@ -89,53 +103,87 @@ func main() {
 		// Run memory-efficient graph operation
 		communities := runLouvainFast(data.Nodes, data.Edges)
 
-		// Return result via stdout
+		// Return strictly structured result via stdout
 		if err := json.NewEncoder(os.Stdout).Encode(communities); err != nil {
 			os.Exit(1)
 		}
 	}
 }
 
-// runLouvainFast represents the highly efficient Go implementation
 func runLouvainFast(nodes []Node, edges []Edge) map[string]int {
-	// ... dense memory graph algorithm ...
 	return map[string]int{"nodeA": 1, "nodeB": 1}
 }
 ```
 
-### 2. TypeScript Orchestrator (The Bridge)
+### Example 2: The TypeScript Bridge (Promise-wrapped `spawn`)
+*Pattern derived from `packages/engine/src/extraction.ts` and `providers/local-whisper.ts`.*
+
 ```typescript
 // engine/src/graph/compile.ts
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 
-export async function detectCommunities(nodes: any[], edges: any[]): Promise<any> {
+export async function runGoSidecar(subcommand: string, inputPayload: any): Promise<any> {
     return new Promise((resolve, reject) => {
-        // Spawn the Go native CLI sidecar
-        const goProcess = spawn('./swarmvault-native', ['detect-communities']);
+        // Resolve absolute path to avoid pnpm workspace cwd confusion
+        const binaryPath = path.resolve(__dirname, '../../../bin/swarmvault-native');
 
-        let output = '';
-
-        goProcess.stdout.on('data', (data) => {
-            output += data.toString();
+        // Explicitly define stdio routing
+        const child = spawn(binaryPath, [subcommand], {
+             stdio: ["pipe", "pipe", "pipe"]
         });
 
-        goProcess.stderr.on('data', (data) => {
-            console.error(`Go Error: ${data}`);
-        });
+        let stdout = '';
+        let stderr = '';
 
-        goProcess.on('close', (code) => {
+        // Accumulate chunks (vital for large JSON returns)
+        child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+        child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+        child.on('error', reject);
+        child.on('close', (code) => {
             if (code !== 0) {
-                return reject(new Error(`Go process exited with code ${code}`));
+                return reject(new Error(`Go sidecar failed (code ${code}): ${stderr}`));
             }
-            // Parse the result back from stdout
-            resolve(JSON.parse(output));
+            resolve(JSON.parse(stdout));
         });
 
-        // Pass the heavy graph data via stdin, completely bypassing V8 GC spikes
-        const payload = JSON.stringify({ nodes, edges });
-        goProcess.stdin.write(payload);
-        goProcess.stdin.end();
+        // Pass the heavy graph data via stdin
+        child.stdin.write(JSON.stringify(inputPayload));
+        child.stdin.end();
     });
+}
+```
+
+### Example 3: Subprocess Orchestration with Environment Inheritance
+*Pattern derived from `packages/engine/src/orchestration.ts`.*
+
+When the Go sidecar needs access to API keys (e.g., for LLM ingestion), the TypeScript orchestrator must explicitly pass down the environment.
+
+```typescript
+// engine/src/orchestration.ts
+import { spawn } from 'node:child_process';
+
+interface SidecarConfig {
+    command: string[];
+    cwd?: string;
+    env?: Record<string, string>;
+}
+
+export async function executeSidecarWithEnv(config: SidecarConfig) {
+    const [binary, ...args] = config.command;
+
+    const child = spawn(binary, args, {
+        cwd: config.cwd,
+        // Inherit base environment, but inject specific keys needed by the Go CLI
+        env: {
+            ...process.env,
+            ...(config.env ?? {})
+        },
+        stdio: ["ignore", "pipe", "pipe"] // Ignore stdin if arguments are enough
+    });
+
+    // ... setup stdout/stderr listeners as in Example 2 ...
 }
 ```
 
