@@ -71,3 +71,9 @@
 - Development must happen on feature branches.
 - Tasks must always conclude with a pull request to main.
 - Performance benchmarking: Use `cd packages/viewer && pnpm exec tsx benchmark.ts` to measure `embeddedGraphQuery` performance.
+
+### Porting TypeScript to Go ("Structural Port")
+- **Never swallow errors in the TS Bridge.** `try/catch` fallbacks to TS hide Go runtime panics in CI. If `USE_GO_PORT=true` is set, explicit failures must crash the process to surface issues.
+- **Timestamp Parity:** Go structs parsing exact TS `generatedAt` strings usually fail differential testing due to millisecond discrepancies. Override the specific generated timestamps in the TS bridge wrapper locally to ensure tests check structural parity perfectly.
+- **CI/CD Execution Validation:** A module ported to Go is useless if it's not tested in CI. Every module port MUST ensure that `go build` is run and that tests are run BOTH with and without `USE_GO_PORT=true` inside `.github/workflows/ci.yml` and `.github/workflows/live-smoke.yml`.
+- **Install Script Reliability:** The app must be installable and runnable with `curl install.sh | bash` at all times. End-user binaries should be reliably built via Go (or precompiled binaries pulled) as part of this process. Never commit `swarmvault-native` binary files.
