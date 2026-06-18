@@ -80,8 +80,8 @@ func TestAutoCommitWikiChanges(t *testing.T) {
 
 		config := VaultConfigPayload{
 			AutoCommit: false,
-			WikiDir: filepath.Join(dir, "wiki"),
-			StateDir: filepath.Join(dir, "state"),
+			WikiDir:    filepath.Join(dir, "wiki"),
+			StateDir:   filepath.Join(dir, "state"),
 		}
 
 		msg, err := AutoCommitWikiChanges(dir, "test", "detail", config, AutoCommitOptions{})
@@ -104,8 +104,8 @@ func TestAutoCommitWikiChanges(t *testing.T) {
 
 		config := VaultConfigPayload{
 			AutoCommit: false,
-			WikiDir: filepath.Join(dir, "wiki"),
-			StateDir: filepath.Join(dir, "state"),
+			WikiDir:    filepath.Join(dir, "wiki"),
+			StateDir:   filepath.Join(dir, "state"),
 		}
 
 		msg, err := AutoCommitWikiChanges(dir, "test", "detail", config, AutoCommitOptions{Force: true})
@@ -133,8 +133,8 @@ func TestAutoCommitWikiChanges(t *testing.T) {
 
 		config := VaultConfigPayload{
 			AutoCommit: true,
-			WikiDir: filepath.Join(dir, "wiki"),
-			StateDir: filepath.Join(dir, "state"),
+			WikiDir:    filepath.Join(dir, "wiki"),
+			StateDir:   filepath.Join(dir, "state"),
 		}
 
 		msg, err := AutoCommitWikiChanges(dir, "test", "detail", config, AutoCommitOptions{})
@@ -156,8 +156,8 @@ func TestAutoCommitWikiChanges(t *testing.T) {
 
 		config := VaultConfigPayload{
 			AutoCommit: true,
-			WikiDir: filepath.Join(dir, "wiki"),
-			StateDir: filepath.Join(dir, "state"),
+			WikiDir:    filepath.Join(dir, "wiki"),
+			StateDir:   filepath.Join(dir, "state"),
 		}
 
 		msg, err := AutoCommitWikiChanges(dir, "test", "detail", config, AutoCommitOptions{})

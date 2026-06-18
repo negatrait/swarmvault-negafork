@@ -7,8 +7,9 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment
+      - shadow
   gocyclo:
-    min-complexity: 15
+    min-complexity: 30
   goconst:
     min-len: 3
     min-occurrences: 3

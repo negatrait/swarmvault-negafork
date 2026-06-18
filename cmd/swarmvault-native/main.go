@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"swarmvault-native/internal/auto-commit"
+	autocommit "swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/benchmark"
 )
 

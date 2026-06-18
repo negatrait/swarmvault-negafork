@@ -19,38 +19,38 @@ type SourceKind string
 type PageKind string
 
 type GraphNode struct {
-	ID          string         `json:"id"`
-	Type        string         `json:"type"`
-	Label       string         `json:"label"`
-	NormLabel   *string        `json:"normLabel,omitempty"`
-	PageID      *string        `json:"pageId,omitempty"`
-	Freshness   *Freshness     `json:"freshness,omitempty"`
-	Confidence  *float64       `json:"confidence,omitempty"`
-	SourceIDs   []string       `json:"sourceIds"`
-	ProjectIDs  []string       `json:"projectIds"`
-	SourceClass *SourceClass   `json:"sourceClass,omitempty"`
-	Language    *CodeLanguage  `json:"language,omitempty"`
-	ModuleID    *string        `json:"moduleId,omitempty"`
+	ID          string          `json:"id"`
+	Type        string          `json:"type"`
+	Label       string          `json:"label"`
+	NormLabel   *string         `json:"normLabel,omitempty"`
+	PageID      *string         `json:"pageId,omitempty"`
+	Freshness   *Freshness      `json:"freshness,omitempty"`
+	Confidence  *float64        `json:"confidence,omitempty"`
+	SourceIDs   []string        `json:"sourceIds"`
+	ProjectIDs  []string        `json:"projectIds"`
+	SourceClass *SourceClass    `json:"sourceClass,omitempty"`
+	Language    *CodeLanguage   `json:"language,omitempty"`
+	ModuleID    *string         `json:"moduleId,omitempty"`
 	SymbolKind  *CodeSymbolKind `json:"symbolKind,omitempty"`
-	StartLine   *int           `json:"startLine,omitempty"`
-	EndLine     *int           `json:"endLine,omitempty"`
-	CommunityID *string        `json:"communityId,omitempty"`
-	Degree      *int           `json:"degree,omitempty"`
-	BridgeScore *float64       `json:"bridgeScore,omitempty"`
-	IsGodNode   *bool          `json:"isGodNode,omitempty"`
+	StartLine   *int            `json:"startLine,omitempty"`
+	EndLine     *int            `json:"endLine,omitempty"`
+	CommunityID *string         `json:"communityId,omitempty"`
+	Degree      *int            `json:"degree,omitempty"`
+	BridgeScore *float64        `json:"bridgeScore,omitempty"`
+	IsGodNode   *bool           `json:"isGodNode,omitempty"`
 }
 
 type GraphEdge struct {
-	ID              string           `json:"id"`
-	Source          string           `json:"source"`
-	Target          string           `json:"target"`
-	Relation        string           `json:"relation"`
-	Status          ClaimStatus      `json:"status"`
-	EvidenceClass   EvidenceClass    `json:"evidenceClass"`
-	Confidence      float64          `json:"confidence"`
-	Provenance      []string         `json:"provenance"`
-	SimilarityReasons *[]string      `json:"similarityReasons,omitempty"`
-	SimilarityBasis *string          `json:"similarityBasis,omitempty"`
+	ID                string        `json:"id"`
+	Source            string        `json:"source"`
+	Target            string        `json:"target"`
+	Relation          string        `json:"relation"`
+	Status            ClaimStatus   `json:"status"`
+	EvidenceClass     EvidenceClass `json:"evidenceClass"`
+	Confidence        float64       `json:"confidence"`
+	Provenance        []string      `json:"provenance"`
+	SimilarityReasons *[]string     `json:"similarityReasons,omitempty"`
+	SimilarityBasis   *string       `json:"similarityBasis,omitempty"`
 }
 
 type GraphHyperedge struct {
@@ -176,16 +176,16 @@ type BenchmarkByClassEntry struct {
 }
 
 type BenchmarkArtifact struct {
-	GeneratedAt     string                           `json:"generatedAt"`
-	GraphHash       string                           `json:"graphHash"`
-	CorpusWords     int                              `json:"corpusWords"`
-	CorpusTokens    int                              `json:"corpusTokens"`
-	Nodes           int                              `json:"nodes"`
-	Edges           int                              `json:"edges"`
-	AvgQueryTokens  int                              `json:"avgQueryTokens"`
-	ReductionRatio  float64                          `json:"reductionRatio"`
-	SampleQuestions []string                         `json:"sampleQuestions"`
-	PerQuestion     []BenchmarkQuestionResult        `json:"perQuestion"`
-	Summary         BenchmarkSummary                 `json:"summary"`
+	GeneratedAt     string                                `json:"generatedAt"`
+	GraphHash       string                                `json:"graphHash"`
+	CorpusWords     int                                   `json:"corpusWords"`
+	CorpusTokens    int                                   `json:"corpusTokens"`
+	Nodes           int                                   `json:"nodes"`
+	Edges           int                                   `json:"edges"`
+	AvgQueryTokens  int                                   `json:"avgQueryTokens"`
+	ReductionRatio  float64                               `json:"reductionRatio"`
+	SampleQuestions []string                              `json:"sampleQuestions"`
+	PerQuestion     []BenchmarkQuestionResult             `json:"perQuestion"`
+	Summary         BenchmarkSummary                      `json:"summary"`
 	ByClass         map[SourceClass]BenchmarkByClassEntry `json:"byClass"`
 }
