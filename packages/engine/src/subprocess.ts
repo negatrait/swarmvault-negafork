@@ -2,7 +2,8 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export async function runGoSidecar(subcommand: string, inputPayload: any): Promise<any> {
+// biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
+export async function runGoSidecar(subcommand: string, inputPayload: unknown): Promise<any> {
   return new Promise((resolve, reject) => {
     // Resolve absolute path to avoid pnpm workspace cwd confusion
     // import.meta.url points to dist/subprocess.js when built
