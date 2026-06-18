@@ -21,9 +21,9 @@
     },
     {
       "path": "src/auto-commit.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "auto-commit",
+      "bridged": true
     },
     {
       "path": "src/benchmark.ts",
