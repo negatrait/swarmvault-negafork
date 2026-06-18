@@ -1,4 +1,5 @@
 import { ALL_SOURCE_CLASSES } from "./source-classification.js";
+import { runGoSidecarSync } from "./subprocess.js";
 import type {
   BenchmarkArtifact,
   BenchmarkByClassEntry,
@@ -8,7 +9,6 @@ import type {
   GraphQueryResult,
   SourceClass
 } from "./types.js";
-import { runGoSidecarSync } from "./subprocess.js";
 import { normalizeWhitespace, sha256, uniqueBy } from "./utils.js";
 
 const CHARS_PER_TOKEN = 4;
