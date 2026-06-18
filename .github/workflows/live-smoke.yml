@@ -51,8 +51,16 @@ jobs:
             echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
           fi
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go build -o swarmvault-native ./cmd/swarmvault-native
+
       - name: Run heuristic live smoke
         run: pnpm live:smoke:heuristic -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+
+      - name: Run heuristic live smoke with Go port
+        run: USE_GO_PORT=true pnpm live:smoke:heuristic -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
       - name: Upload heuristic smoke artifacts
         if: failure()

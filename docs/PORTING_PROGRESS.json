@@ -27,9 +27,9 @@
     },
     {
       "path": "src/benchmark.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "benchmark",
+      "bridged": true
     },
     {
       "path": "src/candidate-promotion.ts",
