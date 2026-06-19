@@ -1,10 +1,9 @@
-refactor(engine): split sync logic in acceptApproval to standalone helpers
+docs: Add PORTING_ANALYSIS.md evaluating WASM/Go/Rust ports
 
-Extracts the monolithic inner loop body of `acceptApproval` within
-`packages/engine/src/vault.ts` into two discrete, atomic helpers:
-- `syncStagedEntry` handles file resolution, validation, parsing, and deletion.
-- `syncOutputAssets` handles moving asset directories for output pages.
+Added an architectural analysis document evaluating the feasibility and
+benefits of porting SwarmVault to WebAssembly, Go, or Rust.
 
-This successfully addresses the massive size of the approval loop
-without breaking any of the heavy implicit dependencies within the engine,
-making the codebase substantially easier to trace and reason about.
+This analysis addresses the goals of shrinking the memory footprint,
+compiling to a standalone CLI binary without dependencies, and keeping
+WASM as a compatible target. The document identifies Rust as the ideal
+candidate to meet all criteria and outlines a recommended roadmap.

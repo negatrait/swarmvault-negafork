@@ -1,0 +1,503 @@
+{
+  "status": "pending",
+  "files": [
+    {
+      "path": "src/agents.ts",
+      "status": "bridged",
+      "subcommand": "agents",
+      "bridged": true
+    },
+    {
+      "path": "src/ai-export.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/analysis.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/auto-commit.ts",
+      "status": "bridged",
+      "subcommand": "auto-commit",
+      "bridged": true
+    },
+    {
+      "path": "src/benchmark.ts",
+      "status": "bridged",
+      "subcommand": "benchmark",
+      "bridged": true
+    },
+    {
+      "path": "src/candidate-promotion.ts",
+      "status": "bridged",
+      "subcommand": "candidate-promotion",
+      "bridged": true
+    },
+    {
+      "path": "src/chat.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/code-analysis.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/code-tree-sitter.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/confidence.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/config.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/consolidate.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/context-packs.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/deep-lint.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/doctor.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/embeddings.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/extraction.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/findings.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/freshness.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-callers.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-enrichment.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-export.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-interchange.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-merge.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-presentation.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-push.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-query-core.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-report-html.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-share.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-status.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-tools.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/graph-tree.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/claude.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/codex.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/copilot.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/gemini.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/marker-state.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/hooks/opencode.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/index.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/ingest.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/large-repo-defaults.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/logs.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/markdown-ast.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/markdown.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/mcp.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/memory.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/migrate.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/orchestration.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/output-artifacts.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/outputs.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/pages.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/anthropic.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/base.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/config-store.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/gemini.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/heuristic.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/local-whisper-setup.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/local-whisper.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/openai-compatible-capabilities.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/openai-compatible.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/providers/registry.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/redaction.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/retrieval.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/schedule.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/schema.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/search.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/shims.d.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/source-classification.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/source-registry.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/source-sessions.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/sources.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/templates/graph-viewer.html.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/token-estimation.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/tokenize.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/types.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/utils.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/vault.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/viewer.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/watch-state.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/watch.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/web-search/http-json.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    },
+    {
+      "path": "src/web-search/registry.ts",
+      "status": "pending",
+      "subcommand": null,
+      "bridged": false
+    }
+  ]
+}
