@@ -38,6 +38,42 @@ else
   cd "$INSTALL_DIR"
 fi
 
+OS=$(uname -s)
+ARCH=$(uname -m)
+echo "=> Detected OS: $OS, Architecture: $ARCH"
+
+if [ "$OS" = "Linux" ]; then
+  GOARCH=""
+  if [ "$ARCH" = "x86_64" ]; then
+    GOARCH="amd64"
+  elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    GOARCH="arm64"
+  fi
+
+  if [ -n "$GOARCH" ]; then
+    echo "=> Attempting to download pre-compiled Go binary for Linux $GOARCH..."
+    RELEASE_URL="https://github.com/negatrait/swarmvault-negafork/releases/download/daily/swarmvault-native-linux-${GOARCH}"
+
+    mkdir -p bin
+    if curl -sLf "$RELEASE_URL" -o bin/swarmvault-native; then
+      echo "=> Downloaded pre-compiled binary successfully."
+      chmod +x bin/swarmvault-native
+    else
+      echo "=> Failed to download pre-compiled binary. Attempting local Go compilation..."
+      if command -v go > /dev/null 2>&1; then
+        echo "=> Compiling Go binary locally..."
+        go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
+      else
+        echo "=> Warning: Go is not installed. Skipping native binary compilation."
+      fi
+    fi
+  else
+    echo "=> Warning: Architecture $ARCH on Linux is not pre-compiled. Skipping."
+  fi
+else
+  echo "=> OS is $OS. Skipping pre-compiled Linux Go binary download."
+fi
+
 echo "=> Installing dependencies..."
 pnpm install
 

@@ -701,19 +701,6 @@ export async function runWatchCycle(rootDir: string, options: WatchOptions = {})
   }
 }
 
-/**
- * @summary Starts the continuous file-watching service for the vault.
- *
- * @remarks
- * Monitors the configured directories (e.g. inbox, repositories, wiki) for changes and triggers incremental recompilations.
- *
- * Future Refactoring Note:
- * The debouncing and concurrency control logic is complex. Consider abstracting the event buffering into an RxJS-like observable stream or a dedicated queueing worker.
- *
- * @param rootDir - The root directory of the workspace.
- * @param options - Configuration options for the watcher (e.g., debounce intervals).
- * @returns A controller instance to stop the watcher and access its chokidar instance.
- */
 export async function watchVault(rootDir: string, options: WatchOptions = {}): Promise<WatchController> {
   const { paths } = await initWorkspace(rootDir);
   const baseDebounceMs = options.debounceMs ?? 900;

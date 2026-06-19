@@ -1,4 +1,5 @@
 import { ALL_SOURCE_CLASSES } from "./source-classification.js";
+import { runGoSidecarSync } from "./subprocess.js";
 import type {
   BenchmarkArtifact,
   BenchmarkByClassEntry,
@@ -31,10 +32,16 @@ function pageMap(graph: GraphArtifact) {
 }
 
 export function estimateTokens(text: string): number {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", { action: "estimateTokens", args: { text } });
+  }
   return Math.max(1, Math.ceil(text.length / CHARS_PER_TOKEN));
 }
 
 export function estimateCorpusWords(texts: string[]): number {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", { action: "estimateCorpusWords", args: { texts } });
+  }
   return texts.reduce((total, text) => total + normalizeWhitespace(text).split(/\s+/).filter(Boolean).length, 0);
 }
 
@@ -43,6 +50,12 @@ export function benchmarkQueryTokens(
   queryResult: GraphQueryResult,
   pageContentsById: Map<string, string>
 ): BenchmarkQuestionResult {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", {
+      action: "benchmarkQueryTokens",
+      args: { graph, queryResult, pageContentsById: Object.fromEntries(pageContentsById) }
+    });
+  }
   const nodesById = nodeMap(graph);
   const pagesById = pageMap(graph);
   const edgeIds = new Set(queryResult.visitedEdgeIds);
@@ -89,6 +102,9 @@ export function benchmarkQueryTokens(
 }
 
 export function graphHash(graph: GraphArtifact): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", { action: "graphHash", args: { graph } });
+  }
   const hashedPages = graph.pages.filter((page) => page.kind !== "graph_report" && page.kind !== "community_summary");
   const normalized = JSON.stringify(
     {
@@ -152,6 +168,9 @@ function hasResearchSources(pages: GraphPage[]): boolean {
 }
 
 export function defaultBenchmarkQuestionsForGraph(graph: GraphArtifact, maxQuestions = 3): string[] {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", { action: "defaultBenchmarkQuestionsForGraph", args: { graph, maxQuestions } });
+  }
   const normalizedLimit = Math.max(1, Math.min(maxQuestions, DEFAULT_BENCHMARK_QUESTIONS.length));
   const questions = [...DEFAULT_BENCHMARK_QUESTIONS];
   if (hasResearchSources(graph.pages)) {
@@ -174,6 +193,9 @@ export function buildBenchmarkByClass(input: {
   perClassCorpusWords: Record<SourceClass, number>;
   perClassPerQuestion: Record<SourceClass, BenchmarkQuestionResult[]>;
 }): Record<SourceClass, BenchmarkByClassEntry> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("benchmark", { action: "buildBenchmarkByClass", args: input });
+  }
   const entries = {} as Record<SourceClass, BenchmarkByClassEntry>;
   for (const sourceClass of ALL_SOURCE_CLASSES) {
     const corpusWords = Math.max(0, Math.round(input.perClassCorpusWords[sourceClass] ?? 0));
@@ -217,6 +239,11 @@ export function buildBenchmarkArtifact(input: {
   perQuestion: BenchmarkQuestionResult[];
   byClass?: Record<SourceClass, BenchmarkByClassEntry>;
 }): BenchmarkArtifact {
+  if (process.env.USE_GO_PORT === "true") {
+    const result = runGoSidecarSync("benchmark", { action: "buildBenchmarkArtifact", args: input });
+    result.generatedAt = new Date().toISOString();
+    return result;
+  }
   const corpusTokens = Math.max(1, Math.round(input.corpusWords * (100 / 75)));
   const perQuestion = input.perQuestion
     .filter((entry) => entry.queryTokens > 0)

@@ -519,19 +519,6 @@ function markdownPageForPack(pack: ContextPack): string {
   );
 }
 
-/**
- * @summary Builds a specialized context pack tailored for a specific agent or goal.
- *
- * @remarks
- * Combines graph retrieval, subgraph filtering, and token estimation to produce a bounded knowledge payload.
- *
- * Future Refactoring Note:
- * The token estimation loop can be computationally expensive. Consider pre-computing token chunks during the ingest or compile phase to make this packing phase purely a filtering operation.
- *
- * @param rootDir - The root directory of the workspace.
- * @param options - Configuration options defining the goal, budget, and format.
- * @returns The generated context pack result including token usage and content.
- */
 export async function buildContextPack(rootDir: string, options: BuildContextPackOptions): Promise<BuildContextPackResult> {
   const goal = normalizeWhitespace(options.goal);
   if (!goal) {

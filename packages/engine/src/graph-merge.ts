@@ -347,9 +347,15 @@ export async function mergeGraphFiles(
   const inputGraphs: GraphMergeInputSummary[] = [];
   const warnings: string[] = [];
 
-  for (const [index, inputPath] of inputPaths.entries()) {
+  const readPromises = inputPaths.map(async (inputPath, index) => {
     const resolvedInputPath = path.resolve(inputPath);
     const raw = JSON.parse(await fs.readFile(resolvedInputPath, "utf8")) as unknown;
+    return { index, resolvedInputPath, raw };
+  });
+
+  const parsedInputs = await Promise.all(readPromises);
+
+  for (const { index, resolvedInputPath, raw } of parsedInputs) {
     const prefix = ensureUniquePrefix(
       inputPaths.length === 1 && options.label ? slugify(options.label) : safePrefix(resolvedInputPath, index),
       usedPrefixes

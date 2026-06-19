@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { loadVaultConfig } from "./config.js";
+import { runGoSidecar } from "./subprocess.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +26,26 @@ export async function autoCommitWikiChanges(
   options?: { force?: boolean }
 ): Promise<string | null> {
   const { config, paths } = await loadVaultConfig(rootDir);
+
+  if (process.env.USE_GO_PORT === "true") {
+    try {
+      const result = await runGoSidecar("auto-commit", {
+        rootDir,
+        operation,
+        detail,
+        config: {
+          autoCommit: config.autoCommit,
+          wikiDir: paths.wikiDir,
+          stateDir: paths.stateDir
+        },
+        options: options || {}
+      });
+      return result.message;
+    } catch (error) {
+      console.warn(`Go sidecar failed, falling back to TS implementation: ${error}`);
+      // Fallback
+    }
+  }
 
   if (!options?.force && !config.autoCommit) {
     return null;

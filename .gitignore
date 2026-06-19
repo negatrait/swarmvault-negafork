@@ -17,3 +17,4 @@ packages/viewer/dist/
 .live-smoke-artifacts/
 .oss-corpus-artifacts/
 .release-preflight/
+temp-graphs/

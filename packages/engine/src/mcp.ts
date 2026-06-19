@@ -85,6 +85,36 @@ const codeLanguageSchema = z.enum([
   "sql"
 ]);
 
+const startTaskBaseSchema = {
+  goal: z.string().min(1).describe("Task goal to preserve"),
+  target: z.string().optional().describe("Optional page, node, path, project, or label to anchor the initial context pack"),
+  budgetTokens: z.number().int().min(200).optional().describe("Approximate token budget for the initial context pack"),
+  agent: z.string().optional().describe("Agent name to record on the task"),
+  contextPackId: z.string().optional().describe("Existing context pack id to attach instead of building a new one")
+};
+
+const updateTaskBaseSchema = {
+  note: z.string().optional().describe("Task note to append"),
+  decision: z.string().optional().describe("Decision to append"),
+  changedPath: z.string().optional().describe("Changed file or wiki path to attach"),
+  contextPackId: z.string().optional().describe("Context pack id to attach"),
+  sessionId: z.string().optional().describe("Session id to attach"),
+  sourceId: z.string().optional().describe("Source id to attach"),
+  pageId: z.string().optional().describe("Page id to attach"),
+  nodeId: z.string().optional().describe("Graph node id to attach"),
+  gitRef: z.string().optional().describe("Git ref to attach"),
+  status: z.enum(["active", "blocked", "completed", "archived"]).optional().describe("Task status")
+};
+
+const finishTaskBaseSchema = {
+  outcome: z.string().min(1).describe("Outcome to record"),
+  followUp: z.string().optional().describe("Follow-up to preserve for the next agent")
+};
+
+const resumeTaskBaseSchema = {
+  format: z.enum(["markdown", "json", "llms"]).optional().describe("Rendered output format")
+};
+
 export async function createMcpServer(rootDir: string): Promise<McpServer> {
   const server = new McpServer({
     name: "swarmvault",
@@ -435,11 +465,8 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
     {
       description: "Start a durable SwarmVault agent memory task and build its initial context pack.",
       inputSchema: {
-        goal: z.string().min(1).describe("Task goal to preserve in agent memory"),
-        target: z.string().optional().describe("Optional page, node, path, project, or label to anchor the initial context pack"),
-        budgetTokens: z.number().int().min(200).optional().describe("Approximate token budget for the initial context pack"),
-        agent: z.string().optional().describe("Agent name to record on the task"),
-        contextPackId: z.string().optional().describe("Existing context pack id to attach instead of building a new one")
+        ...startTaskBaseSchema,
+        goal: z.string().min(1).describe("Task goal to preserve in agent memory")
       }
     },
     safeHandler(async ({ goal, target, budgetTokens, agent, contextPackId }) => {
@@ -453,16 +480,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Append a note, decision, path, context pack, or status change to a SwarmVault memory task.",
       inputSchema: {
         id: z.string().min(1).describe("Memory task id"),
-        note: z.string().optional().describe("Task note to append"),
-        decision: z.string().optional().describe("Decision to append"),
-        changedPath: z.string().optional().describe("Changed file or wiki path to attach"),
-        contextPackId: z.string().optional().describe("Context pack id to attach"),
-        sessionId: z.string().optional().describe("Session id to attach"),
-        sourceId: z.string().optional().describe("Source id to attach"),
-        pageId: z.string().optional().describe("Page id to attach"),
-        nodeId: z.string().optional().describe("Graph node id to attach"),
-        gitRef: z.string().optional().describe("Git ref to attach"),
-        status: z.enum(["active", "blocked", "completed", "archived"]).optional().describe("Task status")
+        ...updateTaskBaseSchema
       }
     },
     safeHandler(async ({ id, ...options }) => {
@@ -476,8 +494,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Finish a SwarmVault memory task with an outcome and optional follow-up.",
       inputSchema: {
         id: z.string().min(1).describe("Memory task id"),
-        outcome: z.string().min(1).describe("Outcome to record"),
-        followUp: z.string().optional().describe("Follow-up to preserve for the next agent")
+        ...finishTaskBaseSchema
       }
     },
     safeHandler(async ({ id, outcome, followUp }) => {
@@ -518,7 +535,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Render a saved SwarmVault memory task as a next-agent handoff.",
       inputSchema: {
         id: z.string().min(1).describe("Memory task id"),
-        format: z.enum(["markdown", "json", "llms"]).optional().describe("Rendered output format")
+        ...resumeTaskBaseSchema
       }
     },
     safeHandler(async ({ id, format }) => {
@@ -531,11 +548,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
     {
       description: "Start a durable SwarmVault agent task and build its initial context pack.",
       inputSchema: {
-        goal: z.string().min(1).describe("Task goal to preserve"),
-        target: z.string().optional().describe("Optional page, node, path, project, or label to anchor the initial context pack"),
-        budgetTokens: z.number().int().min(200).optional().describe("Approximate token budget for the initial context pack"),
-        agent: z.string().optional().describe("Agent name to record on the task"),
-        contextPackId: z.string().optional().describe("Existing context pack id to attach instead of building a new one")
+        ...startTaskBaseSchema
       }
     },
     safeHandler(async ({ goal, target, budgetTokens, agent, contextPackId }) => {
@@ -549,16 +562,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Append a note, decision, path, context pack, or status change to a SwarmVault task.",
       inputSchema: {
         id: z.string().min(1).describe("Task id"),
-        note: z.string().optional().describe("Task note to append"),
-        decision: z.string().optional().describe("Decision to append"),
-        changedPath: z.string().optional().describe("Changed file or wiki path to attach"),
-        contextPackId: z.string().optional().describe("Context pack id to attach"),
-        sessionId: z.string().optional().describe("Session id to attach"),
-        sourceId: z.string().optional().describe("Source id to attach"),
-        pageId: z.string().optional().describe("Page id to attach"),
-        nodeId: z.string().optional().describe("Graph node id to attach"),
-        gitRef: z.string().optional().describe("Git ref to attach"),
-        status: z.enum(["active", "blocked", "completed", "archived"]).optional().describe("Task status")
+        ...updateTaskBaseSchema
       }
     },
     safeHandler(async ({ id, ...options }) => {
@@ -572,8 +576,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Finish a SwarmVault task with an outcome and optional follow-up.",
       inputSchema: {
         id: z.string().min(1).describe("Task id"),
-        outcome: z.string().min(1).describe("Outcome to record"),
-        followUp: z.string().optional().describe("Follow-up to preserve for the next agent")
+        ...finishTaskBaseSchema
       }
     },
     safeHandler(async ({ id, outcome, followUp }) => {
@@ -614,7 +617,7 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
       description: "Render a saved SwarmVault task as a next-agent handoff.",
       inputSchema: {
         id: z.string().min(1).describe("Task id"),
-        format: z.enum(["markdown", "json", "llms"]).optional().describe("Rendered output format")
+        ...resumeTaskBaseSchema
       }
     },
     safeHandler(async ({ id, format }) => {
@@ -1042,20 +1045,6 @@ export async function createMcpServer(rootDir: string): Promise<McpServer> {
   return server;
 }
 
-/**
- * @summary Starts a Model Context Protocol (MCP) server for the vault.
- *
- * @remarks
- * Exposes vault capabilities (querying, exploration, graph analysis) over standard I/O streams using the MCP specification.
- *
- * Future Refactoring Note:
- * Tool definitions are currently embedded heavily within `createMcpServer`. Consider moving each tool's schema and handler into isolated command modules for better maintainability.
- *
- * @param rootDir - The root directory of the workspace.
- * @param stdin - Optional custom standard input stream (defaults to process.stdin).
- * @param stdout - Optional custom standard output stream (defaults to process.stdout).
- * @returns An object containing a `close` method to terminate the server.
- */
 export async function startMcpServer(rootDir: string, stdin?: Readable, stdout?: Writable): Promise<{ close: () => Promise<void> }> {
   const server = await createMcpServer(rootDir);
   const transport = new StdioServerTransport(stdin, stdout);
