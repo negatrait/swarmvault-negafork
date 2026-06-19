@@ -4,3 +4,11 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx,json}"
       run: pnpm biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
       stage_fixed: true
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+    golangci-lint:
+      glob: "*.go"
+      run: $(go env GOPATH)/bin/golangci-lint run --fix ./...
+      stage_fixed: true
