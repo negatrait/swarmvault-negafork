@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"swarmvault-native/internal/auto-commit"
+	"swarmvault-native/internal/agents"
+	autocommit "swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/benchmark"
+	candidatepromotion "swarmvault-native/internal/candidate-promotion"
 )
 
 type AutoCommitPayload struct {
@@ -46,6 +48,50 @@ func main() {
 
 			result := OutputPayload{Message: message}
 			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+				os.Exit(1)
+			}
+
+		case "agents":
+			var payload struct {
+				Action  string                     `json:"action"`
+				RootDir string                     `json:"rootDir"`
+				Agent   agents.AgentType           `json:"agent"`
+				Options agents.InstallAgentOptions `json:"options"`
+			}
+			if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+				fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
+				os.Exit(1)
+			}
+			switch payload.Action {
+			case "installAgent":
+				result, err := agents.InstallAgent(payload.RootDir, payload.Agent, payload.Options)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error installing agent: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			case "getAgentInstallStatus":
+				result, err := agents.GetAgentInstallStatus(payload.RootDir, payload.Agent, payload.Options)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error getting status: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			case "installConfiguredAgents":
+				result, err := agents.InstallConfiguredAgents(payload.RootDir)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error installing configured agents: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			default:
+				fmt.Fprintf(os.Stderr, "Unknown agents action: %s\n", payload.Action)
 				os.Exit(1)
 			}
 
@@ -152,12 +198,81 @@ func main() {
 				os.Exit(1)
 			}
 
+		case "candidate-promotion":
+			handleCandidatePromotion()
+
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command\n")
 			os.Exit(1)
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "No command provided\n")
+		os.Exit(1)
+	}
+}
+
+func handleCandidatePromotion() {
+	var payload struct {
+		Action string          `json:"action"`
+		Args   json.RawMessage `json:"args"`
+	}
+	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
+		os.Exit(1)
+	}
+
+	switch payload.Action {
+	case "evaluateCandidateForPromotion":
+		var args struct {
+			Page    candidatepromotion.GraphPage                        `json:"page"`
+			Graph   candidatepromotion.GraphArtifact                    `json:"graph"`
+			History map[string]candidatepromotion.CandidateHistoryEntry `json:"history"`
+			Config  candidatepromotion.CandidatePromotionConfig         `json:"config"`
+			Now     int64                                               `json:"now"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
+			os.Exit(1)
+		}
+		result := candidatepromotion.EvaluateCandidateForPromotion(args.Page, args.Graph, args.History, args.Config, args.Now)
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			os.Exit(1)
+		}
+
+	case "sortDecisionsForPromotion":
+		var args struct {
+			Decisions []candidatepromotion.PromotionDecision `json:"decisions"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
+			os.Exit(1)
+		}
+		result := candidatepromotion.SortDecisionsForPromotion(args.Decisions)
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			os.Exit(1)
+		}
+
+	case "renderPromotionSessionMarkdown":
+		var args struct {
+			Decisions       []candidatepromotion.PromotionDecision `json:"decisions"`
+			PromotedPageIds []string                               `json:"promotedPageIds"`
+			Options         struct {
+				DryRun     bool   `json:"dryRun"`
+				StartedAt  string `json:"startedAt"`
+				FinishedAt string `json:"finishedAt"`
+			} `json:"options"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
+			os.Exit(1)
+		}
+		result := candidatepromotion.RenderPromotionSessionMarkdown(args.Decisions, args.PromotedPageIds, args.Options.DryRun, args.Options.StartedAt, args.Options.FinishedAt)
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			os.Exit(1)
+		}
+
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown candidate-promotion action: %s\n", payload.Action)
 		os.Exit(1)
 	}
 }

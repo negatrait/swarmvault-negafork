@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { initWorkspace } from "./config.js";
+import { runGoSidecarSync } from "./subprocess.js";
 import type { AgentInstallStatus, AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
 import { ensureDir, fileExists } from "./utils.js";
 
@@ -1196,6 +1197,9 @@ function stableKeyForAgent(rootDir: string, agent: AgentType): string {
 }
 
 export async function installAgent(rootDir: string, agent: AgentType, options: InstallAgentOptions = {}): Promise<InstallAgentResult> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("agents", { action: "installAgent", rootDir, agent, options });
+  }
   await initWorkspace(rootDir);
   const scope = installScope(agent, options);
   const target = primaryTargetPathForAgent(rootDir, agent, options);
@@ -1354,6 +1358,9 @@ export async function getAgentInstallStatus(
   agent: AgentType,
   options: InstallAgentOptions = {}
 ): Promise<AgentInstallStatus> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("agents", { action: "getAgentInstallStatus", rootDir, agent, options });
+  }
   const target = primaryTargetPathForAgent(rootDir, agent, options);
   const targets = targetsForAgent(rootDir, agent, options);
   const targetStatuses = await Promise.all(
@@ -1373,6 +1380,9 @@ export async function getAgentInstallStatus(
 }
 
 export async function installConfiguredAgents(rootDir: string): Promise<InstallAgentResult[]> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("agents", { action: "installConfiguredAgents", rootDir });
+  }
   const { config } = await initWorkspace(rootDir);
   const dedupedAgents = new Map<string, AgentType>();
 
