@@ -77,3 +77,22 @@
 - **Timestamp Parity:** Go structs parsing exact TS `generatedAt` strings usually fail differential testing due to millisecond discrepancies. Override the specific generated timestamps in the TS bridge wrapper locally to ensure tests check structural parity perfectly.
 - **CI/CD Execution Validation:** A module ported to Go is useless if it's not tested in CI. Every module port MUST ensure that `go build` is run and that tests are run BOTH with and without `USE_GO_PORT=true` inside `.github/workflows/ci.yml` and `.github/workflows/live-smoke.yml`.
 - **Install Script Reliability:** The app must be installable and runnable with `curl install.sh | bash` at all times. End-user binaries should be reliably built via Go (or precompiled binaries pulled) as part of this process. Never commit `swarmvault-native` binary files.
+
+## 12. Code Volume & Complexity Restrictions (Hard Rules)
+
+1. **File Lines of Code (LOC) Ceiling:**
+   - **Soft Limit:** 200 Lines of Code (excluding tests and comments).
+   - **Hard Limit:** 400 Lines of Code. Any file reaching 500 lines *must* be split into smaller, dedicated files within the same package directory (e.g., moving structures to `types.go`, helper utilities to `utils.go`, or splitting subcommands into individual files).
+
+2. **Function Lines of Code (LOC) Ceiling:**
+   - **Soft Limit:** 50 Lines of Code.
+   - **Hard Limit:** 80 Lines of Code. If a function exceeds 80 lines, you must extract its internal blocks into private, testable helper functions (e.g., `func parseNode(...)` or `func processEdge(...)`).
+
+3. **Cognitive & Cyclomatic Complexity Limits:**
+   - **Maximum Cyclomatic Complexity:** 10 per function.
+   - **Nesting Level Ceiling:** Avoid nesting loops and conditionals deeper than 3 levels (e.g., a `for` loop, containing an `if` statement, containing another `for` loop is your maximum). Use guard clauses and early returns (`return err` or `continue`) to keep the code flat.
+
+4. **Package/File Composition Rules:**
+   - **One CLI Subcommand per File:** Every CLI subcommand must live in its own isolated file under `internal/cmd/` (e.g., `internal/cmd/detect_communities.go`).
+   - **One Primary Struct per File:** Core business logic files must only implement one primary data structure or concept. If multiple large structs are needed, split them into separate files within the same package.
+   - **Zero Relative Import Overhead:** Remember that in Go, files in the same directory share package scope. Do not hesitate to split a file; you do not need to write imports to reference types or functions in the same package.

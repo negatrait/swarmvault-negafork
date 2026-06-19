@@ -33,9 +33,9 @@
     },
     {
       "path": "src/candidate-promotion.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "candidate-promotion",
+      "bridged": true
     },
     {
       "path": "src/chat.ts",
