@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"swarmvault-native/internal/agents"
-	"swarmvault-native/internal/auto-commit"
+	autocommit "swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/benchmark"
 )
 
