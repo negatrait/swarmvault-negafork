@@ -1,3 +1,4 @@
+import { runGoSidecarSync } from "./subprocess.js";
 import type { CandidatePromotionConfig, CompileState, GraphArtifact, GraphPage, PromotionDecision, PromotionGateResult } from "./types.js";
 
 export const DEFAULT_PROMOTION_CONFIG: CandidatePromotionConfig = {
@@ -52,6 +53,13 @@ export function evaluateCandidateForPromotion(
   config: CandidatePromotionConfig,
   now: number = Date.now()
 ): PromotionDecision {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("candidate-promotion", {
+      action: "evaluateCandidateForPromotion",
+      args: { page, graph, history: history ?? {}, config, now }
+    });
+  }
+
   const historical = history?.[page.id];
   const historicalSources = historical?.sourceIds ?? [];
   const agreement = historicalSources.length ? jaccard(historicalSources, page.sourceIds) : 0;
@@ -82,6 +90,13 @@ export function evaluateCandidateForPromotion(
 }
 
 export function sortDecisionsForPromotion(decisions: PromotionDecision[]): PromotionDecision[] {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("candidate-promotion", {
+      action: "sortDecisionsForPromotion",
+      args: { decisions }
+    });
+  }
+
   return [...decisions].sort((left, right) => {
     if (left.promote !== right.promote) return left.promote ? -1 : 1;
     if (right.score !== left.score) return right.score - left.score;
@@ -94,6 +109,13 @@ export function renderPromotionSessionMarkdown(
   promotedPageIds: string[],
   options: { dryRun: boolean; startedAt: string; finishedAt: string }
 ): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("candidate-promotion", {
+      action: "renderPromotionSessionMarkdown",
+      args: { decisions, promotedPageIds, options }
+    });
+  }
+
   const lines: string[] = [];
   lines.push(`# Auto-Promotion Run`);
   lines.push("");
