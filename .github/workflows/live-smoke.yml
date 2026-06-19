@@ -54,7 +54,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - run: go build -o swarmvault-native ./cmd/swarmvault-native
+      - run: |
+          mkdir -p bin
+          go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Run heuristic live smoke
         run: pnpm live:smoke:heuristic -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
@@ -98,6 +100,13 @@ jobs:
             echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
           fi
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: |
+          mkdir -p bin
+          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+
       - name: Run heuristic live smoke with browser check
         run: pnpm live:smoke:heuristic:browser -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
@@ -135,6 +144,13 @@ jobs:
           else
             echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
           fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: |
+          mkdir -p bin
+          go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Run OSS corpus against the published package
         run: pnpm live:oss:corpus -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
@@ -184,6 +200,13 @@ jobs:
           else
             echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
           fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: |
+          mkdir -p bin
+          go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Run OpenAI live smoke
         if: env.OPENAI_API_KEY != ''
@@ -236,6 +259,13 @@ jobs:
           else
             echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
           fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: |
+          mkdir -p bin
+          go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Run Ollama live smoke
         if: env.OLLAMA_API_KEY != ''

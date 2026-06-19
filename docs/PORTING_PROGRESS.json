@@ -3,9 +3,9 @@
   "files": [
     {
       "path": "src/agents.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "agents",
+      "bridged": true
     },
     {
       "path": "src/ai-export.ts",
