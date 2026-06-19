@@ -236,6 +236,6 @@ func DetectCommunities(nodes []Node, edges []Edge) map[string]int {
 
 #### 7.3. Benefits of this Refactoring for Your Structural Port
 
-1. **Aligns 1:1 with TypeScript Modules:** Your TS codebase likely has separate folders for utilities, database operations, and server endpoints. Moving code into `internal/graph`, `internal/parser`, etc., allows you to maintain clean directory mirroring [1.1.5].
-2. **Untangled Testing:** You can write fast, standard unit tests for your algorithms directly inside `internal/graph/louvain_test.go` without needing to mock stdin/stdout or run CLI shell processes [1.2].
-3. **No Collision Scope:** Variables, helper functions, and types are private to their respective packages, eliminating name collision issues as you port more files from your TS codebase [1.2].
+1. **Aligns 1:1 with TypeScript Modules:** Your TS codebase likely has separate folders for utilities, database operations, and server endpoints. Moving code into `internal/graph`, `internal/parser`, etc., allows you to maintain clean directory mirroring.
+2. **Untangled Testing:** You can write fast, standard unit tests for your algorithms directly inside `internal/graph/louvain_test.go` without needing to mock stdin/stdout or run CLI shell processes.
+3. **No Collision Scope:** Variables, helper functions, and types are private to their respective packages, eliminating name collision issues as you port more files from your TS codebase.
