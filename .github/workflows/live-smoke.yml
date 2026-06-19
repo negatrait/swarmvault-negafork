@@ -54,6 +54,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: |
           mkdir -p bin
           go build -o bin/swarmvault-native ./cmd/swarmvault-native
@@ -103,6 +104,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: |
           mkdir -p bin
           go build -o bin/swarmvault-native ./cmd/swarmvault-native
@@ -148,6 +150,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: |
           mkdir -p bin
           go build -o bin/swarmvault-native ./cmd/swarmvault-native
@@ -204,6 +207,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: |
           mkdir -p bin
           go build -o bin/swarmvault-native ./cmd/swarmvault-native
@@ -263,6 +267,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: |
           mkdir -p bin
           go build -o bin/swarmvault-native ./cmd/swarmvault-native
