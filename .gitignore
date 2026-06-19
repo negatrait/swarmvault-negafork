@@ -18,3 +18,4 @@ packages/viewer/dist/
 .oss-corpus-artifacts/
 .release-preflight/
 temp-graphs/
+bin/
