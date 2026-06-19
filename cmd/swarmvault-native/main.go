@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"swarmvault-native/internal/agents"
 	"swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/benchmark"
 )
@@ -46,6 +47,50 @@ func main() {
 
 			result := OutputPayload{Message: message}
 			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+				os.Exit(1)
+			}
+
+		case "agents":
+			var payload struct {
+				Action  string                     `json:"action"`
+				RootDir string                     `json:"rootDir"`
+				Agent   agents.AgentType           `json:"agent"`
+				Options agents.InstallAgentOptions `json:"options"`
+			}
+			if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+				fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
+				os.Exit(1)
+			}
+			switch payload.Action {
+			case "installAgent":
+				result, err := agents.InstallAgent(payload.RootDir, payload.Agent, payload.Options)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error installing agent: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			case "getAgentInstallStatus":
+				result, err := agents.GetAgentInstallStatus(payload.RootDir, payload.Agent, payload.Options)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error getting status: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			case "installConfiguredAgents":
+				result, err := agents.InstallConfiguredAgents(payload.RootDir)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error installing configured agents: %v\n", err)
+					os.Exit(1)
+				}
+				if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+					os.Exit(1)
+				}
+			default:
+				fmt.Fprintf(os.Stderr, "Unknown agents action: %s\n", payload.Action)
 				os.Exit(1)
 			}
 

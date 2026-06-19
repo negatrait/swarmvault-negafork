@@ -1,21 +1,34 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+function resolveBinaryPath(dirname: string, binaryName: string): string {
+  // Typical dev resolution (from src or dist)
+  let candidate = path.resolve(dirname, "..", "..", "..", "bin", binaryName);
+  if (fs.existsSync(candidate)) return candidate;
+
+  candidate = path.resolve(dirname, "..", "..", "bin", binaryName);
+  if (fs.existsSync(candidate)) return candidate;
+
+  candidate = path.resolve(dirname, "..", "..", "..", "..", "bin", binaryName);
+  if (fs.existsSync(candidate)) return candidate;
+
+  // Also try resolving it right next to our tree for global installs
+  candidate = path.resolve(dirname, "..", "..", "..", binaryName);
+  if (fs.existsSync(candidate)) return candidate;
+
+  return candidate;
+}
 
 // biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
 export async function runGoSidecar(subcommand: string, inputPayload: unknown): Promise<any> {
   return new Promise((resolve, reject) => {
-    // Resolve absolute path to avoid pnpm workspace cwd confusion
-    // import.meta.url points to dist/subprocess.js when built
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-    // In dev it's in packages/engine/src/subprocess.ts -> ../../../swarmvault-native
-    // In prod it's in packages/engine/dist/subprocess.js -> ../../../swarmvault-native
     const isWin = process.platform === "win32";
     const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
-    const binaryPath = path.resolve(__dirname, "..", "..", "..", binaryName);
+    const binaryPath = resolveBinaryPath(__dirname, binaryName);
 
-    // Explicitly define stdio routing
     const child = spawn(binaryPath, [subcommand], {
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -23,7 +36,6 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
     let stdout = "";
     let stderr = "";
 
-    // Accumulate chunks (vital for large JSON returns)
     child.stdout.on("data", (chunk) => {
       stdout += chunk.toString();
     });
@@ -43,7 +55,6 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
       }
     });
 
-    // Pass the payload via stdin
     child.stdin.write(JSON.stringify(inputPayload));
     child.stdin.end();
   });
@@ -56,7 +67,7 @@ export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
-  const binaryPath = path.resolve(__dirname, "..", "..", "..", binaryName);
+  const binaryPath = resolveBinaryPath(__dirname, binaryName);
 
   const child = spawnSync(binaryPath, [subcommand], {
     input: JSON.stringify(inputPayload),
