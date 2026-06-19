@@ -88,3 +88,154 @@ During Phase 3 and Phase 4, the TypeScript implementation will not be immediatel
 
 *   **Feature Flags:** We will utilize environment variables (e.g., `SWARMVAULT_USE_TS_FALLBACK=1`) to allow end users to force the CLI to use the old Node.js implementations if the Go sidecar fails in their specific environment or on edge-case data.
 *   **Automatic Fallback:** The IPC bridge should be wrapped in a `try/catch`. If the Go subprocess crashes (e.g., exit code > 0) or times out, the orchestrator should automatically log a warning to `stderr` and transparently fall back to the TS implementation to ensure the user's workflow is not interrupted.
+
+---
+
+### 7. Organising the Go Codebase
+
+As your Go CLI expands, keeping all your subcommands, logic, and JSON parsing in `main.go` will quickly lead to a bloated, unmaintainable codebase. In idiomatic Go, `main.go` should act purely as a **slim entry point** [1.2]. 
+
+To offload weight from `main.go` while keeping your structural port clean, you can adopt the standard **`cmd` and `internal` packages layout** [1.2]. This separates the CLI command orchestration from the actual domain logic [1.2].
+
+#### 7.1. The Target Directory Layout
+
+By organizing your Go code this way, you mirror the modular layout of your TypeScript packages:
+
+```text
+swarmvault/
+├── cmd/
+│   └── swarmvault-native/
+│       └── main.go              # Pure entry point (usually under 20 lines)
+└── internal/
+    ├── cmd/                     # CLI Subcommand handlers (reads stdin, writes stdout)
+    │   ├── root.go              # CLI engine setup (e.g., using Cobra or standard flag library)
+    │   ├── detect_communities.go# Handlers for specific ported subcommands
+    │   └── chunk_document.go
+    ├── graph/                   # Pure business logic: Algorithms & Data Structures
+    │   └── louvain.go           # Community detection implementation (no CLI code)
+    └── parser/                  # Pure business logic: Document parsing
+        └── markdown.go
+```
+
+#### 7.2. Implementation Blueprints
+
+##### 7.2.A. The New Slim `cmd/swarmvault-native/main.go`
+Your main entry point should do nothing more than call your command dispatcher [1.2]:
+
+```go
+package main
+
+import (
+	"log"
+
+	"swarmvault-native/internal/cmd"
+)
+
+func main() {
+	// Hand off all execution to the CLI package
+	if err := cmd.Execute(); err != nil {
+		log.Fatalf("Execution failed: %v", err)
+	}
+}
+```
+
+##### 7.2.B. The Command Dispatcher (`internal/cmd/root.go`)
+If you are using the standard library, you can write a lightweight dispatcher. If your CLI is complex, using a library like **Cobra** is highly recommended. Here is a simple, standard-library multiplexer:
+
+```go
+package cmd
+
+import (
+	"errors"
+	"fmt"
+	"os"
+)
+
+// Execute parses the subcommand and delegates to the correct file
+func Execute() error {
+	if len(os.Args) < 2 {
+		printUsage()
+		return errors.New("missing subcommand")
+	}
+
+	subcommand := os.Args[1]
+	switch subcommand {
+	case "detect-communities":
+		return handleDetectCommunities() // defined in detect_communities.go
+	case "chunk-document":
+		return handleChunkDocument()     // defined in chunk_document.go
+	default:
+		printUsage()
+		return fmt.Errorf("unknown subcommand: %s", subcommand)
+	}
+}
+
+func printUsage() {
+	fmt.Fprintln(os.Stderr, "Usage: swarmvault-native <subcommand> [args]")
+	fmt.Fprintln(os.Stderr, "Subcommands:")
+	fmt.Fprintln(os.Stderr, "  detect-communities")
+	fmt.Fprintln(os.Stderr, "  chunk-document")
+}
+```
+
+##### 7.2.C. Isolating Command Handlers (`internal/cmd/detect_communities.go`)
+This file is dedicated solely to handling the CLI/bridge contract: parsing JSON from `os.Stdin` and passing it to the core library.
+
+```go
+package cmd
+
+import (
+	"encoding/json"
+	"os"
+	"swarmvault-native/internal/graph"
+)
+
+func handleDetectCommunities() error {
+	var input graph.CommunityInput
+	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
+		return err
+	}
+
+	// Delegate processing to the pure graph package
+	result := graph.DetectCommunities(input.Nodes, input.Edges)
+
+	return json.NewEncoder(os.Stdout).Encode(result)
+}
+```
+
+##### 7.2.D. The Pure Core Package (`internal/graph/louvain.go`)
+Your actual algorithm logic remains completely isolated from CLI code, environment variables, or standard streams [1.2]. This makes it extremely easy to test using standard Go unit tests (`go test`).
+
+```go
+package graph
+
+type Node struct {
+	ID     string  `json:"id"`
+	Weight float64 `json:"weight"`
+}
+
+type Edge struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+}
+
+type CommunityInput struct {
+	Nodes []Node `json:"nodes"`
+	Edges []Edge `json:"edges"`
+}
+
+func DetectCommunities(nodes []Node, edges []Edge) map[string]int {
+	communities := make(map[string]int)
+	// Pure algorithmic code here
+	for i, node := range nodes {
+		communities[node.ID] = i
+	}
+	return communities
+}
+```
+
+#### 7.3. Benefits of this Refactoring for Your Structural Port
+
+1. **Aligns 1:1 with TypeScript Modules:** Your TS codebase likely has separate folders for utilities, database operations, and server endpoints. Moving code into `internal/graph`, `internal/parser`, etc., allows you to maintain clean directory mirroring [1.1.5].
+2. **Untangled Testing:** You can write fast, standard unit tests for your algorithms directly inside `internal/graph/louvain_test.go` without needing to mock stdin/stdout or run CLI shell processes [1.2].
+3. **No Collision Scope:** Variables, helper functions, and types are private to their respective packages, eliminating name collision issues as you port more files from your TS codebase [1.2].
