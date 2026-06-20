@@ -39,9 +39,9 @@
     },
     {
       "path": "src/chat.ts",
-      "status": "active",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "chat",
+      "bridged": true
     },
     {
       "path": "src/code-analysis.ts",
