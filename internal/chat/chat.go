@@ -17,7 +17,7 @@ func timestampIdPrefix(now time.Time) string {
 	return now.UTC().Format("20060102-150405Z")
 }
 
-func getVaultPaths(rootDir string) (stateDir, wikiDir string, err error) {
+func getVaultPaths(rootDir string) (stateDir, wikiDir string) {
 	// We read config to get workspace paths. If not found, use defaults.
 	configPath := filepath.Join(rootDir, "swarmvault.config.json")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -55,7 +55,7 @@ func getVaultPaths(rootDir string) (stateDir, wikiDir string, err error) {
 
 	stateDir = filepath.Join(stateBase, "chat-sessions")
 	wikiDir = filepath.Join(wikiBase, "outputs", "chat-sessions")
-	return stateDir, wikiDir, nil
+	return stateDir, wikiDir
 }
 
 func sessionStatePath(stateDir, id string) string {
@@ -215,8 +215,12 @@ func loadSession(stateDir, idOrPrefix string) (VaultChatSession, error) {
 }
 
 func persistSession(session VaultChatSession, stateDir, wikiDir string) (VaultChatSession, error) {
-	os.MkdirAll(stateDir, 0755)
-	os.MkdirAll(wikiDir, 0755)
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		return session, err
+	}
+	if err := os.MkdirAll(wikiDir, 0755); err != nil {
+		return session, err
+	}
 
 	statePath := sessionStatePath(stateDir, session.ID)
 	markdownPath := sessionMarkdownPath(wikiDir, session.ID)
@@ -239,10 +243,7 @@ func persistSession(session VaultChatSession, stateDir, wikiDir string) (VaultCh
 }
 
 func ListChatSessions(rootDir string) ([]VaultChatSessionSummary, error) {
-	stateDir, _, err := getVaultPaths(rootDir)
-	if err != nil {
-		return nil, err
-	}
+	stateDir, _ := getVaultPaths(rootDir)
 
 	entries, err := os.ReadDir(stateDir)
 	if err != nil {
@@ -271,18 +272,12 @@ func ListChatSessions(rootDir string) ([]VaultChatSessionSummary, error) {
 }
 
 func ReadChatSession(rootDir, idOrPrefix string) (VaultChatSession, error) {
-	stateDir, _, err := getVaultPaths(rootDir)
-	if err != nil {
-		return VaultChatSession{}, err
-	}
+	stateDir, _ := getVaultPaths(rootDir)
 	return loadSession(stateDir, idOrPrefix)
 }
 
 func DeleteChatSession(rootDir, idOrPrefix string) (VaultChatSessionSummary, error) {
-	stateDir, wikiDir, err := getVaultPaths(rootDir)
-	if err != nil {
-		return VaultChatSessionSummary{}, err
-	}
+	stateDir, wikiDir := getVaultPaths(rootDir)
 
 	session, err := loadSession(stateDir, idOrPrefix)
 	if err != nil {
@@ -341,12 +336,10 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 		return VaultChatSession{}, "", fmt.Errorf("Chat question is required.")
 	}
 
-	stateDir, wikiDir, err := getVaultPaths(rootDir)
-	if err != nil {
-		return VaultChatSession{}, "", err
-	}
+	stateDir, wikiDir := getVaultPaths(rootDir)
 
 	var session VaultChatSession
+	var err error
 	if options.SessionID != nil && *options.SessionID != "" {
 		session, err = loadSession(stateDir, *options.SessionID)
 		if err != nil {
@@ -355,7 +348,7 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 	} else {
 		nowTime, _ := time.Parse(time.RFC3339Nano, nowStr)
 
-		titleVal := options.Question
+		var titleVal string
 		if options.Title != nil && strings.TrimSpace(*options.Title) != "" {
 			titleVal = strings.TrimSpace(*options.Title)
 		} else {
@@ -385,10 +378,7 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 }
 
 func SaveChatSessionTurn(rootDir string, session VaultChatSession, options AskChatOptions, queryResult QueryResult, nowStr string) (AskChatResult, error) {
-	stateDir, wikiDir, err := getVaultPaths(rootDir)
-	if err != nil {
-		return AskChatResult{}, err
-	}
+	stateDir, wikiDir := getVaultPaths(rootDir)
 
 	turn := VaultChatTurn{
 		ID:               fmt.Sprintf("%d", len(session.Turns)+1),
