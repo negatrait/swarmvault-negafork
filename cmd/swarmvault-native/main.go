@@ -7,6 +7,7 @@ import (
 	autocommit "swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/benchmark"
 	candidatepromotion "swarmvault-native/internal/candidate-promotion"
+	cmdPkg "swarmvault-native/internal/cmd"
 )
 
 type AutoCommitPayload struct {
@@ -155,6 +156,9 @@ func main() {
 
 		case "candidate-promotion":
 			handleCandidatePromotion()
+
+		case "chat":
+			cmdPkg.HandleChat()
 
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command\n")
