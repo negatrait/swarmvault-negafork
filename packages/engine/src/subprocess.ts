@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,7 +14,19 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
     // In prod it's in packages/engine/dist/subprocess.js -> ../../../swarmvault-native
     const isWin = process.platform === "win32";
     const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
-    const binaryPath = path.resolve(__dirname, "..", "..", "..", binaryName);
+    const binaryPath = (() => {
+      // Check multiple locations for the binary
+      const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+      const binDir = path.resolve(workspaceRoot, "bin");
+
+      // Default to the bin folder if it exists
+      if (fs.existsSync(path.join(binDir, binaryName))) {
+        return path.join(binDir, binaryName);
+      }
+
+      // Fall back to root for legacy locations
+      return path.join(workspaceRoot, binaryName);
+    })();
 
     // Explicitly define stdio routing
     const child = spawn(binaryPath, [subcommand], {
@@ -56,7 +69,19 @@ export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
-  const binaryPath = path.resolve(__dirname, "..", "..", "..", binaryName);
+  const binaryPath = (() => {
+    // Check multiple locations for the binary
+    const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+    const binDir = path.resolve(workspaceRoot, "bin");
+
+    // Default to the bin folder if it exists
+    if (fs.existsSync(path.join(binDir, binaryName))) {
+      return path.join(binDir, binaryName);
+    }
+
+    // Fall back to root for legacy locations
+    return path.join(workspaceRoot, binaryName);
+  })();
 
   const child = spawnSync(binaryPath, [subcommand], {
     input: JSON.stringify(inputPayload),

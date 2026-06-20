@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: go build -o swarmvault-native ./cmd/swarmvault-native
       - run: pnpm test
       - run: USE_GO_PORT=true pnpm test
