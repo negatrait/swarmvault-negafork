@@ -9,36 +9,61 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
-var (
-	hyphenColonRegex = regexp.MustCompile(`[-:]`)
-	msRegex          = regexp.MustCompile(`\.\d{3}Z$`)
-)
+const DefaultHistoryTurns = 6
 
-func timestampIdPrefix() string {
-	jsIsoString := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
-	s := hyphenColonRegex.ReplaceAllString(jsIsoString, "")
-	s = msRegex.ReplaceAllString(s, "Z")
-	s = strings.ReplaceAll(s, "T", "-")
-	return s
+func timestampIdPrefix(now time.Time) string {
+	return now.UTC().Format("20060102-150405Z")
 }
 
-func chatDirs(paths ChatDirsPaths) ChatDirsPaths {
-	return ChatDirsPaths{
-		StateDir: filepath.Join(paths.StateDir, "chat-sessions"),
-		WikiDir:  filepath.Join(paths.WikiDir, "outputs", "chat-sessions"),
+func getVaultPaths(rootDir string) (stateDir, wikiDir string) {
+	// We read config to get workspace paths. If not found, use defaults.
+	configPath := filepath.Join(rootDir, "swarmvault.config.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		configPath = filepath.Join(rootDir, "swarmvault.json")
 	}
+
+	stateName := "state"
+	wikiName := "wiki"
+
+	if data, err := os.ReadFile(configPath); err == nil {
+		var config struct {
+			Workspace struct {
+				StateDir string `json:"stateDir"`
+				WikiDir  string `json:"wikiDir"`
+			} `json:"workspace"`
+		}
+		if err := json.Unmarshal(data, &config); err == nil {
+			if config.Workspace.StateDir != "" {
+				stateName = config.Workspace.StateDir
+			}
+			if config.Workspace.WikiDir != "" {
+				wikiName = config.Workspace.WikiDir
+			}
+		}
+	}
+
+	stateBase := filepath.Join(rootDir, stateName)
+	if filepath.IsAbs(stateName) {
+		stateBase = stateName
+	}
+	wikiBase := filepath.Join(rootDir, wikiName)
+	if filepath.IsAbs(wikiName) {
+		wikiBase = wikiName
+	}
+
+	stateDir = filepath.Join(stateBase, "chat-sessions")
+	wikiDir = filepath.Join(wikiBase, "outputs", "chat-sessions")
+	return stateDir, wikiDir
 }
 
-func sessionStatePath(stateDir string, id string) string {
-	return filepath.Join(stateDir, id+".json")
+func sessionStatePath(stateDir, id string) string {
+	return filepath.Join(stateDir, fmt.Sprintf("%s.json", id))
 }
 
-func sessionMarkdownPath(wikiDir string, id string) string {
-	return filepath.Join(wikiDir, id+".md")
+func sessionMarkdownPath(wikiDir, id string) string {
+	return filepath.Join(wikiDir, fmt.Sprintf("%s.md", id))
 }
 
 func summarizeSession(session VaultChatSession) VaultChatSessionSummary {
@@ -52,147 +77,93 @@ func summarizeSession(session VaultChatSession) VaultChatSessionSummary {
 	}
 }
 
+func slugify(value string) string {
+	value = strings.ToLower(value)
+	re := regexp.MustCompile(`[^a-z0-9]+`)
+	value = re.ReplaceAllString(value, "-")
+	value = strings.Trim(value, "-")
+	if len(value) > 80 {
+		value = value[:80]
+	}
+	if value == "" {
+		return "item"
+	}
+	return value
+}
+
+func truncate(value string, maxLength int) string {
+	if len(value) <= maxLength {
+		return value
+	}
+	if maxLength < 4 {
+		return value[:maxLength]
+	}
+	return value[:maxLength-3] + "..."
+}
+
+func normalizeWhitespace(value string) string {
+	re := regexp.MustCompile(`\s+`)
+	return strings.TrimSpace(re.ReplaceAllString(value, " "))
+}
+
 func renderSessionMarkdown(session VaultChatSession) string {
-	var bodyLines []string
-	bodyLines = append(bodyLines, fmt.Sprintf("# %s", session.Title))
-	bodyLines = append(bodyLines, "")
-	bodyLines = append(bodyLines, fmt.Sprintf("Session ID: `%s`", session.ID))
-	bodyLines = append(bodyLines, fmt.Sprintf("Updated: %s", session.UpdatedAt))
-	bodyLines = append(bodyLines, "")
+	var lines []string
+	lines = append(lines, fmt.Sprintf("# %s", session.Title))
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("Session ID: `%s`", session.ID))
+	lines = append(lines, fmt.Sprintf("Updated: %s", session.UpdatedAt))
+	lines = append(lines, "")
 
 	for i, turn := range session.Turns {
-		bodyLines = append(bodyLines, fmt.Sprintf("## Turn %d - %s", i+1, turn.CreatedAt))
-		bodyLines = append(bodyLines, "")
-		bodyLines = append(bodyLines, "### Question")
-		bodyLines = append(bodyLines, "")
-		bodyLines = append(bodyLines, turn.Question)
-		bodyLines = append(bodyLines, "")
-		bodyLines = append(bodyLines, "### Answer")
-		bodyLines = append(bodyLines, "")
-		bodyLines = append(bodyLines, turn.Answer)
-		bodyLines = append(bodyLines, "")
-
+		lines = append(lines, fmt.Sprintf("## Turn %d - %s", i+1, turn.CreatedAt))
+		lines = append(lines, "")
+		lines = append(lines, "### Question")
+		lines = append(lines, "")
+		lines = append(lines, turn.Question)
+		lines = append(lines, "")
+		lines = append(lines, "### Answer")
+		lines = append(lines, "")
+		lines = append(lines, turn.Answer)
+		lines = append(lines, "")
 		if len(turn.Citations) > 0 {
-			bodyLines = append(bodyLines, "### Citations")
-			bodyLines = append(bodyLines, "")
+			lines = append(lines, "### Citations")
+			lines = append(lines, "")
 			for _, citation := range turn.Citations {
-				bodyLines = append(bodyLines, fmt.Sprintf("- %s", citation))
+				lines = append(lines, fmt.Sprintf("- %s", citation))
 			}
 		}
-
 		if turn.SavedPath != nil && *turn.SavedPath != "" {
-			bodyLines = append(bodyLines, "")
-			bodyLines = append(bodyLines, fmt.Sprintf("Saved output: `%s`", *turn.SavedPath))
+			lines = append(lines, "")
+			lines = append(lines, fmt.Sprintf("Saved output: `%s`", *turn.SavedPath))
 		}
-		bodyLines = append(bodyLines, "")
+		lines = append(lines, "")
 	}
 
-	body := strings.Join(bodyLines, "\n")
+	body := strings.Join(lines, "\n")
 
-	frontmatter := map[string]interface{}{
-		"session_id":    session.ID,
-		"title":         session.Title,
-		"created_at":    session.CreatedAt,
-		"updated_at":    session.UpdatedAt,
-		"turn_count":    len(session.Turns),
-		"page_id":       fmt.Sprintf("chat:%s", session.ID),
-		"freshness":     "fresh",
-		"node_ids":      []string{},
-		"source_ids":    []string{},
-		"source_hashes": map[string]interface{}{},
+	// safeFrontmatter formatting
+	frontmatter := fmt.Sprintf(`---
+session_id: %s
+title: %s
+created_at: %s
+updated_at: %s
+turn_count: %d
+page_id: 'chat:%s'
+freshness: fresh
+node_ids: []
+source_ids: []
+source_hashes: {}
+---
+`, session.ID, session.Title, session.CreatedAt, session.UpdatedAt, len(session.Turns), session.ID)
+
+	// matter.stringify always ends body with \n
+	if !strings.HasSuffix(body, "\n") {
+		body += "\n"
 	}
-
-	yamlBytes, err := yaml.Marshal(frontmatter)
-	if err != nil {
-		return body
-	}
-
-	return fmt.Sprintf("---\n%s---\n%s\n", string(yamlBytes), body)
+	return frontmatter + body
 }
 
-func truncate(s string, max int) string {
-	if len(s) > max {
-		return s[:max-3] + "..."
-	}
-	return s
-}
-
-func normalizeWhitespace(s string) string {
-	fields := strings.Fields(s)
-	return strings.Join(fields, " ")
-}
-
-func buildPrompt(session VaultChatSession, question string, maxHistoryTurns int) string {
-	start := len(session.Turns) - maxHistoryTurns
-	if start < 0 {
-		start = 0
-	}
-	recentTurns := session.Turns[start:]
-
-	if len(recentTurns) == 0 {
-		return question
-	}
-
-	var historyLines []string
-	for i, turn := range recentTurns {
-		var turnLines []string
-		turnLines = append(turnLines, fmt.Sprintf("Turn %d", i+1))
-		turnLines = append(turnLines, fmt.Sprintf("User: %s", turn.Question))
-		turnLines = append(turnLines, fmt.Sprintf("Assistant: %s", truncate(normalizeWhitespace(turn.Answer), 1200)))
-
-		if len(turn.Citations) > 0 {
-			turnLines = append(turnLines, fmt.Sprintf("Citations: %s", strings.Join(turn.Citations, ", ")))
-		}
-
-		historyLines = append(historyLines, strings.Join(turnLines, "\n"))
-	}
-
-	history := strings.Join(historyLines, "\n\n")
-
-	var promptLines []string
-	promptLines = append(promptLines, "Continue this SwarmVault chat session using the compiled wiki as the source of truth.")
-	promptLines = append(promptLines, "Use prior turns only for conversational continuity. Prefer current vault evidence over prior wording.")
-	promptLines = append(promptLines, "")
-	promptLines = append(promptLines, "Prior turns:")
-	promptLines = append(promptLines, history)
-	promptLines = append(promptLines, "")
-	promptLines = append(promptLines, "Current question:")
-	promptLines = append(promptLines, question)
-
-	return strings.Join(promptLines, "\n")
-}
-
-func persistSession(session VaultChatSession, stateDir string, wikiDir string) (string, string, error) {
-	if err := os.MkdirAll(stateDir, 0755); err != nil {
-		return "", "", err
-	}
-	if err := os.MkdirAll(wikiDir, 0755); err != nil {
-		return "", "", err
-	}
-
-	statePath := sessionStatePath(stateDir, session.ID)
-	markdownPath := sessionMarkdownPath(wikiDir, session.ID)
-
-	persisted := session
-	persisted.MarkdownPath = markdownPath
-
-	stateBytes, err := json.MarshalIndent(persisted, "", "  ")
-	if err != nil {
-		return "", "", err
-	}
-	if err := os.WriteFile(statePath, stateBytes, 0644); err != nil {
-		return "", "", err
-	}
-
-	markdownContent := renderSessionMarkdown(persisted)
-	if err := os.WriteFile(markdownPath, []byte(markdownContent), 0644); err != nil {
-		return "", "", err
-	}
-
-	return statePath, markdownPath, nil
-}
-
-func resolveSessionId(stateDir string, idOrPrefix string) (string, error) {
+func resolveSessionId(stateDir, idOrPrefix string) (string, error) {
 	direct := sessionStatePath(stateDir, idOrPrefix)
 	if _, err := os.Stat(direct); err == nil {
 		return idOrPrefix, nil
@@ -200,21 +171,13 @@ func resolveSessionId(stateDir string, idOrPrefix string) (string, error) {
 
 	entries, err := os.ReadDir(stateDir)
 	if err != nil {
-		// Treat non-existent dir as empty entries
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("Chat session not found: %s", idOrPrefix)
-		}
-		return "", err
+		return "", fmt.Errorf("chat session not found: %s", idOrPrefix)
 	}
 
 	var matches []string
 	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if strings.HasSuffix(name, ".json") {
-			id := name[:len(name)-len(".json")]
+		if strings.HasSuffix(entry.Name(), ".json") {
+			id := strings.TrimSuffix(entry.Name(), ".json")
 			if strings.HasPrefix(id, idOrPrefix) {
 				matches = append(matches, id)
 			}
@@ -225,134 +188,245 @@ func resolveSessionId(stateDir string, idOrPrefix string) (string, error) {
 		return matches[0], nil
 	}
 	if len(matches) > 1 {
-		end := 8
-		if len(matches) < 8 {
-			end = len(matches)
+		if len(matches) > 8 {
+			matches = matches[:8]
 		}
-		return "", fmt.Errorf("Chat session prefix %q is ambiguous: %s", idOrPrefix, strings.Join(matches[:end], ", "))
+		return "", fmt.Errorf("chat session prefix \"%s\" is ambiguous: %s", idOrPrefix, strings.Join(matches, ", "))
 	}
-
-	return "", fmt.Errorf("Chat session not found: %s", idOrPrefix)
+	return "", fmt.Errorf("chat session not found: %s", idOrPrefix)
 }
 
-func loadSession(stateDir string, idOrPrefix string) (*VaultChatSession, error) {
+func loadSession(stateDir, idOrPrefix string) (VaultChatSession, error) {
 	id, err := resolveSessionId(stateDir, idOrPrefix)
 	if err != nil {
-		return nil, err
+		return VaultChatSession{}, err
 	}
 
-	path := sessionStatePath(stateDir, id)
-	bytes, err := os.ReadFile(path)
+	data, err := os.ReadFile(sessionStatePath(stateDir, id))
 	if err != nil {
-		return nil, err
+		return VaultChatSession{}, fmt.Errorf("chat session not found: %s", id)
 	}
 
 	var session VaultChatSession
-	if err := json.Unmarshal(bytes, &session); err != nil {
-		return nil, err
+	if err := json.Unmarshal(data, &session); err != nil {
+		return VaultChatSession{}, err
 	}
-
-	return &session, nil
+	return session, nil
 }
 
-func slugify(s string) string {
-	s = strings.ToLower(s)
-	re := regexp.MustCompile(`[^a-z0-9]+`)
-	s = re.ReplaceAllString(s, "-")
-	return strings.Trim(s, "-")
-}
-
-func createSession(rootDir string, wikiDir string, options AskChatOptions, now string) VaultChatSession {
-	var title string
-	if options.Title != nil && strings.TrimSpace(*options.Title) != "" {
-		title = truncate(strings.TrimSpace(*options.Title), 80)
-	} else {
-		title = truncate(normalizeWhitespace(options.Question), 80)
+func persistSession(session VaultChatSession, stateDir, wikiDir string) (VaultChatSession, error) {
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		return session, err
 	}
-
-	id := fmt.Sprintf("%s-%s", timestampIdPrefix(), slugify(title))
-
-	return VaultChatSession{
-		ID:           id,
-		Title:        title,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		RootDir:      rootDir,
-		MarkdownPath: sessionMarkdownPath(wikiDir, id),
-		Turns:        make([]VaultChatTurn, 0),
-	}
-}
-
-func ListChatSessions(rootDir string, paths ChatDirsPaths) ([]VaultChatSessionSummary, error) {
-	stateDir := chatDirs(paths).StateDir
-
-	entries, err := os.ReadDir(stateDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make([]VaultChatSessionSummary, 0), nil
-		}
-		return nil, err
-	}
-
-	var sessions []VaultChatSessionSummary
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		path := filepath.Join(stateDir, entry.Name())
-		bytes, err := os.ReadFile(path)
-		if err != nil {
-			continue // Skip unreadable
-		}
-
-		var session VaultChatSession
-		if err := json.Unmarshal(bytes, &session); err != nil {
-			continue // Skip unparseable
-		}
-
-		sessions = append(sessions, summarizeSession(session))
-	}
-
-	// Sort descending by updated at
-	sort.Slice(sessions, func(i, j int) bool {
-		return sessions[i].UpdatedAt > sessions[j].UpdatedAt
-	})
-
-	if sessions == nil {
-		sessions = make([]VaultChatSessionSummary, 0)
-	}
-
-	return sessions, nil
-}
-
-func ReadChatSession(rootDir string, paths ChatDirsPaths, idOrPrefix string) (*VaultChatSession, error) {
-	stateDir := chatDirs(paths).StateDir
-	return loadSession(stateDir, idOrPrefix)
-}
-
-func DeleteChatSession(rootDir string, paths ChatDirsPaths, idOrPrefix string) (*VaultChatSessionSummary, error) {
-	stateDir := chatDirs(paths).StateDir
-	wikiDir := chatDirs(paths).WikiDir
-
-	session, err := loadSession(stateDir, idOrPrefix)
-	if err != nil {
-		return nil, err
+	if err := os.MkdirAll(wikiDir, 0755); err != nil {
+		return session, err
 	}
 
 	statePath := sessionStatePath(stateDir, session.ID)
 	markdownPath := sessionMarkdownPath(wikiDir, session.ID)
 
-	_ = os.Remove(statePath)
-	_ = os.Remove(markdownPath)
+	session.MarkdownPath = markdownPath
 
-	summary := summarizeSession(*session)
-	return &summary, nil
+	data, err := json.MarshalIndent(session, "", "  ")
+	if err != nil {
+		return session, err
+	}
+	if err := os.WriteFile(statePath, data, 0644); err != nil {
+		return session, err
+	}
+
+	if err := os.WriteFile(markdownPath, []byte(renderSessionMarkdown(session)), 0644); err != nil {
+		return session, err
+	}
+
+	return session, nil
 }
 
-func AskChatSession(rootDir string, paths ChatDirsPaths, options AskChatOptions) (*AskChatResult, error) {
-	// queryVault is outside the scope of this file port.
-	// As per instructions, bridge/mock it or write a TODO.
-	return nil, fmt.Errorf("TODO(port): askChatSession requires queryVault port")
+func ListChatSessions(rootDir string) ([]VaultChatSessionSummary, error) {
+	stateDir, _ := getVaultPaths(rootDir)
+
+	entries, err := os.ReadDir(stateDir)
+	if err != nil {
+		return make([]VaultChatSessionSummary, 0), nil
+	}
+
+	var sessions []VaultChatSessionSummary
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".json") {
+			data, err := os.ReadFile(filepath.Join(stateDir, entry.Name()))
+			if err != nil {
+				continue
+			}
+			var session VaultChatSession
+			if err := json.Unmarshal(data, &session); err == nil {
+				sessions = append(sessions, summarizeSession(session))
+			}
+		}
+	}
+
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].UpdatedAt > sessions[j].UpdatedAt
+	})
+
+	return sessions, nil
+}
+
+func ReadChatSession(rootDir, idOrPrefix string) (VaultChatSession, error) {
+	stateDir, _ := getVaultPaths(rootDir)
+	return loadSession(stateDir, idOrPrefix)
+}
+
+func DeleteChatSession(rootDir, idOrPrefix string) (VaultChatSessionSummary, error) {
+	stateDir, wikiDir := getVaultPaths(rootDir)
+
+	session, err := loadSession(stateDir, idOrPrefix)
+	if err != nil {
+		return VaultChatSessionSummary{}, err
+	}
+
+	os.Remove(sessionStatePath(stateDir, session.ID))
+	os.Remove(sessionMarkdownPath(wikiDir, session.ID))
+
+	return summarizeSession(session), nil
+}
+
+func buildPrompt(session VaultChatSession, question string, maxHistoryTurns int) string {
+	if maxHistoryTurns < 0 {
+		maxHistoryTurns = 0
+	}
+
+	var recentTurns []VaultChatTurn
+	if len(session.Turns) > maxHistoryTurns {
+		recentTurns = session.Turns[len(session.Turns)-maxHistoryTurns:]
+	} else {
+		recentTurns = session.Turns
+	}
+
+	if len(recentTurns) == 0 {
+		return question
+	}
+
+	var history []string
+	for i, turn := range recentTurns {
+		var lines []string
+		lines = append(lines, fmt.Sprintf("Turn %d", i+1))
+		lines = append(lines, fmt.Sprintf("User: %s", turn.Question))
+		lines = append(lines, fmt.Sprintf("Assistant: %s", truncate(normalizeWhitespace(turn.Answer), 1200)))
+		if len(turn.Citations) > 0 {
+			lines = append(lines, fmt.Sprintf("Citations: %s", strings.Join(turn.Citations, ", ")))
+		}
+		history = append(history, strings.Join(lines, "\n"))
+	}
+
+	return strings.Join([]string{
+		"Continue this SwarmVault chat session using the compiled wiki as the source of truth.",
+		"Use prior turns only for conversational continuity. Prefer current vault evidence over prior wording.",
+		"",
+		"Prior turns:",
+		strings.Join(history, "\n\n"),
+		"",
+		"Current question:",
+		question,
+	}, "\n")
+}
+
+func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (VaultChatSession, string, error) {
+	question := normalizeWhitespace(options.Question)
+	if question == "" {
+		return VaultChatSession{}, "", fmt.Errorf("chat question is required")
+	}
+
+	stateDir, wikiDir := getVaultPaths(rootDir)
+
+	var session VaultChatSession
+	var err error
+	if options.SessionID != nil && *options.SessionID != "" {
+		session, err = loadSession(stateDir, *options.SessionID)
+		if err != nil {
+			return VaultChatSession{}, "", err
+		}
+	} else {
+		nowTime, _ := time.Parse(time.RFC3339Nano, nowStr)
+
+		var titleVal string
+		if options.Title != nil && strings.TrimSpace(*options.Title) != "" {
+			titleVal = strings.TrimSpace(*options.Title)
+		} else {
+			titleVal = normalizeWhitespace(options.Question)
+		}
+		title := truncate(titleVal, 80)
+		id := fmt.Sprintf("%s-%s", timestampIdPrefix(nowTime), slugify(title))
+
+		session = VaultChatSession{
+			ID:           id,
+			Title:        title,
+			CreatedAt:    nowStr,
+			UpdatedAt:    nowStr,
+			RootDir:      rootDir,
+			MarkdownPath: sessionMarkdownPath(wikiDir, id),
+			Turns:        make([]VaultChatTurn, 0),
+		}
+	}
+
+	maxTurns := DefaultHistoryTurns
+	if options.MaxHistoryTurns != nil {
+		maxTurns = *options.MaxHistoryTurns
+	}
+
+	prompt := buildPrompt(session, question, maxTurns)
+	return session, prompt, nil
+}
+
+func SaveChatSessionTurn(rootDir string, session VaultChatSession, options AskChatOptions, queryResult QueryResult, nowStr string) (AskChatResult, error) {
+	stateDir, wikiDir := getVaultPaths(rootDir)
+
+	turn := VaultChatTurn{
+		ID:               fmt.Sprintf("%d", len(session.Turns)+1),
+		CreatedAt:        nowStr,
+		Question:         normalizeWhitespace(options.Question),
+		Answer:           queryResult.Answer,
+		Citations:        queryResult.Citations,
+		RelatedPageIDs:   queryResult.RelatedPageIDs,
+		RelatedNodeIDs:   queryResult.RelatedNodeIDs,
+		RelatedSourceIDs: queryResult.RelatedSourceIDs,
+		OutputFormat:     queryResult.OutputFormat,
+		SavedPath:        queryResult.SavedPath,
+	}
+
+	// Initialize slices if nil to serialize as [] rather than null
+	if turn.Citations == nil {
+		turn.Citations = make([]string, 0)
+	}
+	if turn.RelatedPageIDs == nil {
+		turn.RelatedPageIDs = make([]string, 0)
+	}
+	if turn.RelatedNodeIDs == nil {
+		turn.RelatedNodeIDs = make([]string, 0)
+	}
+	if turn.RelatedSourceIDs == nil {
+		turn.RelatedSourceIDs = make([]string, 0)
+	}
+
+	session.UpdatedAt = nowStr
+	session.Turns = append(session.Turns, turn)
+	session.MarkdownPath = sessionMarkdownPath(wikiDir, session.ID)
+
+	persisted, err := persistSession(session, stateDir, wikiDir)
+	if err != nil {
+		return AskChatResult{}, err
+	}
+
+	resumed := false
+	if options.SessionID != nil && *options.SessionID != "" {
+		resumed = true
+	}
+
+	return AskChatResult{
+		Session:      persisted,
+		Turn:         turn,
+		Answer:       queryResult.Answer,
+		MarkdownPath: persisted.MarkdownPath,
+		StatePath:    sessionStatePath(stateDir, session.ID),
+		Resumed:      resumed,
+	}, nil
 }

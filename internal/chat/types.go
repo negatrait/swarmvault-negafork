@@ -1,16 +1,23 @@
 package chat
 
+type OutputFormat string
+
+const (
+	OutputFormatMarkdown OutputFormat = "markdown"
+	OutputFormatJSON     OutputFormat = "json"
+)
+
 type VaultChatTurn struct {
-	ID               string   `json:"id"`
-	CreatedAt        string   `json:"createdAt"`
-	Question         string   `json:"question"`
-	Answer           string   `json:"answer"`
-	Citations        []string `json:"citations"`
-	RelatedPageIds   []string `json:"relatedPageIds"`
-	RelatedNodeIds   []string `json:"relatedNodeIds"`
-	RelatedSourceIds []string `json:"relatedSourceIds"`
-	OutputFormat     string   `json:"outputFormat"`
-	SavedPath        *string  `json:"savedPath,omitempty"`
+	ID               string       `json:"id"`
+	CreatedAt        string       `json:"createdAt"`
+	Question         string       `json:"question"`
+	Answer           string       `json:"answer"`
+	Citations        []string     `json:"citations"`
+	RelatedPageIDs   []string     `json:"relatedPageIds"`
+	RelatedNodeIDs   []string     `json:"relatedNodeIds"`
+	RelatedSourceIDs []string     `json:"relatedSourceIds"`
+	OutputFormat     OutputFormat `json:"outputFormat"`
+	SavedPath        *string      `json:"savedPath,omitempty"`
 }
 
 type VaultChatSession struct {
@@ -33,13 +40,13 @@ type VaultChatSessionSummary struct {
 }
 
 type AskChatOptions struct {
-	Question        string  `json:"question"`
-	SessionId       *string `json:"sessionId,omitempty"`
-	Title           *string `json:"title,omitempty"`
-	SaveOutput      *bool   `json:"saveOutput,omitempty"`
-	Format          *string `json:"format,omitempty"`
-	GapFill         *bool   `json:"gapFill,omitempty"`
-	MaxHistoryTurns *int    `json:"maxHistoryTurns,omitempty"`
+	Question        string        `json:"question"`
+	SessionID       *string       `json:"sessionId,omitempty"`
+	Title           *string       `json:"title,omitempty"`
+	SaveOutput      *bool         `json:"saveOutput,omitempty"`
+	Format          *OutputFormat `json:"format,omitempty"`
+	GapFill         *bool         `json:"gapFill,omitempty"`
+	MaxHistoryTurns *int          `json:"maxHistoryTurns,omitempty"`
 }
 
 type AskChatResult struct {
@@ -51,7 +58,12 @@ type AskChatResult struct {
 	Resumed      bool             `json:"resumed"`
 }
 
-type ChatDirsPaths struct {
-	StateDir string `json:"stateDir"`
-	WikiDir  string `json:"wikiDir"`
+type QueryResult struct {
+	Answer           string       `json:"answer"`
+	Citations        []string     `json:"citations"`
+	RelatedPageIDs   []string     `json:"relatedPageIds"`
+	RelatedNodeIDs   []string     `json:"relatedNodeIds"`
+	RelatedSourceIDs []string     `json:"relatedSourceIds"`
+	OutputFormat     OutputFormat `json:"outputFormat"`
+	SavedPath        *string      `json:"savedPath,omitempty"`
 }
