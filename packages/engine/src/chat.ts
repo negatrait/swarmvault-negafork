@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import { loadVaultConfig } from "./config.js";
+import { runGoSidecar } from "./subprocess.js";
 import type { AskChatOptions, AskChatResult, VaultChatSession, VaultChatSessionSummary, VaultChatTurn } from "./types.js";
 import { ensureDir, fileExists, normalizeWhitespace, readJsonFile, safeFrontmatter, slugify, truncate, writeJsonFile } from "./utils.js";
 import { queryVault } from "./vault.js";
@@ -176,6 +177,11 @@ function buildPrompt(session: VaultChatSession, question: string, maxHistoryTurn
 
 export async function listChatSessions(rootDir: string): Promise<VaultChatSessionSummary[]> {
   const { paths } = await loadVaultConfig(rootDir);
+
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("chat", { action: "listChatSessions", rootDir, paths });
+  }
+
   const { stateDir } = chatDirs(paths);
   const entries = await fs.readdir(stateDir).catch(() => []);
   const sessions = await Promise.all(
@@ -189,12 +195,22 @@ export async function listChatSessions(rootDir: string): Promise<VaultChatSessio
 
 export async function readChatSession(rootDir: string, idOrPrefix: string): Promise<VaultChatSession> {
   const { paths } = await loadVaultConfig(rootDir);
+
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("chat", { action: "readChatSession", rootDir, paths, idOrPrefix });
+  }
+
   const { stateDir } = chatDirs(paths);
   return loadSession(stateDir, idOrPrefix);
 }
 
 export async function deleteChatSession(rootDir: string, idOrPrefix: string): Promise<VaultChatSessionSummary> {
   const { paths } = await loadVaultConfig(rootDir);
+
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("chat", { action: "deleteChatSession", rootDir, paths, idOrPrefix });
+  }
+
   const { stateDir, wikiDir } = chatDirs(paths);
   const session = await loadSession(stateDir, idOrPrefix);
   await fs.rm(sessionStatePath(stateDir, session.id), { force: true });
@@ -203,12 +219,17 @@ export async function deleteChatSession(rootDir: string, idOrPrefix: string): Pr
 }
 
 export async function askChatSession(rootDir: string, options: AskChatOptions): Promise<AskChatResult> {
+  const { paths } = await loadVaultConfig(rootDir);
+
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("chat", { action: "askChatSession", rootDir, paths, options });
+  }
+
   const question = normalizeWhitespace(options.question);
   if (!question) {
     throw new Error("Chat question is required.");
   }
 
-  const { paths } = await loadVaultConfig(rootDir);
   const { stateDir, wikiDir } = chatDirs(paths);
   const now = new Date().toISOString();
   const resumed = Boolean(options.sessionId);
