@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 const CharsPerToken = 4
@@ -35,12 +36,9 @@ func EstimateTokens(text string) int {
 	return int(math.Max(1, math.Ceil(float64(len(text))/float64(CharsPerToken))))
 }
 
-var whitespaceRegex = regexp.MustCompile(`\s+`)
-
 func NormalizeWhitespace(value string) string {
-	return strings.TrimSpace(whitespaceRegex.ReplaceAllString(value, " "))
+	return utils.NormalizeWhitespace(value)
 }
-
 func EstimateCorpusWords(texts []string) int {
 	total := 0
 	for _, text := range texts {
@@ -311,15 +309,7 @@ func hasResearchSources(pages []GraphPage) bool {
 }
 
 func uniqueStrings(items []string) []string {
-	seen := make(map[string]bool)
-	var res []string
-	for _, item := range items {
-		if !seen[item] {
-			seen[item] = true
-			res = append(res, item)
-		}
-	}
-	return res
+	return utils.UniqueStrings(items)
 }
 
 func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []string {

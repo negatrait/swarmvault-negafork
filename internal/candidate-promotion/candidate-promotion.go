@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 type CandidatePromotionConfig struct {
@@ -57,41 +59,6 @@ type PromotionSession struct {
 	SkippedPageIds  []string            `json:"skippedPageIds"`
 	Decisions       []PromotionDecision `json:"decisions"`
 	SessionPath     *string             `json:"sessionPath,omitempty"`
-}
-
-func jaccard(left, right []string) float64 {
-	if len(left) == 0 && len(right) == 0 {
-		return 1
-	}
-	leftSet := make(map[string]struct{})
-	for _, l := range left {
-		leftSet[l] = struct{}{}
-	}
-	rightSet := make(map[string]struct{})
-	for _, r := range right {
-		rightSet[r] = struct{}{}
-	}
-
-	union := make(map[string]struct{})
-	for k := range leftSet {
-		union[k] = struct{}{}
-	}
-	for k := range rightSet {
-		union[k] = struct{}{}
-	}
-
-	if len(union) == 0 {
-		return 1
-	}
-
-	intersection := 0
-	for k := range leftSet {
-		if _, ok := rightSet[k]; ok {
-			intersection++
-		}
-	}
-
-	return float64(intersection) / float64(len(union))
 }
 
 func hoursSince(iso string, now int64) float64 {
@@ -176,7 +143,7 @@ func EvaluateCandidateForPromotion(
 
 	agreement := 0.0
 	if len(historicalSources) > 0 {
-		agreement = jaccard(historicalSources, page.SourceIds)
+		agreement = utils.Jaccard(historicalSources, page.SourceIds)
 	}
 
 	degree := maxDegreeFor(graph, page.NodeIds)

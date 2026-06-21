@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 const DefaultHistoryTurns = 6
@@ -102,8 +104,7 @@ func truncate(value string, maxLength int) string {
 }
 
 func normalizeWhitespace(value string) string {
-	re := regexp.MustCompile(`\s+`)
-	return strings.TrimSpace(re.ReplaceAllString(value, " "))
+	return utils.NormalizeWhitespace(value)
 }
 
 func renderSessionMarkdown(session VaultChatSession) string {
