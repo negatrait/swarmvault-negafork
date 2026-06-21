@@ -1,13 +1,13 @@
 package candidatepromotion
 
-import "swarmvault-native/internal/utils"
-
 import (
 	"fmt"
 	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 type CandidatePromotionConfig struct {

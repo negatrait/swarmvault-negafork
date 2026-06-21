@@ -1,10 +1,10 @@
 package candidatepromotion
 
-import "swarmvault-native/internal/utils"
-
 import (
 	"testing"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 func TestHoursSince(t *testing.T) {
