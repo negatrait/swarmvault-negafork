@@ -11,6 +11,9 @@ func main() {
 		cmd := os.Args[1]
 
 		switch cmd {
+		case "agents":
+			cmdPkg.HandleAgents()
+
 		case "auto-commit":
 			cmdPkg.HandleAutoCommit()
 
