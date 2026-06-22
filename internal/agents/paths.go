@@ -1,8 +1,10 @@
 package agents
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"swarmvault-native/internal/utils"
 )
 
 const agentCodex = "codex"
@@ -187,56 +189,60 @@ func hookConfigPathForAgent(rootDir string, agent AgentType) *string {
 	return &path
 }
 
-func primaryTargetPathForAgent(rootDir string, agent AgentType, options InstallAgentOptions) string {
+func primaryTargetPathForAgent(rootDir string, agent AgentType, options InstallAgentOptions) (string, error) {
 	if installScope(agent, options) == scopeUser {
 		if agent == agentHermes {
-			return hermesUserSkillPath()
+			return hermesUserSkillPath(), nil
 		}
 		target := userSkillTarget(agent)
 		if target != nil {
-			return *target
+			return *target, nil
 		}
 	}
 
 	switch agent {
 	case agentKilo, agentCodex, "goose", "pi", agentOpencode:
-		return filepath.Join(rootDir, agentFileKinds[agentAgents])
+		return filepath.Join(rootDir, agentFileKinds[agentAgents]), nil
 	case agentClaude:
-		return filepath.Join(rootDir, agentFileKinds[agentClaude])
+		return filepath.Join(rootDir, agentFileKinds[agentClaude]), nil
 	case agentGemini:
-		return filepath.Join(rootDir, agentFileKinds[agentGemini])
+		return filepath.Join(rootDir, agentFileKinds[agentGemini]), nil
 	case "cursor":
-		return filepath.Join(rootDir, agentFileKinds["cursor"])
+		return filepath.Join(rootDir, agentFileKinds["cursor"]), nil
 	case agentAider:
-		return filepath.Join(rootDir, agentFileKinds[agentAider])
+		return filepath.Join(rootDir, agentFileKinds[agentAider]), nil
 	case agentCopilot:
-		return filepath.Join(rootDir, agentFileKinds[agentCopilot])
+		return filepath.Join(rootDir, agentFileKinds[agentCopilot]), nil
 	case "trae":
-		return filepath.Join(rootDir, agentFileKinds["trae"])
+		return filepath.Join(rootDir, agentFileKinds["trae"]), nil
 	case "claw":
-		return filepath.Join(rootDir, agentFileKinds["claw"])
+		return filepath.Join(rootDir, agentFileKinds["claw"]), nil
 	case "droid":
-		return filepath.Join(rootDir, agentFileKinds["droid"])
+		return filepath.Join(rootDir, agentFileKinds["droid"]), nil
 	case agentKiro:
-		return filepath.Join(rootDir, agentFileKinds[agentKiro])
+		return filepath.Join(rootDir, agentFileKinds[agentKiro]), nil
 	case agentHermes:
-		return hermesUserSkillPath()
+		return hermesUserSkillPath(), nil
 	case agentAntigravity:
-		return filepath.Join(rootDir, agentFileKinds["antigravityRules"])
+		return filepath.Join(rootDir, agentFileKinds["antigravityRules"]), nil
 	case "vscode":
-		return filepath.Join(rootDir, agentFileKinds["vscode"])
+		return filepath.Join(rootDir, agentFileKinds["vscode"]), nil
 	default:
 		bundleTarget := skillBundleTarget(rootDir, agent)
 		if bundleTarget != nil {
-			return *bundleTarget
+			return *bundleTarget, nil
 		}
-		panic("Unsupported agent " + string(agent))
+		return "", fmt.Errorf("Unsupported agent %s", agent)
 	}
 }
 
-func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOptions) []string {
+func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOptions) ([]string, error) {
 	scope := installScope(agent, options)
-	targets := []string{primaryTargetPathForAgent(rootDir, agent, options)}
+	primaryTarget, err := primaryTargetPathForAgent(rootDir, agent, options)
+	if err != nil {
+		return nil, err
+	}
+	targets := []string{primaryTarget}
 
 	if scope == scopeUser {
 		if agent == agentKilo {
@@ -248,7 +254,7 @@ func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOption
 		if agent == agentClaude && options.Hook != nil && *options.Hook {
 			targets = append(targets, claudeUserSettingsPath(), claudeUserHookScriptPath())
 		}
-		return uniqueStrings(targets)
+		return utils.UniqueStrings(targets), nil
 	}
 
 	if agent == agentClaude && options.Mcp != nil && *options.Mcp {
@@ -298,17 +304,5 @@ func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOption
 		}
 	}
 
-	return uniqueStrings(targets)
-}
-
-func uniqueStrings(input []string) []string {
-	seen := make(map[string]bool)
-	var result []string
-	for _, val := range input {
-		if !seen[val] {
-			seen[val] = true
-			result = append(result, val)
-		}
-	}
-	return result
+	return utils.UniqueStrings(targets), nil
 }
