@@ -29,7 +29,8 @@ export async function autoCommitWikiChanges(
 
   if (process.env.USE_GO_PORT === "true") {
     try {
-      const result = await runGoSidecar("auto-commit", {
+      // biome-ignore lint/suspicious/noExplicitAny: Any used during TS to Go bridging
+      const result = await runGoSidecar<any>("auto-commit", {
         rootDir,
         operation,
         detail,
