@@ -5,8 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { initWorkspace } from "./config.js";
-import type { AgentInstallStatus, AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
 import { runGoSidecar } from "./subprocess.js";
+import type { AgentInstallStatus, AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
 import { ensureDir, fileExists } from "./utils.js";
 
 /**
