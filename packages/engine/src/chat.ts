@@ -224,7 +224,11 @@ export async function askChatSession(rootDir: string, options: AskChatOptions): 
   const now = new Date().toISOString();
 
   if (process.env.USE_GO_PORT === "true") {
-    const prepareResult = await runGoSidecar("chat", { action: "askChatSessionPrepare", args: { rootDir, options, now } });
+    // biome-ignore lint/suspicious/noExplicitAny: Required for bridging untyped JSON to TS types
+    const prepareResult = await runGoSidecar<any>("chat", {
+      action: "askChatSessionPrepare",
+      args: { rootDir, options, now }
+    });
     const query = await queryVault(rootDir, {
       question: prepareResult.prompt,
       save: options.saveOutput ?? false,

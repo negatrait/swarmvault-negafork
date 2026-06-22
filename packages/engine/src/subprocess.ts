@@ -3,8 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
-export async function runGoSidecar(subcommand: string, inputPayload: unknown): Promise<any> {
+export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     // Resolve absolute path to avoid pnpm workspace cwd confusion
     // import.meta.url points to dist/subprocess.js when built
@@ -50,7 +49,7 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
         return reject(new Error(`Go sidecar failed (code ${code}): ${stderr}`));
       }
       try {
-        resolve(JSON.parse(stdout));
+        resolve(JSON.parse(stdout) as T);
       } catch (e) {
         reject(new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${stdout}`));
       }
@@ -64,8 +63,7 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
 
 import { spawnSync } from "node:child_process";
 
-// biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
-export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any {
+export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: unknown): T {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
@@ -95,7 +93,7 @@ export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any
     throw new Error(`Go sidecar failed (code ${child.status}): ${child.stderr}`);
   }
   try {
-    return JSON.parse(child.stdout);
+    return JSON.parse(child.stdout) as T;
   } catch (e) {
     throw new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${child.stdout}`);
   }

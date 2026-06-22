@@ -240,7 +240,8 @@ export function buildBenchmarkArtifact(input: {
   byClass?: Record<SourceClass, BenchmarkByClassEntry>;
 }): BenchmarkArtifact {
   if (process.env.USE_GO_PORT === "true") {
-    const result = runGoSidecarSync("benchmark", { action: "buildBenchmarkArtifact", args: input });
+    // biome-ignore lint/suspicious/noExplicitAny: Required for bridging untyped JSON to TS types
+    const result = runGoSidecarSync<any>("benchmark", { action: "buildBenchmarkArtifact", args: input });
     result.generatedAt = new Date().toISOString();
     return result;
   }

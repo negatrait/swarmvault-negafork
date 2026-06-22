@@ -29,7 +29,7 @@ export async function autoCommitWikiChanges(
 
   if (process.env.USE_GO_PORT === "true") {
     try {
-      const result = await runGoSidecar("auto-commit", {
+      const result = await runGoSidecar<{ message: string | null }>("auto-commit", {
         rootDir,
         operation,
         detail,
