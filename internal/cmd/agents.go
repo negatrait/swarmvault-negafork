@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"swarmvault-native/internal/agents"
+	"swarmvault-native/internal/utils"
 )
 
 func HandleAgents() {
@@ -12,7 +13,7 @@ func HandleAgents() {
 		Action string          `json:"action"`
 		Args   json.RawMessage `json:"args"`
 	}
-	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+	if err := utils.DecodePayload(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
 		os.Exit(1)
 	}
@@ -33,7 +34,7 @@ func HandleAgents() {
 			fmt.Fprintf(os.Stderr, "Error getting agent install status: %v\n", err)
 			os.Exit(1)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
