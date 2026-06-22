@@ -103,10 +103,6 @@ func truncate(value string, maxLength int) string {
 	return value[:maxLength-3] + "..."
 }
 
-func normalizeWhitespace(value string) string {
-	return utils.NormalizeWhitespace(value)
-}
-
 func renderSessionMarkdown(session VaultChatSession) string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("# %s", session.Title))
@@ -312,7 +308,7 @@ func buildPrompt(session VaultChatSession, question string, maxHistoryTurns int)
 		var lines []string
 		lines = append(lines, fmt.Sprintf("Turn %d", i+1))
 		lines = append(lines, fmt.Sprintf("User: %s", turn.Question))
-		lines = append(lines, fmt.Sprintf("Assistant: %s", truncate(normalizeWhitespace(turn.Answer), 1200)))
+		lines = append(lines, fmt.Sprintf("Assistant: %s", truncate(utils.NormalizeWhitespace(turn.Answer), 1200)))
 		if len(turn.Citations) > 0 {
 			lines = append(lines, fmt.Sprintf("Citations: %s", strings.Join(turn.Citations, ", ")))
 		}
@@ -332,7 +328,7 @@ func buildPrompt(session VaultChatSession, question string, maxHistoryTurns int)
 }
 
 func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (VaultChatSession, string, error) {
-	question := normalizeWhitespace(options.Question)
+	question := utils.NormalizeWhitespace(options.Question)
 	if question == "" {
 		return VaultChatSession{}, "", fmt.Errorf("Chat question is required.")
 	}
@@ -353,7 +349,7 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 		if options.Title != nil && strings.TrimSpace(*options.Title) != "" {
 			titleVal = strings.TrimSpace(*options.Title)
 		} else {
-			titleVal = normalizeWhitespace(options.Question)
+			titleVal = utils.NormalizeWhitespace(options.Question)
 		}
 		title := truncate(titleVal, 80)
 		id := fmt.Sprintf("%s-%s", timestampIdPrefix(nowTime), slugify(title))
@@ -384,7 +380,7 @@ func SaveChatSessionTurn(rootDir string, session VaultChatSession, options AskCh
 	turn := VaultChatTurn{
 		ID:               fmt.Sprintf("%d", len(session.Turns)+1),
 		CreatedAt:        nowStr,
-		Question:         normalizeWhitespace(options.Question),
+		Question:         utils.NormalizeWhitespace(options.Question),
 		Answer:           queryResult.Answer,
 		Citations:        queryResult.Citations,
 		RelatedPageIDs:   queryResult.RelatedPageIDs,
