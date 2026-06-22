@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	autocommit "swarmvault-native/internal/auto-commit"
+	"swarmvault-native/internal/utils"
 )
 
 type AutoCommitPayload struct {
@@ -22,7 +22,7 @@ type OutputPayload struct {
 func HandleAutoCommit() {
 	var payload AutoCommitPayload
 
-	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+	if err := utils.DecodePayload(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
 		os.Exit(1)
 	}
@@ -34,7 +34,7 @@ func HandleAutoCommit() {
 	}
 
 	result := OutputPayload{Message: message}
-	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+	if err := utils.EncodeResponse(result); err != nil {
 		os.Exit(1)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -149,9 +149,8 @@ func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pag
 
 // Custom sort functions
 func sortStrings(s []string) []string {
-	res := make([]string, len(s))
-	copy(res, s)
-	sort.Strings(res)
+	res := slices.Clone(s)
+	slices.Sort(res)
 	return res
 }
 
@@ -197,9 +196,7 @@ func GraphHash(graph GraphArtifact) string {
 			ProjectIDs:  sortStrings(n.ProjectIDs),
 		})
 	}
-	sort.SliceStable(mappedNodes, func(i, j int) bool {
-		return mappedNodes[i].ID < mappedNodes[j].ID
-	})
+	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return strings.Compare(a.ID, b.ID) })
 
 	type mappedEdge struct {
 		ID              string        `json:"id"`
@@ -226,9 +223,7 @@ func GraphHash(graph GraphArtifact) string {
 			Provenance:      sortStrings(e.Provenance),
 		})
 	}
-	sort.SliceStable(mappedEdges, func(i, j int) bool {
-		return mappedEdges[i].ID < mappedEdges[j].ID
-	})
+	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return strings.Compare(a.ID, b.ID) })
 
 	type mappedPage struct {
 		ID          string             `json:"id"`
@@ -255,9 +250,7 @@ func GraphHash(graph GraphArtifact) string {
 			NodeIDs:     sortStrings(p.NodeIDs),
 		})
 	}
-	sort.SliceStable(mappedPages, func(i, j int) bool {
-		return mappedPages[i].ID < mappedPages[j].ID
-	})
+	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return strings.Compare(a.ID, b.ID) })
 
 	type mappedCommunity struct {
 		ID      string   `json:"id"`
@@ -276,9 +269,7 @@ func GraphHash(graph GraphArtifact) string {
 	} else {
 		mappedCommunities = make([]mappedCommunity, 0)
 	}
-	sort.SliceStable(mappedCommunities, func(i, j int) bool {
-		return mappedCommunities[i].ID < mappedCommunities[j].ID
-	})
+	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return strings.Compare(a.ID, b.ID) })
 
 	normalizedObj := struct {
 		Nodes       []mappedNode      `json:"nodes"`
@@ -308,10 +299,6 @@ func hasResearchSources(pages []GraphPage) bool {
 	return false
 }
 
-func uniqueStrings(items []string) []string {
-	return utils.UniqueStrings(items)
-}
-
 func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []string {
 	normalizedLimit := int(math.Max(1, math.Min(float64(maxQuestions), float64(len(DefaultBenchmarkQuestions)))))
 	questions := make([]string, len(DefaultBenchmarkQuestions))
@@ -321,7 +308,7 @@ func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []
 		questions = append([]string{ResearchBenchmarkQuestion}, questions...)
 	}
 
-	uniqueQs := uniqueStrings(questions)
+	uniqueQs := utils.UniqueStrings(questions)
 	if len(uniqueQs) > normalizedLimit {
 		return uniqueQs[:normalizedLimit]
 	}

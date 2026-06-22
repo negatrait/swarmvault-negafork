@@ -3,7 +3,7 @@ package candidatepromotion
 import (
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -192,22 +192,22 @@ func EvaluateCandidateForPromotion(
 }
 
 func SortDecisionsForPromotion(decisions []PromotionDecision) []PromotionDecision {
-	sorted := make([]PromotionDecision, len(decisions))
-	copy(sorted, decisions)
-
-	sort.Slice(sorted, func(i, j int) bool {
-		left := sorted[i]
-		right := sorted[j]
-
-		if left.Promote != right.Promote {
-			return left.Promote
+	sorted := slices.Clone(decisions)
+	slices.SortStableFunc(sorted, func(a, b PromotionDecision) int {
+		if a.Promote != b.Promote {
+			if a.Promote {
+				return -1
+			}
+			return 1
 		}
-		if right.Score != left.Score {
-			return left.Score > right.Score // higher score comes first
+		if a.Score != b.Score {
+			if a.Score > b.Score {
+				return -1
+			}
+			return 1
 		}
-		return left.PageID < right.PageID
+		return strings.Compare(a.PageID, b.PageID)
 	})
-
 	return sorted
 }
 
