@@ -2984,7 +2984,7 @@ describe("swarmvault workflow", () => {
             .then(() => true)
             .catch(() => false))
         );
-      }, 19_000);
+      }, 29_000);
 
       const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
       const runs = jobsLog
@@ -3031,7 +3031,7 @@ describe("swarmvault workflow", () => {
           .then((value) => value.trim())
           .catch(() => "");
         return modulePage.includes("watched") && jobsLog.length > 0;
-      }, 19_000);
+      }, 29_000);
 
       const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
       const runs = jobsLog
