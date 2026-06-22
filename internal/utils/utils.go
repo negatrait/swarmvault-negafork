@@ -2,6 +2,7 @@ package utils
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -48,4 +49,10 @@ func Jaccard(left, right []string) float64 {
 		return 0
 	}
 	return float64(intersection) / float64(union)
+}
+
+func SortStrings(s []string) []string {
+	res := slices.Clone(s)
+	slices.Sort(res)
+	return res
 }
