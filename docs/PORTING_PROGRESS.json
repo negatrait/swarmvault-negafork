@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "src/agents.ts",
-      "status": "active",
+      "status": "completed",
       "subcommand": null,
       "bridged": false
     },
