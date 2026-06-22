@@ -1,0 +1,54 @@
+version: 2
+updates:
+  # 1. TypeScript / Node.js Workspace Dependencies (pnpm)
+  - package-ecosystem: pnpm
+    directory: /
+    target-branch: staging  # <--- CRITICAL: Directs updates through staging test loop
+    schedule:
+      interval: weekly
+    groups:
+      dependencies:
+        update-types:
+          - 'patch'
+          - 'minor'
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major" ]
+    labels:
+      - dependencies
+
+  # 2. Go Modules (gomod)
+  - package-ecosystem: gomod
+    directory: /
+    target-branch: staging  # <--- CRITICAL: Ensures new Go modules are smoke-tested
+    schedule:
+      interval: weekly
+    groups:
+      dependencies:
+        update-types:
+          - 'patch'
+          - 'minor'
+          - 'major' # Consider if this is worth it
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major" ]
+    labels:
+      - dependencies
+
+  # 3. GitHub Actions Workflows
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: staging  # <--- CRITICAL: Keeps CI runners updated in staging
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - ci
