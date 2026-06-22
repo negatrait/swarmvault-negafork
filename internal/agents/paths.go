@@ -5,17 +5,33 @@ import (
 	"path/filepath"
 )
 
+const agentCodex = "codex"
+const agentGemini = "gemini"
+const agentOpencode = "opencode"
+const agentCopilot = "copilot"
+const agentKilo = "kilo"
+const agentAgents = "agents"
+const agentAntigravity = "antigravity"
+const agentAider = "aider"
+const agentDevin = "devin"
+const agentKimi = "kimi"
+const agentAmp = "amp"
+const agentKiro = "kiro"
+const agentClaude = "claude"
+const agentHermes = "hermes"
+const scopeUser = "user"
+
 var agentFileKinds = map[string]string{
-	"agents":              "AGENTS.md",
-	"claude":              "CLAUDE.md",
-	"gemini":              "GEMINI.md",
+	agentAgents:           "AGENTS.md",
+	agentClaude:           "CLAUDE.md",
+	agentGemini:           "GEMINI.md",
 	"cursor":              ".cursor/rules/swarmvault.mdc",
-	"aider":               "CONVENTIONS.md",
-	"copilot":             ".github/copilot-instructions.md",
+	agentAider:            "CONVENTIONS.md",
+	agentCopilot:          ".github/copilot-instructions.md",
 	"trae":                ".trae/rules/swarmvault.md",
 	"claw":                ".claw/skills/swarmvault/SKILL.md",
 	"droid":               ".factory/rules/swarmvault.md",
-	"kiro":                ".kiro/skills/swarmvault/SKILL.md",
+	agentKiro:             ".kiro/skills/swarmvault/SKILL.md",
 	"kiroSteering":        ".kiro/steering/swarmvault.md",
 	"antigravityRules":    ".agents/rules/swarmvault.md",
 	"antigravityWorkflow": ".agents/workflows/swarmvault.md",
@@ -24,33 +40,33 @@ var agentFileKinds = map[string]string{
 }
 
 var PROJECT_SKILL_TARGETS = map[AgentType][]string{
-	"antigravity": {".agents/skills"},
-	"amp":         {".amp/skills"},
-	"claude":      {".claude/skills"},
-	"codex":       {".agents/skills"},
-	"copilot":     {".copilot/skills"},
-	"devin":       {".devin/skills"},
-	"gemini":      {".gemini/skills"},
-	"kimi":        {".kimi/skills"},
-	"opencode":    {".opencode/skills"},
-	"pi":          {".pi/agent/skills"},
+	agentAntigravity: {".agents/skills"},
+	agentAmp:         {".amp/skills"},
+	agentClaude:      {".claude/skills"},
+	agentCodex:       {".agents/skills"},
+	agentCopilot:     {".copilot/skills"},
+	agentDevin:       {".devin/skills"},
+	agentGemini:      {".gemini/skills"},
+	agentKimi:        {".kimi/skills"},
+	agentOpencode:    {".opencode/skills"},
+	"pi":             {".pi/agent/skills"},
 }
 
 var USER_SKILL_TARGETS = map[AgentType]string{
-	"antigravity": filepath.Join(".gemini", "config", "skills"),
-	"amp":         filepath.Join(".amp", "skills"),
-	"claude":      filepath.Join(".claude", "skills"),
-	"codex":       filepath.Join(".codex", "skills"),
-	"copilot":     filepath.Join(".copilot", "skills"),
-	"devin":       filepath.Join(".config", "devin", "skills"),
-	"gemini":      filepath.Join(".gemini", "skills"),
-	"kimi":        filepath.Join(".kimi", "skills"),
-	"kilo":        filepath.Join(".config", "kilo", "skills"),
-	"opencode":    filepath.Join(".config", "opencode", "skills"),
+	agentAntigravity: filepath.Join(".gemini", "config", "skills"),
+	agentAmp:         filepath.Join(".amp", "skills"),
+	agentClaude:      filepath.Join(".claude", "skills"),
+	agentCodex:       filepath.Join(".codex", "skills"),
+	agentCopilot:     filepath.Join(".copilot", "skills"),
+	agentDevin:       filepath.Join(".config", agentDevin, "skills"),
+	agentGemini:      filepath.Join(".gemini", "skills"),
+	agentKimi:        filepath.Join(".kimi", "skills"),
+	agentKilo:        filepath.Join(".config", agentKilo, "skills"),
+	agentOpencode:    filepath.Join(".config", agentOpencode, "skills"),
 }
 
 var SKILL_BUNDLE_AGENTS = map[AgentType]string{
-	"amp":          ".config/agents/skills",
+	agentAmp:       ".config/agents/skills",
 	"augment":      ".augment/skills",
 	"adal":         ".adal/skills",
 	"bob":          ".bob/skills",
@@ -68,8 +84,8 @@ func installScope(agent AgentType, options InstallAgentOptions) string {
 	if options.Scope != "" {
 		return options.Scope
 	}
-	if agent == "hermes" {
-		return "user"
+	if agent == agentHermes {
+		return scopeUser
 	}
 	return "project"
 }
@@ -81,7 +97,7 @@ func hermesUserSkillPath() string {
 
 func kiloUserCommandPath() string {
 	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".config", "kilo", "command", "swarmvault.md")
+	return filepath.Join(homeDir, ".config", agentKilo, "command", "swarmvault.md")
 }
 
 func claudeUserSettingsPath() string {
@@ -126,23 +142,23 @@ func skillBundleTarget(rootDir string, agent AgentType) *string {
 }
 
 func supportsAgentHook(agent AgentType) bool {
-	return agent == "codex" || agent == "claude" || agent == "opencode" || agent == "gemini" || agent == "copilot" || agent == "kilo"
+	return agent == agentCodex || agent == agentClaude || agent == agentOpencode || agent == agentGemini || agent == agentCopilot || agent == agentKilo
 }
 
 func hookScriptPathForAgent(rootDir string, agent AgentType) *string {
 	var path string
 	switch agent {
-	case "codex":
+	case agentCodex:
 		path = filepath.Join(rootDir, ".codex", "hooks", "swarmvault-graph-first.js")
-	case "claude":
+	case agentClaude:
 		path = filepath.Join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js")
-	case "opencode":
+	case agentOpencode:
 		path = filepath.Join(rootDir, ".opencode", "plugins", "swarmvault-graph-first.js")
-	case "kilo":
+	case agentKilo:
 		path = filepath.Join(rootDir, ".kilo", "plugins", "swarmvault.js")
-	case "gemini":
+	case agentGemini:
 		path = filepath.Join(rootDir, ".gemini", "hooks", "swarmvault-graph-first.js")
-	case "copilot":
+	case agentCopilot:
 		path = filepath.Join(rootDir, ".github", "hooks", "swarmvault-graph-first.js")
 	default:
 		return nil
@@ -153,17 +169,17 @@ func hookScriptPathForAgent(rootDir string, agent AgentType) *string {
 func hookConfigPathForAgent(rootDir string, agent AgentType) *string {
 	var path string
 	switch agent {
-	case "codex":
+	case agentCodex:
 		path = filepath.Join(rootDir, ".codex", "hooks.json")
-	case "claude":
+	case agentClaude:
 		path = filepath.Join(rootDir, ".claude", "settings.json")
-	case "gemini":
+	case agentGemini:
 		path = filepath.Join(rootDir, ".gemini", "settings.json")
-	case "opencode":
+	case agentOpencode:
 		path = filepath.Join(rootDir, ".opencode", "opencode.json")
-	case "kilo":
+	case agentKilo:
 		path = filepath.Join(rootDir, ".kilo", "kilo.json")
-	case "copilot":
+	case agentCopilot:
 		path = filepath.Join(rootDir, ".github", "hooks", "swarmvault-graph-first.json")
 	default:
 		return nil
@@ -172,8 +188,8 @@ func hookConfigPathForAgent(rootDir string, agent AgentType) *string {
 }
 
 func primaryTargetPathForAgent(rootDir string, agent AgentType, options InstallAgentOptions) string {
-	if installScope(agent, options) == "user" {
-		if agent == "hermes" {
+	if installScope(agent, options) == scopeUser {
+		if agent == agentHermes {
 			return hermesUserSkillPath()
 		}
 		target := userSkillTarget(agent)
@@ -183,29 +199,29 @@ func primaryTargetPathForAgent(rootDir string, agent AgentType, options InstallA
 	}
 
 	switch agent {
-	case "kilo", "codex", "goose", "pi", "opencode":
-		return filepath.Join(rootDir, agentFileKinds["agents"])
-	case "claude":
-		return filepath.Join(rootDir, agentFileKinds["claude"])
-	case "gemini":
-		return filepath.Join(rootDir, agentFileKinds["gemini"])
+	case agentKilo, agentCodex, "goose", "pi", agentOpencode:
+		return filepath.Join(rootDir, agentFileKinds[agentAgents])
+	case agentClaude:
+		return filepath.Join(rootDir, agentFileKinds[agentClaude])
+	case agentGemini:
+		return filepath.Join(rootDir, agentFileKinds[agentGemini])
 	case "cursor":
 		return filepath.Join(rootDir, agentFileKinds["cursor"])
-	case "aider":
-		return filepath.Join(rootDir, agentFileKinds["aider"])
-	case "copilot":
-		return filepath.Join(rootDir, agentFileKinds["copilot"])
+	case agentAider:
+		return filepath.Join(rootDir, agentFileKinds[agentAider])
+	case agentCopilot:
+		return filepath.Join(rootDir, agentFileKinds[agentCopilot])
 	case "trae":
 		return filepath.Join(rootDir, agentFileKinds["trae"])
 	case "claw":
 		return filepath.Join(rootDir, agentFileKinds["claw"])
 	case "droid":
 		return filepath.Join(rootDir, agentFileKinds["droid"])
-	case "kiro":
-		return filepath.Join(rootDir, agentFileKinds["kiro"])
-	case "hermes":
+	case agentKiro:
+		return filepath.Join(rootDir, agentFileKinds[agentKiro])
+	case agentHermes:
 		return hermesUserSkillPath()
-	case "antigravity":
+	case agentAntigravity:
 		return filepath.Join(rootDir, agentFileKinds["antigravityRules"])
 	case "vscode":
 		return filepath.Join(rootDir, agentFileKinds["vscode"])
@@ -222,20 +238,20 @@ func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOption
 	scope := installScope(agent, options)
 	targets := []string{primaryTargetPathForAgent(rootDir, agent, options)}
 
-	if scope == "user" {
-		if agent == "kilo" {
+	if scope == scopeUser {
+		if agent == agentKilo {
 			targets = append(targets, kiloUserCommandPath())
 		}
-		if agent == "hermes" {
-			targets = append(targets, filepath.Join(rootDir, agentFileKinds["agents"]))
+		if agent == agentHermes {
+			targets = append(targets, filepath.Join(rootDir, agentFileKinds[agentAgents]))
 		}
-		if agent == "claude" && options.Hook != nil && *options.Hook {
+		if agent == agentClaude && options.Hook != nil && *options.Hook {
 			targets = append(targets, claudeUserSettingsPath(), claudeUserHookScriptPath())
 		}
 		return uniqueStrings(targets)
 	}
 
-	if agent == "claude" && options.Mcp != nil && *options.Mcp {
+	if agent == agentClaude && options.Mcp != nil && *options.Mcp {
 		targets = append(targets, filepath.Join(rootDir, ".mcp.json"))
 	}
 
@@ -243,31 +259,31 @@ func targetsForAgent(rootDir string, agent AgentType, options InstallAgentOption
 		targets = append(targets, projectSkillTargets(rootDir, agent)...)
 	}
 
-	if agent == "copilot" {
-		targets = append(targets, filepath.Join(rootDir, agentFileKinds["agents"]))
+	if agent == agentCopilot {
+		targets = append(targets, filepath.Join(rootDir, agentFileKinds[agentAgents]))
 	}
 
 	if agent == "vscode" {
-		targets = append(targets, filepath.Join(rootDir, agentFileKinds["copilot"]))
+		targets = append(targets, filepath.Join(rootDir, agentFileKinds[agentCopilot]))
 	}
 
-	if agent == "aider" {
+	if agent == agentAider {
 		targets = append(targets, filepath.Join(rootDir, ".aider.conf.yml"))
 	}
 
-	if agent == "kiro" {
+	if agent == agentKiro {
 		targets = append(targets, filepath.Join(rootDir, agentFileKinds["kiroSteering"]))
 	}
 
-	if agent == "hermes" {
-		targets = append(targets, filepath.Join(rootDir, agentFileKinds["agents"]))
+	if agent == agentHermes {
+		targets = append(targets, filepath.Join(rootDir, agentFileKinds[agentAgents]))
 	}
 
-	if agent == "antigravity" {
+	if agent == agentAntigravity {
 		targets = append(targets, filepath.Join(rootDir, agentFileKinds["antigravityWorkflow"]))
 	}
 
-	if agent == "devin" {
+	if agent == agentDevin {
 		targets = append(targets, filepath.Join(rootDir, agentFileKinds["devinRules"]))
 	}
 
