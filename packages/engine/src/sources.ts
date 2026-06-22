@@ -521,7 +521,7 @@ async function syncGitHubRepoSource(rootDir: string, entry: ManagedSourceRecord)
   if (await fileExists(path.join(checkoutDir, ".git"))) {
     await runGitCommand(checkoutDir, ["remote", "set-url", "origin", github.cloneUrl]);
     if (branch) {
-      await runGitCommand(checkoutDir, ["fetch", "--depth", "1", "origin", branch]);
+      await runGitCommand(checkoutDir, ["fetch", "--depth", "1", "origin", "--", branch]);
     } else {
       await runGitCommand(checkoutDir, ["fetch", "--depth", "1", "origin"]);
     }
