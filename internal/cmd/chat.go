@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"swarmvault-native/internal/chat"
+	"swarmvault-native/internal/utils"
 )
 
 func HandleChat() {
@@ -12,7 +13,7 @@ func HandleChat() {
 		Action string          `json:"action"`
 		Args   json.RawMessage `json:"args"`
 	}
-	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+	if err := utils.DecodePayload(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
 		os.Exit(1)
 	}
@@ -34,7 +35,7 @@ func HandleChat() {
 		if result == nil {
 			result = make([]chat.VaultChatSessionSummary, 0)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -52,7 +53,7 @@ func HandleChat() {
 			fmt.Fprintf(os.Stderr, "Error reading chat session: %v\n", err)
 			os.Exit(1)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -70,7 +71,7 @@ func HandleChat() {
 			fmt.Fprintf(os.Stderr, "Error deleting chat session: %v\n", err)
 			os.Exit(1)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -97,7 +98,7 @@ func HandleChat() {
 			Session: session,
 			Prompt:  prompt,
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -118,7 +119,7 @@ func HandleChat() {
 			fmt.Fprintf(os.Stderr, "Error saving chat session turn: %v\n", err)
 			os.Exit(1)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 

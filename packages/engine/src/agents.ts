@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { initWorkspace } from "./config.js";
+import { runGoSidecar } from "./subprocess.js";
 import type { AgentInstallStatus, AgentType, InstallAgentOptions, InstallAgentResult } from "./types.js";
 import { ensureDir, fileExists } from "./utils.js";
 
@@ -1354,6 +1355,9 @@ export async function getAgentInstallStatus(
   agent: AgentType,
   options: InstallAgentOptions = {}
 ): Promise<AgentInstallStatus> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("agents", { action: "getAgentInstallStatus", args: { rootDir, agent, options } });
+  }
   const target = primaryTargetPathForAgent(rootDir, agent, options);
   const targets = targetsForAgent(rootDir, agent, options);
   const targetStatuses = await Promise.all(
