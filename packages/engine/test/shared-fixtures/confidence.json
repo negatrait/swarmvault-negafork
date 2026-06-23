@@ -1,0 +1,115 @@
+[
+  {
+    "name": "nodeConfidence - single source",
+    "action": "nodeConfidence",
+    "args": {
+      "sourceCount": 1
+    },
+    "expected": 0.65
+  },
+  {
+    "name": "nodeConfidence - max confidence",
+    "action": "nodeConfidence",
+    "args": {
+      "sourceCount": 10
+    },
+    "expected": 0.95
+  },
+  {
+    "name": "nodeConfidence - zero sources",
+    "action": "nodeConfidence",
+    "args": {
+      "sourceCount": 0
+    },
+    "expected": 0.5
+  },
+  {
+    "name": "edgeConfidence - empty relevant claims",
+    "action": "edgeConfidence",
+    "args": {
+      "claims": [],
+      "conceptName": "Graph"
+    },
+    "expected": 0.5
+  },
+  {
+    "name": "edgeConfidence - matching concept",
+    "action": "edgeConfidence",
+    "args": {
+      "claims": [
+        {
+          "id": "c1",
+          "text": "The graph is useful",
+          "confidence": 0.8,
+          "status": "extracted",
+          "polarity": "positive",
+          "citation": "source1"
+        },
+        {
+          "id": "c2",
+          "text": "Another graph related claim",
+          "confidence": 0.9,
+          "status": "extracted",
+          "polarity": "positive",
+          "citation": "source2"
+        },
+        {
+          "id": "c3",
+          "text": "Unrelated claim",
+          "confidence": 0.2,
+          "status": "extracted",
+          "polarity": "positive",
+          "citation": "source3"
+        }
+      ],
+      "conceptName": "Graph"
+    },
+    "expected": 0.8500000000000001
+  },
+  {
+    "name": "conflictConfidence - same confidence",
+    "action": "conflictConfidence",
+    "args": {
+      "claimA": {
+        "id": "c1",
+        "text": "Claim A",
+        "confidence": 0.7,
+        "status": "extracted",
+        "polarity": "positive",
+        "citation": "source1"
+      },
+      "claimB": {
+        "id": "c2",
+        "text": "Claim B",
+        "confidence": 0.7,
+        "status": "extracted",
+        "polarity": "negative",
+        "citation": "source2"
+      }
+    },
+    "expected": 0.7
+  },
+  {
+    "name": "conflictConfidence - different confidence",
+    "action": "conflictConfidence",
+    "args": {
+      "claimA": {
+        "id": "c1",
+        "text": "Claim A",
+        "confidence": 0.5,
+        "status": "extracted",
+        "polarity": "positive",
+        "citation": "source1"
+      },
+      "claimB": {
+        "id": "c2",
+        "text": "Claim B",
+        "confidence": 0.9,
+        "status": "extracted",
+        "polarity": "negative",
+        "citation": "source2"
+      }
+    },
+    "expected": 0.5
+  }
+]

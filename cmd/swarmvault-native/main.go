@@ -26,6 +26,9 @@ func main() {
 		case "chat":
 			cmdPkg.HandleChat()
 
+		case "confidence":
+			cmdPkg.HandleConfidence()
+
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command\n")
 			os.Exit(1)
