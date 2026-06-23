@@ -24,10 +24,10 @@ type GraphArtifact struct {
 type ClaimStatus string
 
 const (
-	ClaimStatusExtracted ClaimStatus = "extracted"
-	ClaimStatusInferred  ClaimStatus = "inferred"
+	ClaimStatusExtracted  ClaimStatus = "extracted"
+	ClaimStatusInferred   ClaimStatus = "inferred"
 	ClaimStatusConflicted ClaimStatus = "conflicted"
-	ClaimStatusStale     ClaimStatus = "stale"
+	ClaimStatusStale      ClaimStatus = "stale"
 )
 
 type Polarity string

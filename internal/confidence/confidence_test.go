@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"testing"
 	"swarmvault-native/internal/types"
+	"testing"
 )
 
 type Fixture struct {
-	Name     string `json:"name"`
-	Action   string `json:"action"`
+	Name     string          `json:"name"`
+	Action   string          `json:"action"`
 	Args     json.RawMessage `json:"args"`
-	Expected float64 `json:"expected"`
+	Expected float64         `json:"expected"`
 }
 
 type NodeConfidenceArgs struct {
