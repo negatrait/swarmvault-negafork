@@ -1,48 +1,27 @@
-# Daily Porting Scope: agents.ts (Phase 1)
+# Daily Porting Scope: confidence.ts
 
 ## 1. Goal
-The previous attempt to port `packages/engine/src/agents.ts` stalled because it was too large. The goal of this hyper-focused scope is to strictly port ONLY the `getAgentInstallStatus` function and its required core data structures. We will establish the `internal/agents` directory and the basic bridge.
+Port the pure math and array filtering functions from `src/confidence.ts` to Go. These functions are used for calculating node, edge, and conflict confidence scores within the graph. This is an extremely small, atomic, and safe porting task to advance the structural porting effort.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/agents.ts`
-- **Source Export:** `function getAgentInstallStatus(...)` (Port ONLY this function!)
-- **Target File:** `internal/agents/status.go` (and `types.go` for the struct)
-- **Target Export:** `func GetAgentInstallStatus(...)`
+- **Source File:** `packages/engine/src/confidence.ts`
+- **Source Export:** `function nodeConfidence`, `function edgeConfidence`, `function conflictConfidence`
+- **Target File:** `internal/confidence/confidence.go`
+- **Target Export:** `func NodeConfidence`, `func EdgeConfidence`, `func ConflictConfidence`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native agents`
-- **Action:** `"getAgentInstallStatus"`
-- **TS Delegation Call:** Update `packages/engine/src/agents.ts` inside `getAgentInstallStatus` to route execution through `runGoSidecar("agents", { action: "getAgentInstallStatus", args: { rootDir, agent, options } })` if `process.env.USE_GO_PORT === 'true'`.
+- **CLI Subcommand:** `swarmvault-native confidence`
+- **TS Delegation Call:** Update `packages/engine/src/confidence.ts` to route execution for all three functions through `runGoSidecarSync("confidence", { action: "<actionName>", args: { ... } })` if `process.env.USE_GO_PORT === 'true'`.
 
 ## 4. Stubs, Mocks, & Out-Of-Scope (Strict Protection)
-- **What to Ignore/Leave in TS:** Do NOT port `installAgent` or `installConfiguredAgents`. Leave them exactly as they are in TS. Do not write Go handlers for them.
-- **What to Stub/Mock in Go:** `getAgentInstallStatus` relies on `primaryTargetPathForAgent` and `targetsForAgent`. You MUST port these two helper functions (and any constant maps they need, like `agentFileKinds`) into Go as private functions in `internal/agents/paths.go`. It also requires checking file existence; use `os.Stat` directly in Go instead of porting the `fileExists` utility.
+- **What to Stub/Mock in Go:** No stubs or mocks are required. The module relies solely on standard math and the `SourceClaim` interface, which should be represented as a struct in `internal/types/types.go` or within the confidence package directly if not globally ported.
+- **What to Ignore/Leave in TS:** None. The file is completely scoped to these 3 pure functions.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 500 Lines of Code. Split structs to `types.go`, path helpers to `paths.go`, and the main status logic to `status.go`.
+- **File Limit:** Max 400 Lines of Code. Split structs to `types.go` or sub-functions to separate files if approaching this limit.
 - **Function Limit:** Max 80 Lines of Code. Helper functions must be extracted if exceeded.
 - **Nesting Limit:** Maximum of 3 levels deep. Use early exits and guard clauses.
 
 ## 6. Parity Expectations
 - Input/Output schema must match structurally 1:1.
-- Define `AgentInstallStatus` and `AgentInstallTargetStatus` structs in Go with explicit JSON tags.
-- The TS execution output must identically match the Go execution output.
-
-## 7. Few-shot Examples
-Idiomatic examples and anti-patterns of TS to Go porting.
-
-### Expected Go Outcome
-```go
-package agents
-
-import "os"
-
-// fileExists is a simple internal stub to avoid porting utils.ts
-func fileExists(path string) bool {
-    _, err := os.Stat(path)
-    return err == nil
-}
-```
-
-### Anti-pattern Go Outcome
-Trying to port `initWorkspace` or heavy file operations from `utils.ts` just because they are in the same file. Do not port them! Stick strictly to `getAgentInstallStatus` dependencies!
+- Unit tests must run the exact same JSON test fixtures in `/shared-fixtures` across both TS and Go to verify identical output.
