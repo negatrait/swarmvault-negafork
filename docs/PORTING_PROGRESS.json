@@ -57,7 +57,7 @@
     },
     {
       "path": "src/confidence.ts",
-      "status": "active",
+      "status": "pending",
       "subcommand": null,
       "bridged": false
     },
@@ -459,9 +459,9 @@
     },
     {
       "path": "src/utils.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "utils",
+      "bridged": true
     },
     {
       "path": "src/vault.ts",

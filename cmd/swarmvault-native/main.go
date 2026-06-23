@@ -23,6 +23,9 @@ func main() {
 		case "candidate-promotion":
 			cmdPkg.HandleCandidatePromotion()
 
+		case "utils":
+			cmdPkg.HandleUtils()
+
 		case "chat":
 			cmdPkg.HandleChat()
 
