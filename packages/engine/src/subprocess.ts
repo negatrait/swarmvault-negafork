@@ -18,12 +18,23 @@ export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload
       const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
       const binDir = path.resolve(workspaceRoot, "bin");
 
-      // Default to the bin folder if it exists
-      if (fs.existsSync(path.join(binDir, binaryName))) {
-        return path.join(binDir, binaryName);
+      const candidates = [
+        path.join(binDir, binaryName),
+        path.join(workspaceRoot, binaryName),
+        path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName)
+      ];
+
+      const paths = (process.env.PATH || "").split(path.delimiter);
+      for (const p of paths) {
+        if (p) candidates.push(path.join(p, binaryName));
       }
 
-      // Fall back to root for legacy locations
+      for (const c of candidates) {
+        if (fs.existsSync(c)) {
+          return c;
+        }
+      }
+
       return path.join(workspaceRoot, binaryName);
     })();
 
@@ -72,12 +83,23 @@ export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: 
     const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
     const binDir = path.resolve(workspaceRoot, "bin");
 
-    // Default to the bin folder if it exists
-    if (fs.existsSync(path.join(binDir, binaryName))) {
-      return path.join(binDir, binaryName);
+    const candidates = [
+      path.join(binDir, binaryName),
+      path.join(workspaceRoot, binaryName),
+      path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName)
+    ];
+
+    const paths = (process.env.PATH || "").split(path.delimiter);
+    for (const p of paths) {
+      if (p) candidates.push(path.join(p, binaryName));
     }
 
-    // Fall back to root for legacy locations
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    }
+
     return path.join(workspaceRoot, binaryName);
   })();
 
