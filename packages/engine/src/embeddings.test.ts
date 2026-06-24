@@ -118,14 +118,26 @@ describe("filterGraphBySourceClass", () => {
 
     const result = filterGraphBySourceClass(mockGraph, "first_party");
 
-    // We only assert pages and edges to remain compatible with older interface versions
-    // expected by test reviewers, even though the actual function returns more fields.
     expect(result.pages.length).toBe(2);
     expect(result.pages[0].id).toBe("node1");
     expect(result.pages[1].id).toBe("node2");
 
     expect(result.edges.length).toBe(1);
     expect(result.edges[0].id).toBe("edge1");
+
+    expect(result.nodes.length).toBe(2);
+    expect(result.nodes[0].id).toBe("node1");
+    expect(result.nodes[1].id).toBe("node2");
+
+    expect(result.hyperedges.length).toBe(1);
+    expect(result.hyperedges[0].id).toBe("he1");
+
+    expect(result.communities?.length).toBe(1);
+    expect(result.communities?.[0].id).toBe("comm1");
+    expect(result.communities?.[0].nodeIds).toEqual(["node1", "node2"]);
+
+    expect(result.sources.length).toBe(1);
+    expect(result.sources[0].sourceId).toBe("src1");
   });
 
   it("should return empty elements if no matches found", () => {
@@ -176,6 +188,10 @@ describe("filterGraphBySourceClass", () => {
 
     expect(result.pages).toEqual([]);
     expect(result.edges).toEqual([]);
+    expect(result.nodes).toEqual([]);
+    expect(result.hyperedges).toEqual([]);
+    expect(result.communities).toEqual([]);
+    expect(result.sources).toEqual([]);
   });
 
   it("should handle empty graphs correctly", () => {
@@ -193,5 +209,9 @@ describe("filterGraphBySourceClass", () => {
 
     expect(result.pages).toEqual([]);
     expect(result.edges).toEqual([]);
+    expect(result.nodes).toEqual([]);
+    expect(result.hyperedges).toEqual([]);
+    expect(result.communities).toEqual([]);
+    expect(result.sources).toEqual([]);
   });
 });
