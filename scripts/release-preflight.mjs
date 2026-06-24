@@ -124,11 +124,20 @@ async function main() {
     }
 
     await runGate("live-smoke", "installed-package heuristic smoke", () => run("node", smokeArgs, { cwd: repoRoot }));
+    await runGate("live-smoke-go", "installed-package heuristic smoke (Go)", () => run("node", smokeArgs, { cwd: repoRoot, env: { ...process.env, USE_GO_PORT: "true" } }));
     await runGate(
       "browser-smoke",
       "installed-package browser smoke",
       async () => {
         await run("node", [...smokeArgs, "--browser-check"], { cwd: repoRoot });
+      },
+      args.noBrowser ? "--no-browser" : undefined
+    );
+    await runGate(
+      "browser-smoke-go",
+      "installed-package browser smoke (Go)",
+      async () => {
+        await run("node", [...smokeArgs, "--browser-check"], { cwd: repoRoot, env: { ...process.env, USE_GO_PORT: "true" } });
         packageSmoke.browserSmoke = "passed";
       },
       args.noBrowser ? "--no-browser" : undefined
@@ -138,6 +147,14 @@ async function main() {
       "installed-package OSS corpus",
       async () => {
         await run("node", corpusArgs, { cwd: repoRoot });
+      },
+      args.noOssCorpus ? "--no-oss-corpus" : undefined
+    );
+    await runGate(
+      "oss-corpus-go",
+      "installed-package OSS corpus (Go)",
+      async () => {
+        await run("node", corpusArgs, { cwd: repoRoot, env: { ...process.env, USE_GO_PORT: "true" } });
         packageSmoke.ossCorpus = "passed";
       },
       args.noOssCorpus ? "--no-oss-corpus" : undefined

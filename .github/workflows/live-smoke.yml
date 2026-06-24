@@ -40,30 +40,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Resolve published version
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: |
-          mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+
+      - name: Build and Pack local packages
+        run: |
+          pnpm build
+          mkdir -p dist-pack
+          pnpm --filter @swarmvaultai/engine pack --pack-destination dist-pack
+          pnpm --filter @swarmvaultai/cli pack --pack-destination dist-pack
+          echo "SWARMVAULT_ENGINE_TARBALL=$(ls dist-pack/swarmvaultai-engine-*.tgz)" >> "$GITHUB_ENV"
+          echo "SWARMVAULT_CLI_TARBALL=$(ls dist-pack/swarmvaultai-cli-*.tgz)" >> "$GITHUB_ENV"
 
       - name: Run heuristic live smoke
-        run: pnpm live:smoke:heuristic -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+        run: pnpm live:smoke:heuristic -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Run heuristic live smoke with Go port
-        run: USE_GO_PORT=true pnpm live:smoke:heuristic -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+        run: USE_GO_PORT=true pnpm live:smoke:heuristic -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Upload heuristic smoke artifacts
         if: failure()
@@ -90,27 +85,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
 
-      - name: Resolve published version
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: |
-          mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+
+      - name: Build and Pack local packages
+        run: |
+          pnpm build
+          mkdir -p dist-pack
+          pnpm --filter @swarmvaultai/engine pack --pack-destination dist-pack
+          pnpm --filter @swarmvaultai/cli pack --pack-destination dist-pack
+          echo "SWARMVAULT_ENGINE_TARBALL=$(ls dist-pack/swarmvaultai-engine-*.tgz)" >> "$GITHUB_ENV"
+          echo "SWARMVAULT_CLI_TARBALL=$(ls dist-pack/swarmvaultai-cli-*.tgz)" >> "$GITHUB_ENV"
 
       - name: Run heuristic live smoke with browser check
-        run: pnpm live:smoke:heuristic:browser -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+        run: pnpm live:smoke:heuristic:browser -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
+
+      - name: Run heuristic live smoke with browser check (Go port)
+        run: USE_GO_PORT=true pnpm live:smoke:heuristic:browser -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Upload heuristic browser smoke artifacts
         if: failure()
@@ -136,27 +129,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Resolve published version
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: |
-          mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
-      - name: Run OSS corpus against the published package
-        run: pnpm live:oss:corpus -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+      - name: Build and Pack local packages
+        run: |
+          pnpm build
+          mkdir -p dist-pack
+          pnpm --filter @swarmvaultai/engine pack --pack-destination dist-pack
+          pnpm --filter @swarmvaultai/cli pack --pack-destination dist-pack
+          echo "SWARMVAULT_ENGINE_TARBALL=$(ls dist-pack/swarmvaultai-engine-*.tgz)" >> "$GITHUB_ENV"
+          echo "SWARMVAULT_CLI_TARBALL=$(ls dist-pack/swarmvaultai-cli-*.tgz)" >> "$GITHUB_ENV"
+
+      - name: Run OSS corpus against local packages
+        run: pnpm live:oss:corpus -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
+
+      - name: Run OSS corpus against local packages (Go port)
+        run: USE_GO_PORT=true pnpm live:oss:corpus -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Upload OSS corpus artifacts
         if: failure()
@@ -192,31 +183,32 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: env.OPENAI_API_KEY != ''
 
-      - name: Resolve published version
-        if: env.OPENAI_API_KEY != ''
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: |
-          mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+
+      - name: Build and Pack local packages
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          pnpm build
+          mkdir -p dist-pack
+          pnpm --filter @swarmvaultai/engine pack --pack-destination dist-pack
+          pnpm --filter @swarmvaultai/cli pack --pack-destination dist-pack
+          echo "SWARMVAULT_ENGINE_TARBALL=$(ls dist-pack/swarmvaultai-engine-*.tgz)" >> "$GITHUB_ENV"
+          echo "SWARMVAULT_CLI_TARBALL=$(ls dist-pack/swarmvaultai-cli-*.tgz)" >> "$GITHUB_ENV"
 
       - name: Run OpenAI live smoke
         if: env.OPENAI_API_KEY != ''
         env:
           SWARMVAULT_OPENAI_MODEL: gpt-4.1-mini
-        run: pnpm live:smoke:openai -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+        run: pnpm live:smoke:openai -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
+
+      - name: Run OpenAI live smoke (Go port)
+        if: env.OPENAI_API_KEY != ''
+        env:
+          SWARMVAULT_OPENAI_MODEL: gpt-4.1-mini
+        run: USE_GO_PORT=true pnpm live:smoke:openai -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Upload OpenAI smoke artifacts
         if: failure() && env.OPENAI_API_KEY != ''
@@ -252,25 +244,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: env.OLLAMA_API_KEY != ''
 
-      - name: Resolve published version
-        if: env.OLLAMA_API_KEY != ''
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "SWARMVAULT_LIVE_SMOKE_VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json','utf8')).version")" >> "$GITHUB_ENV"
-          fi
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: |
-          mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+
+      - name: Build and Pack local packages
+        if: env.OLLAMA_API_KEY != ''
+        run: |
+          pnpm build
+          mkdir -p dist-pack
+          pnpm --filter @swarmvaultai/engine pack --pack-destination dist-pack
+          pnpm --filter @swarmvaultai/cli pack --pack-destination dist-pack
+          echo "SWARMVAULT_ENGINE_TARBALL=$(ls dist-pack/swarmvaultai-engine-*.tgz)" >> "$GITHUB_ENV"
+          echo "SWARMVAULT_CLI_TARBALL=$(ls dist-pack/swarmvaultai-cli-*.tgz)" >> "$GITHUB_ENV"
 
       - name: Run Ollama live smoke
         if: env.OLLAMA_API_KEY != ''
@@ -278,7 +265,15 @@ jobs:
           SWARMVAULT_OLLAMA_MODEL: gpt-oss:20b-cloud
           SWARMVAULT_OLLAMA_BASE_URL: https://ollama.com/v1
           SWARMVAULT_OLLAMA_API_STYLE: chat
-        run: pnpm live:smoke:ollama -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+        run: pnpm live:smoke:ollama -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
+
+      - name: Run Ollama live smoke (Go port)
+        if: env.OLLAMA_API_KEY != ''
+        env:
+          SWARMVAULT_OLLAMA_MODEL: gpt-oss:20b-cloud
+          SWARMVAULT_OLLAMA_BASE_URL: https://ollama.com/v1
+          SWARMVAULT_OLLAMA_API_STYLE: chat
+        run: USE_GO_PORT=true pnpm live:smoke:ollama -- --install-spec "$SWARMVAULT_ENGINE_TARBALL" --install-spec "$SWARMVAULT_CLI_TARBALL"
 
       - name: Upload Ollama smoke artifacts
         if: failure() && env.OLLAMA_API_KEY != ''
