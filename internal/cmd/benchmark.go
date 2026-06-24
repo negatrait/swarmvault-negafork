@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"swarmvault-native/internal/benchmark"
+	"swarmvault-native/internal/utils"
 )
 
 type BenchmarkPayload struct {
@@ -14,7 +15,7 @@ type BenchmarkPayload struct {
 
 func HandleBenchmark() {
 	var payload BenchmarkPayload
-	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
+	if err := utils.DecodePayload(&payload); err != nil {
 		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
 		os.Exit(1)
 	}
@@ -29,7 +30,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.EstimateTokens(args.Text)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -42,7 +43,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.EstimateCorpusWords(args.Texts)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -57,7 +58,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.BenchmarkQueryTokens(args.Graph, args.QueryResult, args.PageContentsById)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -70,7 +71,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.GraphHash(args.Graph)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -84,7 +85,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.DefaultBenchmarkQuestionsForGraph(args.Graph, args.MaxQuestions)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -95,7 +96,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.BuildBenchmarkByClass(args)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 
@@ -106,7 +107,7 @@ func HandleBenchmark() {
 			os.Exit(1)
 		}
 		result := benchmark.BuildBenchmarkArtifact(args)
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
 

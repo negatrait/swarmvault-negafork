@@ -11,6 +11,9 @@ func main() {
 		cmd := os.Args[1]
 
 		switch cmd {
+		case "agents":
+			cmdPkg.HandleAgents()
+
 		case "auto-commit":
 			cmdPkg.HandleAutoCommit()
 
@@ -20,8 +23,14 @@ func main() {
 		case "candidate-promotion":
 			cmdPkg.HandleCandidatePromotion()
 
+		case "utils":
+			cmdPkg.HandleUtils()
+
 		case "chat":
 			cmdPkg.HandleChat()
+
+		case "confidence":
+			cmdPkg.HandleConfidence()
 
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command\n")

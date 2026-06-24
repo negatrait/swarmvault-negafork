@@ -3,9 +3,11 @@ package candidatepromotion
 import (
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 type CandidatePromotionConfig struct {
@@ -57,41 +59,6 @@ type PromotionSession struct {
 	SkippedPageIds  []string            `json:"skippedPageIds"`
 	Decisions       []PromotionDecision `json:"decisions"`
 	SessionPath     *string             `json:"sessionPath,omitempty"`
-}
-
-func jaccard(left, right []string) float64 {
-	if len(left) == 0 && len(right) == 0 {
-		return 1
-	}
-	leftSet := make(map[string]struct{})
-	for _, l := range left {
-		leftSet[l] = struct{}{}
-	}
-	rightSet := make(map[string]struct{})
-	for _, r := range right {
-		rightSet[r] = struct{}{}
-	}
-
-	union := make(map[string]struct{})
-	for k := range leftSet {
-		union[k] = struct{}{}
-	}
-	for k := range rightSet {
-		union[k] = struct{}{}
-	}
-
-	if len(union) == 0 {
-		return 1
-	}
-
-	intersection := 0
-	for k := range leftSet {
-		if _, ok := rightSet[k]; ok {
-			intersection++
-		}
-	}
-
-	return float64(intersection) / float64(len(union))
 }
 
 func hoursSince(iso string, now int64) float64 {
@@ -176,7 +143,7 @@ func EvaluateCandidateForPromotion(
 
 	agreement := 0.0
 	if len(historicalSources) > 0 {
-		agreement = jaccard(historicalSources, page.SourceIds)
+		agreement = utils.Jaccard(historicalSources, page.SourceIds)
 	}
 
 	degree := maxDegreeFor(graph, page.NodeIds)
@@ -225,22 +192,22 @@ func EvaluateCandidateForPromotion(
 }
 
 func SortDecisionsForPromotion(decisions []PromotionDecision) []PromotionDecision {
-	sorted := make([]PromotionDecision, len(decisions))
-	copy(sorted, decisions)
-
-	sort.Slice(sorted, func(i, j int) bool {
-		left := sorted[i]
-		right := sorted[j]
-
-		if left.Promote != right.Promote {
-			return left.Promote
+	sorted := slices.Clone(decisions)
+	slices.SortStableFunc(sorted, func(a, b PromotionDecision) int {
+		if a.Promote != b.Promote {
+			if a.Promote {
+				return -1
+			}
+			return 1
 		}
-		if right.Score != left.Score {
-			return left.Score > right.Score // higher score comes first
+		if a.Score != b.Score {
+			if a.Score > b.Score {
+				return -1
+			}
+			return 1
 		}
-		return left.PageID < right.PageID
+		return strings.Compare(a.PageID, b.PageID)
 	})
-
 	return sorted
 }
 

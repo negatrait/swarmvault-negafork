@@ -3,6 +3,8 @@ package candidatepromotion
 import (
 	"testing"
 	"time"
+
+	"swarmvault-native/internal/utils"
 )
 
 func TestHoursSince(t *testing.T) {
@@ -19,7 +21,7 @@ func TestHoursSince(t *testing.T) {
 func TestJaccard(t *testing.T) {
 	left := []string{"a", "b", "c"}
 	right := []string{"b", "c", "d"}
-	res := jaccard(left, right)
+	res := utils.Jaccard(left, right)
 
 	// union: a,b,c,d (4)
 	// intersect: b,c (2)
