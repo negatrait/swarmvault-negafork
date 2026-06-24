@@ -1,7 +1,7 @@
 version: 2
 updates:
   # 1. TypeScript / Node.js Workspace Dependencies (pnpm)
-  - package-ecosystem: pnpm
+  - package-ecosystem: npm
     directory: /
     target-branch: staging  # <--- CRITICAL: Directs updates through staging test loop
     schedule:
