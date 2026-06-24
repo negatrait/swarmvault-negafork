@@ -11,7 +11,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "pnpm -r typecheck",
-    "check": "biome check . && pnpm -r typecheck && node ./scripts/check-release-sync.mjs && node ./scripts/check-published-manifests.mjs && node ./scripts/check-readme-parity.mjs && node ./scripts/check-clawhub-skill.mjs",
+    "check": "biome check . && pnpm build && pnpm -r typecheck && node ./scripts/check-release-sync.mjs && node ./scripts/check-published-manifests.mjs && node ./scripts/check-readme-parity.mjs && node ./scripts/check-clawhub-skill.mjs",
     "check:release-sync": "node ./scripts/check-release-sync.mjs",
     "check:published-manifests": "node ./scripts/check-published-manifests.mjs",
     "check:readme-parity": "node ./scripts/check-readme-parity.mjs",
