@@ -1293,7 +1293,7 @@ describe("swarmvault workflow", () => {
     await expect(compileVault(rootDir)).rejects.toThrow(/compile-state\.json/);
   });
 
-  it("compiles a larger heuristic markdown corpus without unbounded graph projection", { timeout: 180000 }, async () => {
+  it("compiles a larger heuristic markdown corpus without unbounded graph projection", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
     const sourceCount = 140;
