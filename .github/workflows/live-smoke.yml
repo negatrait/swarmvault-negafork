@@ -112,6 +112,9 @@ jobs:
       - name: Run heuristic live smoke with browser check
         run: pnpm live:smoke:heuristic:browser -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
+      - name: Run heuristic live smoke with browser check with Go port
+        run: USE_GO_PORT=true pnpm live:smoke:heuristic:browser -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+
       - name: Upload heuristic browser smoke artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -157,6 +160,9 @@ jobs:
 
       - name: Run OSS corpus against the published package
         run: pnpm live:oss:corpus -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+
+      - name: Run OSS corpus against the published package with Go port
+        run: USE_GO_PORT=true pnpm live:oss:corpus -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
       - name: Upload OSS corpus artifacts
         if: failure()
@@ -217,6 +223,12 @@ jobs:
         env:
           SWARMVAULT_OPENAI_MODEL: gpt-4.1-mini
         run: pnpm live:smoke:openai -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+
+      - name: Run OpenAI live smoke with Go port
+        if: env.OPENAI_API_KEY != ''
+        env:
+          SWARMVAULT_OPENAI_MODEL: gpt-4.1-mini
+        run: USE_GO_PORT=true pnpm live:smoke:openai -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
       - name: Upload OpenAI smoke artifacts
         if: failure() && env.OPENAI_API_KEY != ''
@@ -279,6 +291,14 @@ jobs:
           SWARMVAULT_OLLAMA_BASE_URL: https://ollama.com/v1
           SWARMVAULT_OLLAMA_API_STYLE: chat
         run: pnpm live:smoke:ollama -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
+
+      - name: Run Ollama live smoke with Go port
+        if: env.OLLAMA_API_KEY != ''
+        env:
+          SWARMVAULT_OLLAMA_MODEL: gpt-oss:20b-cloud
+          SWARMVAULT_OLLAMA_BASE_URL: https://ollama.com/v1
+          SWARMVAULT_OLLAMA_API_STYLE: chat
+        run: USE_GO_PORT=true pnpm live:smoke:ollama -- --version "$SWARMVAULT_LIVE_SMOKE_VERSION"
 
       - name: Upload Ollama smoke artifacts
         if: failure() && env.OLLAMA_API_KEY != ''
