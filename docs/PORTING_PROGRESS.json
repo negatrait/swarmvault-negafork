@@ -57,9 +57,9 @@
     },
     {
       "path": "src/confidence.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "confidence",
+      "bridged": true
     },
     {
       "path": "src/config.ts",
