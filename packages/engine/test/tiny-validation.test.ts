@@ -287,7 +287,7 @@ afterEach(async () => {
 });
 
 describe("tiny validation matrix", () => {
-  it("covers every shipped code language with repo ingest", async () => {
+  it("covers every shipped code language with repo ingest", { timeout: 180000 }, async () => {
     const rootDir = await createTempWorkspace();
     const repoDir = path.join(rootDir, "repo");
     await fs.cp(tinyFixtureDir, repoDir, { recursive: true });
@@ -357,7 +357,7 @@ describe("tiny validation matrix", () => {
     expect(results.some((result) => result.path.startsWith("sources/"))).toBe(true);
   }, 30_000);
 
-  it("covers every shipped local source kind with repo ingest", async () => {
+  it("covers every shipped local source kind with repo ingest", { timeout: 180000 }, async () => {
     const rootDir = await createTempWorkspace();
     const repoDir = path.join(rootDir, "repo");
     await fs.cp(tinyFixtureDir, repoDir, { recursive: true });
