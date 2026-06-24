@@ -470,7 +470,7 @@ async function syncFileSource(rootDir: string, inputPath: string): Promise<Manag
       removedCount: result.removed.length,
       skippedCount: result.skipped.length
     },
-    changed: result.created.length + result.updated.length + result.removed.length > 0
+    changed: result.created.length > 0 || result.updated.length > 0 || result.removed.length > 0
   };
 }
 
