@@ -1,7 +1,15 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
+
 export type FindingSeverity = "error" | "warning" | "info";
 
 export function normalizeFindingSeverity(value: unknown): FindingSeverity {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<FindingSeverity>("findings", {
+      action: "normalizeFindingSeverity",
+      args: { value }
+    });
+  }
+
   if (typeof value !== "string") {
     return "info";
   }

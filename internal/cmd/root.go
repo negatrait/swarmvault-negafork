@@ -31,6 +31,8 @@ func Execute() error {
 		return HandleConfidence()
 	case "parser":
 		return HandleParser()
+	case "findings":
+		return HandleFindings()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -48,4 +50,5 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  chat")
 	fmt.Fprintln(os.Stderr, "  confidence")
 	fmt.Fprintln(os.Stderr, "  parser")
+	fmt.Fprintln(os.Stderr, "  findings")
 }
