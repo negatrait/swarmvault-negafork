@@ -3,19 +3,17 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"swarmvault-native/internal/agents"
 	"swarmvault-native/internal/utils"
 )
 
-func HandleAgents() {
+func HandleAgents() error {
 	var payload struct {
 		Action string          `json:"action"`
 		Args   json.RawMessage `json:"args"`
 	}
 	if err := utils.DecodePayload(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	switch payload.Action {
@@ -26,20 +24,19 @@ func HandleAgents() {
 			Options agents.InstallAgentOptions `json:"options"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result, err := agents.GetAgentInstallStatus(args.RootDir, args.Agent, args.Options)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting agent install status: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting agent install status: %w", err)
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown agents action: %s\n", payload.Action)
-		os.Exit(1)
+		return fmt.Errorf("unknown agents action: %s", payload.Action)
 	}
+
+	return nil
 }

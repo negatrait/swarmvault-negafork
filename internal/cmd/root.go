@@ -16,26 +16,19 @@ func Execute() error {
 	subcommand := os.Args[1]
 	switch subcommand {
 	case "agents":
-		HandleAgents()
-		return nil
+		return HandleAgents()
 	case "auto-commit":
-		HandleAutoCommit()
-		return nil
+		return HandleAutoCommit()
 	case "benchmark":
-		HandleBenchmark()
-		return nil
+		return HandleBenchmark()
 	case "candidate-promotion":
-		HandleCandidatePromotion()
-		return nil
+		return HandleCandidatePromotion()
 	case "utils":
-		HandleUtils()
-		return nil
+		return HandleUtils()
 	case "chat":
-		HandleChat()
-		return nil
+		return HandleChat()
 	case "confidence":
-		HandleConfidence()
-		return nil
+		return HandleConfidence()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)

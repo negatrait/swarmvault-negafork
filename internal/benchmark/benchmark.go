@@ -1,11 +1,11 @@
 package benchmark
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 
@@ -32,7 +32,7 @@ var AllSourceClasses = []SourceClass{
 }
 
 func EstimateTokens(text string) int {
-	return int(math.Max(1, math.Ceil(float64(len(text))/float64(CharsPerToken))))
+	return max(1, (len(text)+CharsPerToken-1)/CharsPerToken)
 }
 
 func NormalizeWhitespace(value string) string {
@@ -200,7 +200,7 @@ func mapNodes(nodes []GraphNode) []mappedNode {
 			ProjectIDs:  utils.SortStrings(n.ProjectIDs),
 		})
 	}
-	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return cmp.Compare(a.ID, b.ID) })
 	return mappedNodes
 }
 
@@ -219,7 +219,7 @@ func mapEdges(edges []GraphEdge) []mappedEdge {
 			Provenance:      utils.SortStrings(e.Provenance),
 		})
 	}
-	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return cmp.Compare(a.ID, b.ID) })
 	return mappedEdges
 }
 
@@ -238,7 +238,7 @@ func mapPages(pages []GraphPage) []mappedPage {
 			NodeIDs:     utils.SortStrings(p.NodeIDs),
 		})
 	}
-	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return cmp.Compare(a.ID, b.ID) })
 	return mappedPages
 }
 
@@ -255,7 +255,7 @@ func mapCommunities(communities *[]GraphCommunity) []mappedCommunity {
 	} else {
 		mappedCommunities = make([]mappedCommunity, 0)
 	}
-	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return cmp.Compare(a.ID, b.ID) })
 	return mappedCommunities
 }
 
@@ -296,7 +296,7 @@ func hasResearchSources(pages []GraphPage) bool {
 }
 
 func DefaultBenchmarkQuestionsForGraph(graph *GraphArtifact, maxQuestions int) []string {
-	normalizedLimit := int(math.Max(1, math.Min(float64(maxQuestions), float64(len(DefaultBenchmarkQuestions)))))
+	normalizedLimit := max(1, min(maxQuestions, len(DefaultBenchmarkQuestions)))
 	questions := make([]string, len(DefaultBenchmarkQuestions))
 	copy(questions, DefaultBenchmarkQuestions)
 

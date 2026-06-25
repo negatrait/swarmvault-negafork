@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	autocommit "swarmvault-native/internal/auto-commit"
 	"swarmvault-native/internal/utils"
 )
@@ -19,22 +18,21 @@ type OutputPayload struct {
 	Message *string `json:"message"`
 }
 
-func HandleAutoCommit() {
+func HandleAutoCommit() error {
 	var payload AutoCommitPayload
 
 	if err := utils.DecodePayload(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	message, err := autocommit.AutoCommitWikiChanges(payload.RootDir, payload.Operation, payload.Detail, payload.Config, payload.Options)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error auto-committing: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	result := OutputPayload{Message: message}
 	if err := utils.EncodeResponse(result); err != nil {
-		os.Exit(1)
+		return err
 	}
+	return nil
 }
