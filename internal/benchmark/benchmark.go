@@ -135,30 +135,53 @@ func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pa
 	}
 }
 
-func GraphHash(graph *GraphArtifact) string {
-	var hashedPages []GraphPage
-	for _, p := range graph.Pages {
-		if p.Kind != "graph_report" && p.Kind != "community_summary" {
-			hashedPages = append(hashedPages, p)
-		}
-	}
+type mappedNode struct {
+	ID          string       `json:"id"`
+	Type        string       `json:"type"`
+	Label       string       `json:"label"`
+	PageID      *string      `json:"pageId"`
+	SourceClass *SourceClass `json:"sourceClass"`
+	CommunityID *string      `json:"communityId"`
+	Degree      *int         `json:"degree"`
+	BridgeScore *float64     `json:"bridgeScore"`
+	IsGodNode   bool         `json:"isGodNode"`
+	SourceIDs   []string     `json:"sourceIds"`
+	ProjectIDs  []string     `json:"projectIds"`
+}
 
-	type mappedNode struct {
-		ID          string       `json:"id"`
-		Type        string       `json:"type"`
-		Label       string       `json:"label"`
-		PageID      *string      `json:"pageId"`
-		SourceClass *SourceClass `json:"sourceClass"`
-		CommunityID *string      `json:"communityId"`
-		Degree      *int         `json:"degree"`
-		BridgeScore *float64     `json:"bridgeScore"`
-		IsGodNode   bool         `json:"isGodNode"`
-		SourceIDs   []string     `json:"sourceIds"`
-		ProjectIDs  []string     `json:"projectIds"`
-	}
+type mappedEdge struct {
+	ID              string        `json:"id"`
+	Source          string        `json:"source"`
+	Target          string        `json:"target"`
+	Relation        string        `json:"relation"`
+	Status          ClaimStatus   `json:"status"`
+	EvidenceClass   EvidenceClass `json:"evidenceClass"`
+	SimilarityBasis *string       `json:"similarityBasis"`
+	Confidence      float64       `json:"confidence"`
+	Provenance      []string      `json:"provenance"`
+}
 
+type mappedPage struct {
+	ID          string             `json:"id"`
+	Path        string             `json:"path"`
+	Kind        PageKind           `json:"kind"`
+	Status      *string            `json:"status"`
+	SourceType  *SourceCaptureType `json:"sourceType"`
+	SourceClass *SourceClass       `json:"sourceClass"`
+	SourceIDs   []string           `json:"sourceIds"`
+	ProjectIDs  []string           `json:"projectIds"`
+	NodeIDs     []string           `json:"nodeIds"`
+}
+
+type mappedCommunity struct {
+	ID      string   `json:"id"`
+	Label   string   `json:"label"`
+	NodeIDs []string `json:"nodeIds"`
+}
+
+func mapNodes(nodes []GraphNode) []mappedNode {
 	var mappedNodes []mappedNode
-	for _, n := range graph.Nodes {
+	for _, n := range nodes {
 		isGod := false
 		if n.IsGodNode != nil {
 			isGod = *n.IsGodNode
@@ -178,20 +201,12 @@ func GraphHash(graph *GraphArtifact) string {
 		})
 	}
 	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return strings.Compare(a.ID, b.ID) })
+	return mappedNodes
+}
 
-	type mappedEdge struct {
-		ID              string        `json:"id"`
-		Source          string        `json:"source"`
-		Target          string        `json:"target"`
-		Relation        string        `json:"relation"`
-		Status          ClaimStatus   `json:"status"`
-		EvidenceClass   EvidenceClass `json:"evidenceClass"`
-		SimilarityBasis *string       `json:"similarityBasis"`
-		Confidence      float64       `json:"confidence"`
-		Provenance      []string      `json:"provenance"`
-	}
+func mapEdges(edges []GraphEdge) []mappedEdge {
 	var mappedEdges []mappedEdge
-	for _, e := range graph.Edges {
+	for _, e := range edges {
 		mappedEdges = append(mappedEdges, mappedEdge{
 			ID:              e.ID,
 			Source:          e.Source,
@@ -205,20 +220,12 @@ func GraphHash(graph *GraphArtifact) string {
 		})
 	}
 	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return strings.Compare(a.ID, b.ID) })
+	return mappedEdges
+}
 
-	type mappedPage struct {
-		ID          string             `json:"id"`
-		Path        string             `json:"path"`
-		Kind        PageKind           `json:"kind"`
-		Status      *string            `json:"status"`
-		SourceType  *SourceCaptureType `json:"sourceType"`
-		SourceClass *SourceClass       `json:"sourceClass"`
-		SourceIDs   []string           `json:"sourceIds"`
-		ProjectIDs  []string           `json:"projectIds"`
-		NodeIDs     []string           `json:"nodeIds"`
-	}
+func mapPages(pages []GraphPage) []mappedPage {
 	var mappedPages []mappedPage
-	for _, p := range hashedPages {
+	for _, p := range pages {
 		mappedPages = append(mappedPages, mappedPage{
 			ID:          p.ID,
 			Path:        p.Path,
@@ -232,15 +239,13 @@ func GraphHash(graph *GraphArtifact) string {
 		})
 	}
 	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return strings.Compare(a.ID, b.ID) })
+	return mappedPages
+}
 
-	type mappedCommunity struct {
-		ID      string   `json:"id"`
-		Label   string   `json:"label"`
-		NodeIDs []string `json:"nodeIds"`
-	}
+func mapCommunities(communities *[]GraphCommunity) []mappedCommunity {
 	var mappedCommunities []mappedCommunity
-	if graph.Communities != nil {
-		for _, c := range *graph.Communities {
+	if communities != nil {
+		for _, c := range *communities {
 			mappedCommunities = append(mappedCommunities, mappedCommunity{
 				ID:      c.ID,
 				Label:   c.Label,
@@ -251,6 +256,16 @@ func GraphHash(graph *GraphArtifact) string {
 		mappedCommunities = make([]mappedCommunity, 0)
 	}
 	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return strings.Compare(a.ID, b.ID) })
+	return mappedCommunities
+}
+
+func GraphHash(graph *GraphArtifact) string {
+	var hashedPages []GraphPage
+	for _, p := range graph.Pages {
+		if p.Kind != "graph_report" && p.Kind != "community_summary" {
+			hashedPages = append(hashedPages, p)
+		}
+	}
 
 	normalizedObj := struct {
 		Nodes       []mappedNode      `json:"nodes"`
@@ -258,10 +273,10 @@ func GraphHash(graph *GraphArtifact) string {
 		Pages       []mappedPage      `json:"pages"`
 		Communities []mappedCommunity `json:"communities"`
 	}{
-		Nodes:       mappedNodes,
-		Edges:       mappedEdges,
-		Pages:       mappedPages,
-		Communities: mappedCommunities,
+		Nodes:       mapNodes(graph.Nodes),
+		Edges:       mapEdges(graph.Edges),
+		Pages:       mapPages(hashedPages),
+		Communities: mapCommunities(graph.Communities),
 	}
 
 	b, _ := json.Marshal(normalizedObj)

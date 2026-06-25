@@ -28,24 +28,19 @@ export async function autoCommitWikiChanges(
   const { config, paths } = await loadVaultConfig(rootDir);
 
   if (process.env.USE_GO_PORT === "true") {
-    try {
-      // biome-ignore lint/suspicious/noExplicitAny: Any used during TS to Go bridging
-      const result = await runGoSidecar<any>("auto-commit", {
-        rootDir,
-        operation,
-        detail,
-        config: {
-          autoCommit: config.autoCommit,
-          wikiDir: paths.wikiDir,
-          stateDir: paths.stateDir
-        },
-        options: options || {}
-      });
-      return result.message;
-    } catch (error) {
-      console.warn(`Go sidecar failed, falling back to TS implementation: ${error}`);
-      // Fallback
-    }
+    // biome-ignore lint/suspicious/noExplicitAny: Any used during TS to Go bridging
+    const result = await runGoSidecar<any>("auto-commit", {
+      rootDir,
+      operation,
+      detail,
+      config: {
+        autoCommit: config.autoCommit,
+        wikiDir: paths.wikiDir,
+        stateDir: paths.stateDir
+      },
+      options: options || {}
+    });
+    return result.message;
   }
 
   if (!options?.force && !config.autoCommit) {
