@@ -41,23 +41,12 @@ func NormalizeWhitespace(value string) string {
 func EstimateCorpusWords(texts []string) int {
 	total := 0
 	for _, text := range texts {
-		normalized := NormalizeWhitespace(text)
-		if normalized == "" {
-			continue
-		}
-		words := strings.Split(normalized, " ")
-		count := 0
-		for _, w := range words {
-			if w != "" {
-				count++
-			}
-		}
-		total += count
+		total += len(strings.Fields(text))
 	}
 	return total
 }
 
-func nodeMap(graph GraphArtifact) map[string]GraphNode {
+func nodeMap(graph *GraphArtifact) map[string]GraphNode {
 	m := make(map[string]GraphNode)
 	for _, node := range graph.Nodes {
 		m[node.ID] = node
@@ -65,7 +54,7 @@ func nodeMap(graph GraphArtifact) map[string]GraphNode {
 	return m
 }
 
-func pageMap(graph GraphArtifact) map[string]GraphPage {
+func pageMap(graph *GraphArtifact) map[string]GraphPage {
 	m := make(map[string]GraphPage)
 	for _, page := range graph.Pages {
 		m[page.ID] = page
@@ -73,7 +62,7 @@ func pageMap(graph GraphArtifact) map[string]GraphPage {
 	return m
 }
 
-func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pageContentsById map[string]string) BenchmarkQuestionResult {
+func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pageContentsById map[string]string) BenchmarkQuestionResult {
 	nodesById := nodeMap(graph)
 	pagesById := pageMap(graph)
 
@@ -146,7 +135,7 @@ func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pag
 	}
 }
 
-func GraphHash(graph GraphArtifact) string {
+func GraphHash(graph *GraphArtifact) string {
 	var hashedPages []GraphPage
 	for _, p := range graph.Pages {
 		if p.Kind != "graph_report" && p.Kind != "community_summary" {
@@ -291,7 +280,7 @@ func hasResearchSources(pages []GraphPage) bool {
 	return false
 }
 
-func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []string {
+func DefaultBenchmarkQuestionsForGraph(graph *GraphArtifact, maxQuestions int) []string {
 	normalizedLimit := int(math.Max(1, math.Min(float64(maxQuestions), float64(len(DefaultBenchmarkQuestions)))))
 	questions := make([]string, len(DefaultBenchmarkQuestions))
 	copy(questions, DefaultBenchmarkQuestions)

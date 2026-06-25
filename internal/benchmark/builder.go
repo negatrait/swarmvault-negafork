@@ -171,7 +171,7 @@ func BuildBenchmarkArtifact(input BuildBenchmarkArtifactInput) BenchmarkArtifact
 
 	return BenchmarkArtifact{
 		GeneratedAt:     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), // ISO string approx
-		GraphHash:       GraphHash(input.Graph),
+		GraphHash:       GraphHash(&input.Graph),
 		CorpusWords:     input.CorpusWords,
 		CorpusTokens:    corpusTokens,
 		Nodes:           len(input.Graph.Nodes),

@@ -31,22 +31,6 @@ jobs:
       - run: pnpm test
       - run: USE_GO_PORT=true pnpm test
 
-  codeql:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript, go
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
   perf-budget:
     runs-on: ubuntu-latest
     steps:

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -76,30 +75,6 @@ func summarizeSession(session VaultChatSession) VaultChatSessionSummary {
 		TurnCount:    len(session.Turns),
 		MarkdownPath: session.MarkdownPath,
 	}
-}
-
-func slugify(value string) string {
-	value = strings.ToLower(value)
-	re := regexp.MustCompile(`[^a-z0-9]+`)
-	value = re.ReplaceAllString(value, "-")
-	value = strings.Trim(value, "-")
-	if len(value) > 80 {
-		value = value[:80]
-	}
-	if value == "" {
-		return "item"
-	}
-	return value
-}
-
-func truncate(value string, maxLength int) string {
-	if len(value) <= maxLength {
-		return value
-	}
-	if maxLength < 4 {
-		return value[:maxLength]
-	}
-	return value[:maxLength-3] + "..."
 }
 
 func renderSessionMarkdown(session VaultChatSession) string {
@@ -180,7 +155,7 @@ func buildPrompt(session VaultChatSession, question string, maxHistoryTurns int)
 		var lines []string
 		lines = append(lines, fmt.Sprintf("Turn %d", i+1))
 		lines = append(lines, fmt.Sprintf("User: %s", turn.Question))
-		lines = append(lines, fmt.Sprintf("Assistant: %s", truncate(utils.NormalizeWhitespace(turn.Answer), 1200)))
+		lines = append(lines, fmt.Sprintf("Assistant: %s", utils.Truncate(utils.NormalizeWhitespace(turn.Answer), 1200)))
 		if len(turn.Citations) > 0 {
 			lines = append(lines, fmt.Sprintf("Citations: %s", strings.Join(turn.Citations, ", ")))
 		}
@@ -215,7 +190,13 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 			return VaultChatSession{}, "", err
 		}
 	} else {
-		nowTime, _ := time.Parse(time.RFC3339Nano, nowStr)
+		nowTime, err := time.Parse(time.RFC3339Nano, nowStr)
+		if err != nil {
+			nowTime, err = time.Parse(time.RFC3339, nowStr)
+			if err != nil {
+				nowTime = time.Now()
+			}
+		}
 
 		var titleVal string
 		if options.Title != nil && strings.TrimSpace(*options.Title) != "" {
@@ -223,8 +204,8 @@ func PrepareChatSession(rootDir string, options AskChatOptions, nowStr string) (
 		} else {
 			titleVal = utils.NormalizeWhitespace(options.Question)
 		}
-		title := truncate(titleVal, 80)
-		id := fmt.Sprintf("%s-%s", timestampIdPrefix(nowTime), slugify(title))
+		title := utils.Truncate(titleVal, 80)
+		id := fmt.Sprintf("%s-%s", timestampIdPrefix(nowTime), utils.Slugify(title))
 
 		session = VaultChatSession{
 			ID:           id,

@@ -57,7 +57,7 @@ func HandleBenchmark() {
 			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
 			os.Exit(1)
 		}
-		result := benchmark.BenchmarkQueryTokens(args.Graph, args.QueryResult, args.PageContentsById)
+		result := benchmark.BenchmarkQueryTokens(&args.Graph, args.QueryResult, args.PageContentsById)
 		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
@@ -70,7 +70,7 @@ func HandleBenchmark() {
 			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
 			os.Exit(1)
 		}
-		result := benchmark.GraphHash(args.Graph)
+		result := benchmark.GraphHash(&args.Graph)
 		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}
@@ -84,7 +84,7 @@ func HandleBenchmark() {
 			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
 			os.Exit(1)
 		}
-		result := benchmark.DefaultBenchmarkQuestionsForGraph(args.Graph, args.MaxQuestions)
+		result := benchmark.DefaultBenchmarkQuestionsForGraph(&args.Graph, args.MaxQuestions)
 		if err := utils.EncodeResponse(result); err != nil {
 			os.Exit(1)
 		}

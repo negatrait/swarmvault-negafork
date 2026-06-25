@@ -92,24 +92,28 @@ func installScope(agent AgentType, options InstallAgentOptions) string {
 	return "project"
 }
 
+func userHomeDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return homeDir
+}
+
 func hermesUserSkillPath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, hermesUserSkillRelative)
+	return filepath.Join(userHomeDir(), hermesUserSkillRelative)
 }
 
 func kiloUserCommandPath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".config", agentKilo, "command", "swarmvault.md")
+	return filepath.Join(userHomeDir(), ".config", agentKilo, "command", "swarmvault.md")
 }
 
 func claudeUserSettingsPath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".claude", "settings.json")
+	return filepath.Join(userHomeDir(), ".claude", "settings.json")
 }
 
 func claudeUserHookScriptPath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".claude", "hooks", "swarmvault-graph-first.js")
+	return filepath.Join(userHomeDir(), ".claude", "hooks", "swarmvault-graph-first.js")
 }
 
 func skillBundlePath(baseDir string, relativeSkillsDir string) string {
@@ -128,8 +132,7 @@ func projectSkillTargets(rootDir string, agent AgentType) []string {
 
 func userSkillTarget(agent AgentType) *string {
 	if relativeSkillsDir, ok := USER_SKILL_TARGETS[agent]; ok {
-		homeDir, _ := os.UserHomeDir()
-		path := skillBundlePath(homeDir, relativeSkillsDir)
+		path := skillBundlePath(userHomeDir(), relativeSkillsDir)
 		return &path
 	}
 	return nil

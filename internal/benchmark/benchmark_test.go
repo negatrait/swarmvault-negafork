@@ -38,7 +38,7 @@ func TestGraphHash(t *testing.T) {
 			{ID: "n1", Label: "A", SourceIDs: []string{"s2", "s1"}, ProjectIDs: []string{}},
 		},
 	}
-	h1 := GraphHash(g)
+	h1 := GraphHash(&g)
 
 	g2 := GraphArtifact{
 		Pages: []GraphPage{
@@ -48,7 +48,7 @@ func TestGraphHash(t *testing.T) {
 			{ID: "n1", Label: "A", SourceIDs: []string{"s1", "s2"}, ProjectIDs: []string{}},
 		},
 	}
-	h2 := GraphHash(g2)
+	h2 := GraphHash(&g2)
 
 	if h1 != h2 {
 		t.Errorf("Expected hashes to be equal since sourceIds sorting and skipping graph_report should happen. Got %s and %s", h1, h2)
