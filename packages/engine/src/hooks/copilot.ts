@@ -1,3 +1,4 @@
+// TODO: Port model-specific hook logic and state handling to Go.
 // Standalone GitHub Copilot hook script. Bundled by tsup into
 // dist/hooks/copilot.js and installed into user projects as
 // `.github/hooks/swarmvault-graph-first.js`.

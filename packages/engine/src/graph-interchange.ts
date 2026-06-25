@@ -1,3 +1,4 @@
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output.
 import type { GraphArtifact, GraphEdge, GraphHyperedge, GraphNode, GraphPage, GraphPushCounts, SourceClass } from "./types.js";
 
 export function exportHyperedgeNodeId(hyperedge: GraphHyperedge): string {

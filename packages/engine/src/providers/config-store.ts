@@ -1,3 +1,4 @@
+// TODO: Port API provider structures and local model integrations to Go sidecar under internal/providers. Ensure environment inheritance is maintained.
 import { defaultVaultConfig, initWorkspace, loadVaultConfig } from "../config.js";
 import {
   type ProviderConfig,

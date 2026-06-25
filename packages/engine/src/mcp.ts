@@ -1,3 +1,4 @@
+// TODO: Port MCP server interface to Go.
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Readable, Writable } from "node:stream";

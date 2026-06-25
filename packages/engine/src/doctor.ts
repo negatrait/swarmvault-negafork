@@ -1,3 +1,4 @@
+// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";

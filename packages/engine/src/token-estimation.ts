@@ -1,3 +1,4 @@
+// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode.
 /**
  * LLM token estimation for context-window budgeting.
  *

@@ -1,3 +1,4 @@
+// TODO: Port web search and external HTTP querying components to Go.
 import type { WebSearchAdapter, WebSearchProviderConfig, WebSearchResult } from "../types.js";
 
 function deepGet(value: unknown, pathValue: string | undefined): unknown {

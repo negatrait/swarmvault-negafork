@@ -1,3 +1,4 @@
+// TODO: Port API provider structures and local model integrations to Go sidecar under internal/providers. Ensure environment inheritance is maintained.
 import fs from "node:fs/promises";
 import { z } from "zod";
 import type {

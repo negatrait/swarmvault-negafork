@@ -1,3 +1,4 @@
+// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { initWorkspace, loadVaultConfig } from "./config.js";

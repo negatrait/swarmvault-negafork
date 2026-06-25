@@ -1,3 +1,4 @@
+// TODO: Port model-specific hook logic and state handling to Go.
 // Standalone Claude Code hook script. Bundled by tsup into
 // dist/hooks/claude.js and installed into user projects as
 // `.claude/hooks/swarmvault-graph-first.js`. Must not import from engine
