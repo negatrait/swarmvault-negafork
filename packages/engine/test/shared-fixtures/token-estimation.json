@@ -1,0 +1,153 @@
+{
+  "estimateTokens": [
+    {
+      "input": "This is a simple prose sentence.\nIt has a second line.",
+      "expected": 14
+    },
+    {
+      "input": "```typescript\nfunction hello() {\n  console.log('world');\n}\n```",
+      "expected": 18
+    },
+    {
+      "input": "",
+      "expected": 0
+    }
+  ],
+  "estimatePageTokens": [
+    {
+      "input": {
+        "pageId": "page-1",
+        "path": "/path/to/page-1.md",
+        "kind": "index",
+        "content": "Index page content here.",
+        "nodeDegree": 5,
+        "confidence": 0.9
+      },
+      "expected": {
+        "pageId": "page-1",
+        "path": "/path/to/page-1.md",
+        "kind": "index",
+        "tokens": 6,
+        "priority": 13.5
+      }
+    },
+    {
+      "input": {
+        "pageId": "page-2",
+        "path": "/path/to/page-2.md",
+        "kind": "unknown",
+        "content": "Unknown page content here."
+      },
+      "expected": {
+        "pageId": "page-2",
+        "path": "/path/to/page-2.md",
+        "kind": "unknown",
+        "tokens": 7,
+        "priority": 0.5
+      }
+    }
+  ],
+  "trimToTokenBudget": [
+    {
+      "input": {
+        "pages": [
+          {
+            "pageId": "page-1",
+            "path": "/path/to/page-1.md",
+            "kind": "index",
+            "tokens": 100,
+            "priority": 10
+          },
+          {
+            "pageId": "page-2",
+            "path": "/path/to/page-2.md",
+            "kind": "concept",
+            "tokens": 50,
+            "priority": 5
+          },
+          {
+            "pageId": "page-3",
+            "path": "/path/to/page-3.md",
+            "kind": "insight",
+            "tokens": 200,
+            "priority": 2
+          }
+        ],
+        "maxTokens": 150
+      },
+      "expected": {
+        "kept": [
+          {
+            "pageId": "page-1",
+            "path": "/path/to/page-1.md",
+            "kind": "index",
+            "tokens": 100,
+            "priority": 10
+          },
+          {
+            "pageId": "page-2",
+            "path": "/path/to/page-2.md",
+            "kind": "concept",
+            "tokens": 50,
+            "priority": 5
+          }
+        ],
+        "dropped": [
+          {
+            "pageId": "page-3",
+            "path": "/path/to/page-3.md",
+            "kind": "insight",
+            "tokens": 200,
+            "priority": 2
+          }
+        ],
+        "totalTokens": 350,
+        "budgetTokens": 150,
+        "keptTokens": 150
+      }
+    },
+    {
+      "input": {
+        "pages": [
+          {
+            "pageId": "page-1",
+            "path": "/path/to/page-1.md",
+            "kind": "index",
+            "tokens": 100,
+            "priority": 10
+          },
+          {
+            "pageId": "page-2",
+            "path": "/path/to/page-2.md",
+            "kind": "concept",
+            "tokens": 50,
+            "priority": 5
+          }
+        ],
+        "maxTokens": 200
+      },
+      "expected": {
+        "kept": [
+          {
+            "pageId": "page-1",
+            "path": "/path/to/page-1.md",
+            "kind": "index",
+            "tokens": 100,
+            "priority": 10
+          },
+          {
+            "pageId": "page-2",
+            "path": "/path/to/page-2.md",
+            "kind": "concept",
+            "tokens": 50,
+            "priority": 5
+          }
+        ],
+        "dropped": [],
+        "totalTokens": 150,
+        "budgetTokens": 200,
+        "keptTokens": 150
+      }
+    }
+  ]
+}
