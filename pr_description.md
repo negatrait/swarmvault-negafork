@@ -1,4 +1,4 @@
-*   🎯 **What:** The duplicated utilities removed, standard library replacements made (`min`, `max`, `cmp.Compare` instead of `math.Min/Max` and `strings.Compare`), `any` substituted for `interface{}`, and Go command files refactored to remove all `os.Exit(1)` calls inside of `internal/cmd/*.go` sub-handlers. I also removed an unreachable `return nil` inside `internal/cmd/utils.go` that failed the CI build.
-*   💡 **Why:** This improves the maintainability and readability of the Go codebase, eliminating "agentic entropy" (e.g. unidiomatic loose typings, float conversions for ints, and process-crashing error handling).
-*   ✅ **Verification:** Confirmation of successful `go build`, package tests, and verification of the hybrid `install.sh` path (tested locally).
-*   ✨ **Result:** Clean, centralized packages and streamlined internal Go files with standard library replacements and solid error bubbling to `main.go`.
+🎯 What: Scope out daily structural porting target for `packages/engine/src/findings.ts`.
+💡 Why: The target TS file is a stateless collection of helper functions, has zero unported internal dependencies, and its collective size is under 150 lines. The Go codebase is completely clear of technical debt (stubs, dummy returns, fakes) enabling us to safely advance the TS-to-Go migration at the deepest leaf node.
+✅ Verification: `docs/CURRENT_SCOPE.md` matches the zero-stub template exactly and targets `findings.ts`.
+✨ Result: `docs/CURRENT_SCOPE.md` updated to target `internal/findings/findings.go` with strict parity and leaf rules.
