@@ -565,6 +565,22 @@ function extractionWarningSummary(manifest: SourceManifest, extraction?: SourceE
   return `Imported ${manifest.sourceKind} source. Text extraction is not yet available for this source.`;
 }
 
+/**
+ * @summary Analyzes a raw source document to extract structured knowledge graph entities.
+ *
+ * @remarks
+ * Orchestrates LLM-driven extraction of nodes, edges, tags, and claims based on the vault's active schema. Uses chunking for large documents.
+ *
+ * Future Refactoring Note:
+ * The chunking and merging logic is tightly coupled with the core analysis prompt. Decouple the prompt schema definition from the map-reduce execution logic.
+ *
+ * @param manifest - The source manifest detailing metadata.
+ * @param extractedText - The raw text extracted from the source.
+ * @param provider - The LLM provider adapter.
+ * @param paths - Resolved workspace paths.
+ * @param schema - The active vault schema guiding the extraction.
+ * @returns The structured analysis payload including extracted graph elements.
+ */
 export async function analyzeSource(
   manifest: SourceManifest,
   extractedText: string | undefined,
