@@ -1,14 +1,8 @@
 package agents
 
 import (
-	"os"
+	"swarmvault-native/internal/utils"
 )
-
-// fileExists is a simple internal stub to avoid porting utils.ts
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
 
 func GetAgentInstallStatus(rootDir string, agent AgentType, options InstallAgentOptions) (*AgentInstallStatus, error) {
 	target, err := primaryTargetPathForAgent(rootDir, agent, options)
@@ -24,7 +18,7 @@ func GetAgentInstallStatus(rootDir string, agent AgentType, options InstallAgent
 	allExist := true
 
 	for _, t := range targets {
-		exists := fileExists(t)
+		exists, _ := utils.FileExists(t)
 		targetStatuses = append(targetStatuses, AgentInstallTargetStatus{
 			Path:   t,
 			Exists: exists,
