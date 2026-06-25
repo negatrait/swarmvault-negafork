@@ -441,9 +441,9 @@
     },
     {
       "path": "src/token-estimation.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "parser",
+      "bridged": true
     },
     {
       "path": "src/tokenize.ts",

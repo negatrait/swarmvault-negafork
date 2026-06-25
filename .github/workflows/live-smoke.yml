@@ -45,6 +45,11 @@ jobs:
           go-version: '1.24'
           cache-dependency-path: go.mod
 
+      - name: Build Go binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
+
       - name: Build and Pack local packages
         run: |
           pnpm build
@@ -89,6 +94,11 @@ jobs:
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
+
+      - name: Build Go binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         run: |
@@ -136,6 +146,11 @@ jobs:
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
+
+      - name: Build Go binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         run: |
@@ -193,6 +208,11 @@ jobs:
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
+
+      - name: Build Go binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         if: env.OPENAI_API_KEY != ''
@@ -260,6 +280,11 @@ jobs:
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
+
+      - name: Build Go binaries
+        run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         if: env.OLLAMA_API_KEY != ''
