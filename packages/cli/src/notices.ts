@@ -62,7 +62,7 @@ export function shouldEmitCliNotices(options: CliNoticeOptions): boolean {
   if (env.SWARMVAULT_NO_NOTICES === "1") {
     return false;
   }
-  if (env.CI && env.CI !== "0") {
+  if (Boolean(env.CI) && env.CI !== "0") {
     return false;
   }
   if (!(options.stdoutIsTTY ?? process.stdout.isTTY) || !(options.stderrIsTTY ?? process.stderr.isTTY)) {
