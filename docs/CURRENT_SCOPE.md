@@ -1,25 +1,27 @@
 # Daily Porting Scope: agents
 
 ## 1. Goal
-Remove the temporary `fileExists` stub in `internal/agents/status.go`. The TS module `src/utils.ts` and its Go equivalent `internal/utils/fs.go` have been ported and the `utils` command bridged. We must replace the local stub with a native Go-to-Go call to `utils.FileExists`.
+Remove the technical debt and temporary stub `fileExists` in `internal/agents/status.go`. A physical audit revealed that this stub was left behind instead of properly importing and utilizing the fully ported Go utility `utils.FileExists`.
+  - **Measurable success:** The `fileExists` function is completely removed from `internal/agents/status.go`.
+  - **Identified pitfalls:** Relying on the `os.Stat` stub fails to use the centralized file existence check which may handle permissions/existence logic specifically.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/agents/status.ts` (implied origin of logic)
-- **Source Export(s):** N/A (Removing stub)
+- **Source File:** `packages/engine/src/agents/status.ts`
+- **Source Export(s):** N/A (Removing a Go stub)
 - **Target File:** `internal/agents/status.go`
-- **Target Export:** `func GetAgentInstallStatus(...)` (updated to use native utils)
+- **Target Export:** `func GetAgentInstallStatus(...)` (Will be updated to use the native `utils` package)
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** N/A (Existing bridge unchanged)
-- **TS Delegation Call:** N/A (Existing bridge unchanged)
+- **CLI Subcommand:** N/A (Existing bridge contract remains unchanged)
+- **TS Delegation Call:** N/A (No updates needed in `packages/engine/src/agents.ts` for this technical debt resolution)
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
 - **Verified Go Dependencies:** `swarmvault-native/internal/utils`
-- **Go-to-Go Native Imports:** `internal/agents/status.go` must import `swarmvault-native/internal/utils` and call `utils.FileExists(path)` natively. It must not use the subprocess bridge.
-- **Transitive Blocks:** The Builder must completely remove the `fileExists` stub function from `internal/agents/status.go`. Stubbing is forbidden. Core logic must be fully implemented in Go.
+- **Go-to-Go Native Imports:** `internal/agents/status.go` must import `swarmvault-native/internal/utils` natively and call `utils.FileExists(path)`. The TS-to-Go bridge is strictly forbidden for Go-to-Go calls.
+- **Transitive Blocks:** The Builder must completely delete the `fileExists` stub. Stubbing is forbidden, and the implementation must be 100% complete using native Go imports.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 Lines of Code. Split structs to `types.go` or sub-functions to separate files if approaching this limit.
+- **File Limit:** Max 400 Lines of Go Code. Split structs to `types.go` or sub-functions to separate files if approaching this limit.
 - **Function Limit:** Max 80 Lines of Code. Helper functions must be extracted if exceeded.
 - **Nesting Limit:** Maximum of 3 levels deep. Use early exits and guard clauses.
 
