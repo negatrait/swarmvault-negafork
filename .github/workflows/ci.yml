@@ -27,7 +27,7 @@ jobs:
           version: v1.64.5
       - run: |
           mkdir -p bin
-          go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
       - run: pnpm test
       - run: USE_GO_PORT=true pnpm test
 
