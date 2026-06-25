@@ -27,7 +27,6 @@ func HandleUtils() error {
 	default:
 		return fmt.Errorf("unknown utils action: %s", payload.Action)
 	}
-	return nil
 }
 
 func handleUtilsStringOpsBasic(action string, rawArgs json.RawMessage) error {
