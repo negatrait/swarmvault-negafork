@@ -1,8 +1,4 @@
-🎯 **What:** The testing gap addressed in `parseStoredPage`.
-📊 **Coverage:** Added coverage for three new edge cases:
-- Validation that `compiledFrom` falls back to `sourceIds` when not provided.
-- Validation that kind-specific fields (e.g. `tier`, `outputFormat`) are ignored and left `undefined` if the page is of a different kind.
-- Validation that empty string fields (like `superseded_by`) are handled gracefully.
-✨ **Result:** Increased edge-case test coverage for the `parseStoredPage` normalizer.
-
-Tests pass and linter issues were auto-fixed via pre-commit.
+*   🎯 **What:** The duplicated utilities removed, standard library replacements made (`min`, `max`, `cmp.Compare` instead of `math.Min/Max` and `strings.Compare`), `any` substituted for `interface{}`, and Go command files refactored to remove all `os.Exit(1)` calls inside of `internal/cmd/*.go` sub-handlers.
+*   💡 **Why:** This improves the maintainability and readability of the Go codebase, eliminating "agentic entropy" (e.g. unidiomatic loose typings, float conversions for ints, and process-crashing error handling).
+*   ✅ **Verification:** Confirmation of successful `go build`, package tests, and verification of the hybrid `install.sh` path (tested locally).
+*   ✨ **Result:** Clean, centralized packages and streamlined internal Go files with standard library replacements and solid error bubbling to `main.go`.

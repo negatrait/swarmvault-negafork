@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"swarmvault-native/internal/benchmark"
 	"swarmvault-native/internal/utils"
 )
@@ -13,11 +12,10 @@ type BenchmarkPayload struct {
 	Args   json.RawMessage `json:"args"`
 }
 
-func HandleBenchmark() {
+func HandleBenchmark() error {
 	var payload BenchmarkPayload
 	if err := utils.DecodePayload(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	switch payload.Action {
@@ -26,12 +24,11 @@ func HandleBenchmark() {
 			Text string `json:"text"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.EstimateTokens(args.Text)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "estimateCorpusWords":
@@ -39,12 +36,11 @@ func HandleBenchmark() {
 			Texts []string `json:"texts"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.EstimateCorpusWords(args.Texts)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "benchmarkQueryTokens":
@@ -54,12 +50,11 @@ func HandleBenchmark() {
 			PageContentsById map[string]string          `json:"pageContentsById"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.BenchmarkQueryTokens(&args.Graph, args.QueryResult, args.PageContentsById)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "graphHash":
@@ -67,12 +62,11 @@ func HandleBenchmark() {
 			Graph benchmark.GraphArtifact `json:"graph"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.GraphHash(&args.Graph)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "defaultBenchmarkQuestionsForGraph":
@@ -81,38 +75,36 @@ func HandleBenchmark() {
 			MaxQuestions int                     `json:"maxQuestions"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.DefaultBenchmarkQuestionsForGraph(&args.Graph, args.MaxQuestions)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "buildBenchmarkByClass":
 		var args benchmark.BuildBenchmarkByClassInput
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.BuildBenchmarkByClass(args)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "buildBenchmarkArtifact":
 		var args benchmark.BuildBenchmarkArtifactInput
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := benchmark.BuildBenchmarkArtifact(args)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown benchmark action: %s\n", payload.Action)
-		os.Exit(1)
+		return fmt.Errorf("unknown benchmark action: %s", payload.Action)
 	}
+
+	return nil
 }

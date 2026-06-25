@@ -78,7 +78,7 @@ func ExtractJson(text string) (string, error) {
 		end := strings.LastIndex(text, "}")
 		for end > start {
 			candidate := text[start : end+1]
-			var dummy map[string]interface{}
+			var dummy map[string]any
 			if err := json.Unmarshal([]byte(candidate), &dummy); err == nil {
 				return candidate, nil
 			}
@@ -90,14 +90,14 @@ func ExtractJson(text string) (string, error) {
 	return "", errors.New("Could not locate JSON object in provider response.")
 }
 
-func SafeFrontmatter(value map[string]interface{}) map[string]interface{} {
+func SafeFrontmatter(value map[string]any) map[string]any {
 	// Re-encode via JSON to drop nil/undefined values to simulate JSON.parse(JSON.stringify(value))
 	data, err := json.Marshal(value)
 	if err != nil {
 		return value
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		return value
 	}
