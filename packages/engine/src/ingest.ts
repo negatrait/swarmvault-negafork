@@ -1,4 +1,4 @@
-// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode.
+// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: MEDIUM-LOW (Composite logic, Depth: 4/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";

@@ -1,4 +1,4 @@
-// TODO: Port API provider structures and local model integrations to Go sidecar under internal/providers. Ensure environment inheritance is maintained.
+// TODO: Port API provider structures and local model integrations to Go sidecar under internal/providers. Ensure environment inheritance is maintained. | Porting Priority: MEDIUM-HIGH (Near-leaf, Depth: 1/10)
 import { createWriteStream, constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";

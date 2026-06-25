@@ -77,6 +77,7 @@
 - **Timestamp Parity:** Go structs parsing exact TS `generatedAt` strings usually fail differential testing due to millisecond discrepancies. Override the specific generated timestamps in the TS bridge wrapper locally to ensure tests check structural parity perfectly.
 - **CI/CD Execution Validation:** A module ported to Go is useless if it's not tested in CI. Every module port MUST ensure that `go build` is run and that tests are run BOTH with and without `USE_GO_PORT=true` inside `.github/workflows/ci.yml` and `.github/workflows/live-smoke.yml`.
 - **Install Script Reliability:** The app must be installable and runnable with `curl install.sh | bash` at all times. End-user binaries should be reliably built via Go (or precompiled binaries pulled) as part of this process. Never commit `swarmvault-native` binary files.
+- **Track the Codebase as Porting Progress State:** The TypeScript codebase has been commented with inline `// TODO: Port to go` comments, outlining the progress of the task. You will want to `grep` these strings to find out the total progress, and to find out what work is best done in the current working session.
 
 ## 12. Code Volume & Complexity Restrictions (Hard Rules)
 

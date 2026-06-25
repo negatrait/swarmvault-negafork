@@ -1,4 +1,4 @@
-// TODO: Port model-specific hook logic and state handling to Go.
+// TODO: Port model-specific hook logic and state handling to Go. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 // Standalone OpenCode plugin. Bundled by tsup into dist/hooks/opencode.js
 // and installed into user projects as `.opencode/plugins/swarmvault-graph-first.js`.
 // Targets the Bun runtime OpenCode uses; TypeScript sees Bun via the

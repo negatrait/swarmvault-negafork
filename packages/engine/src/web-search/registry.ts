@@ -1,4 +1,4 @@
-// TODO: Port web search and external HTTP querying components to Go.
+// TODO: Port web search and external HTTP querying components to Go. | Porting Priority: MEDIUM-HIGH (Near-leaf, Depth: 1/10)
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";

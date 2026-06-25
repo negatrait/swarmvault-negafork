@@ -1,4 +1,4 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output.
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { EvidenceClass, GraphArtifact, GraphEdge, GraphNode, GraphPage, SourceManifest } from "./types.js";

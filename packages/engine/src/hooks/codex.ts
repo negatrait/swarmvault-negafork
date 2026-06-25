@@ -1,4 +1,4 @@
-// TODO: Port model-specific hook logic and state handling to Go.
+// TODO: Port model-specific hook logic and state handling to Go. | Porting Priority: MEDIUM-HIGH (Near-leaf, Depth: 1/10)
 // Standalone Codex hook script. Bundled by tsup into
 // dist/hooks/codex.js and installed into user projects as
 // `.codex/hooks/swarmvault-graph-first.js`.

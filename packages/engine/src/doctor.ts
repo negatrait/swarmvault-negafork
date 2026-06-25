@@ -1,4 +1,4 @@
-// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover.
+// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover. | Porting Priority: LOW (Root-facing orchestrator, Depth: 8/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";

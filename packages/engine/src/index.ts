@@ -1,4 +1,4 @@
-// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover.
+// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover. | Porting Priority: LOW (Root-facing orchestrator, Depth: 10/10)
 /// <reference path="./shims.d.ts" />
 
 export { getAgentInstallStatus, installAgent, installConfiguredAgents } from "./agents.js";

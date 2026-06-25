@@ -1,4 +1,4 @@
-// TODO: Port MCP server interface to Go.
+// TODO: Port MCP server interface to Go. | Porting Priority: LOW (Root-facing orchestrator, Depth: 9/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Readable, Writable } from "node:stream";

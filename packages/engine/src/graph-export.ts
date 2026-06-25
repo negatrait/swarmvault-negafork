@@ -1,4 +1,4 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output.
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: MEDIUM (Internal logic, Depth: 2/10)
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";

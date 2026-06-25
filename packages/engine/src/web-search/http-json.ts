@@ -1,4 +1,4 @@
-// TODO: Port web search and external HTTP querying components to Go.
+// TODO: Port web search and external HTTP querying components to Go. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import type { WebSearchAdapter, WebSearchProviderConfig, WebSearchResult } from "../types.js";
 
 function deepGet(value: unknown, pathValue: string | undefined): unknown {

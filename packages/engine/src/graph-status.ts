@@ -1,4 +1,4 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output.
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: MEDIUM-LOW (Composite logic, Depth: 5/10)
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";
 import { checkTrackedRepoChanges, listTrackedRepoRoots } from "./ingest.js";

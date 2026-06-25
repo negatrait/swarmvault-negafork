@@ -52,46 +52,29 @@ type ToolContent = Array<{ type?: string; text?: string }>;
 
 async function runNodeScript(scriptPath: string, args: string[], input: string, cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      "node",
-      [scriptPath, ...args],
-      {
-        cwd,
-        stdio: ["pipe", "pipe", "pipe"]
-      },
-      180_000
-    );
+    const child = spawn("node", [scriptPath, ...args], {
+      cwd,
+      stdio: ["pipe", "pipe", "pipe"]
+    });
     let stdout = "";
     let stderr = "";
-    child.stdout.on(
-      "data",
-      (chunk) => {
-        stdout += chunk.toString();
-      },
-      180_000
-    );
-    child.stderr.on(
-      "data",
-      (chunk) => {
-        stderr += chunk.toString();
-      },
-      180_000
-    );
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
     child.on("error", reject);
-    child.on(
-      "close",
-      (code) => {
-        if (code === 0) {
-          resolve(stdout);
-          return;
-        }
-        reject(new Error(`node ${scriptPath} exited with ${code}: ${stderr || stdout}`));
-      },
-      180_000
-    );
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout);
+        return;
+      }
+      reject(new Error(`node ${scriptPath} exited with ${code}: ${stderr || stdout}`));
+    });
     child.stdin.write(input);
     child.stdin.end();
-  }, 180_000);
+  });
 }
 
 async function createTempWorkspace(): Promise<string> {
@@ -102,7 +85,7 @@ async function createTempWorkspace(): Promise<string> {
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
-}, 180_000);
+});
 
 async function waitFor(condition: () => Promise<boolean>, timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -136,22 +119,18 @@ async function startFixtureServer(
     const requestUrl = request.url ? new URL(request.url, "http://127.0.0.1") : null;
     const route = requestUrl ? routes[requestUrl.pathname] : undefined;
     if (!route) {
-      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" }, 180_000);
+      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       response.end("not found");
       return;
     }
 
     const body = typeof route.body === "string" ? Buffer.from(route.body, "utf8") : route.body;
-    response.writeHead(
-      route.status ?? 200,
-      {
-        "content-type": route.contentType ?? "text/plain; charset=utf-8",
-        "content-length": String(body.length)
-      },
-      180_000
-    );
+    response.writeHead(route.status ?? 200, {
+      "content-type": route.contentType ?? "text/plain; charset=utf-8",
+      "content-length": String(body.length)
+    });
     response.end(body);
-  }, 180_000);
+  });
 
   const listen = async (host?: string): Promise<{ port: number }> =>
     await new Promise<{ port: number }>((resolve, reject) => {
@@ -166,7 +145,7 @@ async function startFixtureServer(
           reject(new Error("Failed to bind fixture server."));
           return;
         }
-        resolve({ port: resolved.port }, 180_000);
+        resolve({ port: resolved.port });
       };
       server.once("error", onError);
       server.once("listening", onListening);
@@ -175,7 +154,7 @@ async function startFixtureServer(
       } else {
         server.listen(0);
       }
-    }, 180_000);
+    });
 
   let address: { port: number };
   try {
@@ -197,7 +176,7 @@ async function startFixtureServer(
             return;
           }
           resolve();
-        }, 180_000);
+        });
       })
   };
 }
@@ -436,7 +415,7 @@ describe("swarmvault workflow", () => {
     await expect(fs.access(path.join(rootDir, "AGENTS.md"))).rejects.toThrow();
     await expect(fs.access(path.join(rootDir, "CLAUDE.md"))).rejects.toThrow();
     await expect(fs.access(path.join(rootDir, ".cursor", "rules", "swarmvault.mdc"))).rejects.toThrow();
-  }, 180_000);
+  });
 
   it("installs configured agent instructions only when explicitly requested", async () => {
     const rootDir = await createTempWorkspace();
@@ -446,22 +425,22 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    await initVault(rootDir, { installAgentRules: true }, 180_000);
+    await initVault(rootDir, { installAgentRules: true });
 
     await expect(fs.access(path.join(rootDir, "AGENTS.md"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, ".cursor", "rules", "swarmvault.mdc"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, "CLAUDE.md"))).rejects.toThrow();
-  }, 180_000);
+  });
 
   it("can initialize an obsidian workspace layout", async () => {
     const rootDir = await createTempWorkspace();
-    await initVault(rootDir, { obsidian: true }, 180_000);
+    await initVault(rootDir, { obsidian: true });
 
     await expect(fs.access(path.join(rootDir, ".obsidian", "app.json"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, ".obsidian", "core-plugins.json"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, ".obsidian", "graph.json"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, ".obsidian", "workspace.json"))).resolves.toBeUndefined();
-  }, 180_000);
+  });
 
   it("installs agent instructions for goose, pi, opencode, aider, copilot, gemini, cursor, trae, claw, and droid targets", async () => {
     const rootDir = await createTempWorkspace();
@@ -518,7 +497,7 @@ describe("swarmvault workflow", () => {
     await installAgent(rootDir, "cursor");
     const cursorContentAgain = await fs.readFile(cursorTarget.target, "utf8");
     expect(cursorContentAgain).toBe(cursorContent);
-  }, 180_000);
+  });
 
   it("keeps agent-specific user notes while installing matching managed SwarmVault blocks", async () => {
     const rootDir = await createTempWorkspace();
@@ -545,11 +524,11 @@ describe("swarmvault workflow", () => {
     expect(claudeManagedBlock).toContain("- Treat `raw/` as immutable source input.");
     expect(claudeManagedBlock).toContain('swarmvault graph query "<seed>"');
     expect(agentsContent).not.toBe(claudeContent);
-  }, 180_000);
+  });
 
   it("init --lite creates only the minimal LLM-Wiki starter structure", async () => {
     const rootDir = await createTempWorkspace();
-    await initVault(rootDir, { lite: true }, 180_000);
+    await initVault(rootDir, { lite: true });
 
     await expect(fs.access(path.join(rootDir, "raw"))).resolves.toBeUndefined();
     await expect(fs.access(path.join(rootDir, "wiki"))).resolves.toBeUndefined();
@@ -570,7 +549,7 @@ describe("swarmvault workflow", () => {
     await expect(fs.access(path.join(rootDir, "swarmvault.config.json"))).rejects.toThrow();
     await expect(fs.access(path.join(rootDir, "state"))).rejects.toThrow();
     await expect(fs.access(path.join(rootDir, "wiki", "insights", "index.md"))).rejects.toThrow();
-  }, 180_000);
+  });
 
   it("resolves generated artifacts under SWARMVAULT_OUT while keeping config in the project root", async () => {
     const rootDir = await createTempWorkspace();
@@ -595,7 +574,7 @@ describe("swarmvault workflow", () => {
       await expect(fs.access(path.join(artifactRoot, "state", "graph.json"))).resolves.toBeUndefined();
       await expect(fs.access(path.join(artifactRoot, "wiki", "graph", "report.md"))).resolves.toBeUndefined();
 
-      const task = await startMemoryTask(rootDir, { goal: "Track output root behavior", target: "Output Root", agent: "codex" }, 180_000);
+      const task = await startMemoryTask(rootDir, { goal: "Track output root behavior", target: "Output Root", agent: "codex" });
       expect(task.artifactPath.startsWith(path.join(artifactRoot, "state", "memory"))).toBe(true);
       expect(task.markdownPath.startsWith(path.join(artifactRoot, "wiki", "memory"))).toBe(true);
     } finally {
@@ -605,7 +584,7 @@ describe("swarmvault workflow", () => {
         process.env.SWARMVAULT_OUT = previousOut;
       }
     }
-  }, 180_000);
+  });
 
   it("installs kiro, antigravity, and vscode agents with their expected layouts", async () => {
     const rootDir = await createTempWorkspace();
@@ -622,8 +601,8 @@ describe("swarmvault workflow", () => {
     expect(kiroSteering.data.inclusion).toBe("always");
     expect(kiroSteering.content).toContain("# SwarmVault Rules");
 
-    await fs.mkdir(path.join(rootDir, ".agent", "rules"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, ".agent", "workflows"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, ".agent", "rules"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, ".agent", "workflows"), { recursive: true });
     await fs.writeFile(
       path.join(rootDir, ".agent", "rules", "swarmvault.md"),
       [
@@ -693,22 +672,22 @@ describe("swarmvault workflow", () => {
     expect(vscodeInstructions).toContain("swarmvault:managed:start");
     expect(vscodeInstructions).toContain("Read `wiki/graph/report.md` before broad file searching");
     expect(vscodeInstructions).toContain("architecture, structure, relationship");
-  }, 180_000);
+  });
 
   it("installs first-class kilo project hooks while preserving JSONC config sources", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    await fs.mkdir(path.join(rootDir, ".kilo"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, ".kilo"), { recursive: true });
     await fs.writeFile(
       path.join(rootDir, ".kilo", "kilo.jsonc"),
       ["{", "  // keep existing project plugins", '  "plugins": ["./plugins/existing.js"],', '  "theme": "dark"', "}"].join("\n"),
       "utf8"
     );
 
-    const before = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true }, 180_000);
+    const before = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true });
     expect(before.installed).toBe(false);
 
-    const kiloTarget = await installAgent(rootDir, "kilo", { scope: "project", hook: true }, 180_000);
+    const kiloTarget = await installAgent(rootDir, "kilo", { scope: "project", hook: true });
     expect(kiloTarget.target).toBe(path.join(rootDir, "AGENTS.md"));
     expect(kiloTarget.targets).toContain(path.join(rootDir, ".kilo", "plugins", "swarmvault.js"));
     expect(kiloTarget.targets).toContain(path.join(rootDir, ".kilo", "kilo.json"));
@@ -722,10 +701,10 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(path.join(rootDir, ".kilo", "kilo.jsonc"), "utf8")).toContain("// keep existing project plugins");
     expect(await fs.readFile(path.join(rootDir, ".kilo", "plugins", "swarmvault.js"), "utf8")).toContain("swarmvault graph");
 
-    const after = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true }, 180_000);
+    const after = await getAgentInstallStatus(rootDir, "kilo", { scope: "project", hook: true });
     expect(after.installed).toBe(true);
     expect(after.targets.every((entry) => entry.exists)).toBe(true);
-  }, 180_000);
+  });
 
   it("installs kilo user-scope skill and command under the agent home config", async () => {
     const rootDir = await createTempWorkspace();
@@ -736,7 +715,7 @@ describe("swarmvault workflow", () => {
     process.env.HOME = fakeHome;
     process.env.USERPROFILE = fakeHome;
     try {
-      const result = await installAgent(rootDir, "kilo", { scope: "user" }, 180_000);
+      const result = await installAgent(rootDir, "kilo", { scope: "user" });
       const skillPath = path.join(fakeHome, ".config", "kilo", "skills", "swarmvault", "SKILL.md");
       const commandPath = path.join(fakeHome, ".config", "kilo", "command", "swarmvault.md");
       expect(result.target).toBe(skillPath);
@@ -749,9 +728,9 @@ describe("swarmvault workflow", () => {
     } finally {
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
-      await fs.rm(fakeHome, { recursive: true, force: true }, 180_000);
+      await fs.rm(fakeHome, { recursive: true, force: true });
     }
-  }, 180_000);
+  });
 
   it("installs claude user-scope skill, hook, and settings under the user home", async () => {
     const rootDir = await createTempWorkspace();
@@ -762,7 +741,7 @@ describe("swarmvault workflow", () => {
     process.env.HOME = fakeHome;
     process.env.USERPROFILE = fakeHome;
     try {
-      const result = await installAgent(rootDir, "claude", { scope: "user", hook: true }, 180_000);
+      const result = await installAgent(rootDir, "claude", { scope: "user", hook: true });
       const skillPath = path.join(fakeHome, ".claude", "skills", "swarmvault", "SKILL.md");
       const settingsPath = path.join(fakeHome, ".claude", "settings.json");
       const scriptPath = path.join(fakeHome, ".claude", "hooks", "swarmvault-graph-first.js");
@@ -780,9 +759,9 @@ describe("swarmvault workflow", () => {
     } finally {
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
-      await fs.rm(fakeHome, { recursive: true, force: true }, 180_000);
+      await fs.rm(fakeHome, { recursive: true, force: true });
     }
-  }, 180_000);
+  });
 
   it("installs project skill bundles for agents that expose skill directories", async () => {
     const rootDir = await createTempWorkspace();
@@ -802,13 +781,13 @@ describe("swarmvault workflow", () => {
     ];
 
     for (const { agent, expected } of cases) {
-      const result = await installAgent(rootDir, agent, { scope: "project" }, 180_000);
+      const result = await installAgent(rootDir, agent, { scope: "project" });
       const expectedPath = path.join(rootDir, ...expected);
       expect(result.targets).toContain(expectedPath);
       const skill = matter(await fs.readFile(expectedPath, "utf8"));
       expect(skill.data.name).toBe("swarmvault");
     }
-  }, 180_000);
+  });
 
   it("installs skill bundles for the extended coding-agent roster", async () => {
     const rootDir = await createTempWorkspace();
@@ -858,7 +837,7 @@ describe("swarmvault workflow", () => {
       expect(parsed.data.name).toBe("swarmvault");
       expect(parsed.content).toContain("SwarmVault compiles curated sources");
     }
-  }, 180_000);
+  });
 
   it("installs hermes user-scope skill + repo AGENTS.md", async () => {
     const rootDir = await createTempWorkspace();
@@ -885,15 +864,15 @@ describe("swarmvault workflow", () => {
     } finally {
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
-      await fs.rm(fakeHome, { recursive: true, force: true }, 180_000);
+      await fs.rm(fakeHome, { recursive: true, force: true });
     }
-  }, 180_000);
+  });
 
   it("installs Claude rules with a graph-first redirect hook and post-edit refresh wiring", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const claudeTarget = await installAgent(rootDir, "claude", { hook: true, graphFirst: "deny" }, 180_000);
+    const claudeTarget = await installAgent(rootDir, "claude", { hook: true, graphFirst: "deny" });
     expect(claudeTarget.target).toBe(path.join(rootDir, "CLAUDE.md"));
     expect(claudeTarget.targets).toContain(path.join(rootDir, ".claude", "hooks", "swarmvault-graph-first.js"));
     expect(await fs.readFile(path.join(rootDir, "CLAUDE.md"), "utf8")).toContain("swarmvault graph query");
@@ -919,7 +898,7 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(scriptPath, "utf8")).toContain("hookSpecificOutput");
     expect(await fs.readFile(scriptPath, "utf8")).toContain("permissionDecision");
 
-    await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true });
     await fs.writeFile(path.join(rootDir, "wiki", "graph", "report.md"), "# Graph report\n", "utf8");
 
     const sessionStart = JSON.parse(await runNodeScript(scriptPath, ["session-start"], JSON.stringify({ cwd: rootDir }), rootDir)) as {
@@ -958,7 +937,7 @@ describe("swarmvault workflow", () => {
         rootDir
       )
     ) as Record<string, never>;
-    expect(reportRead).toEqual({}, 180_000);
+    expect(reportRead).toEqual({});
 
     const postEdit = JSON.parse(
       await runNodeScript(
@@ -968,21 +947,21 @@ describe("swarmvault workflow", () => {
         rootDir
       )
     ) as Record<string, never>;
-    expect(postEdit).toEqual({}, 180_000);
+    expect(postEdit).toEqual({});
 
-    await installAgent(rootDir, "claude", { hook: true }, 180_000);
+    await installAgent(rootDir, "claude", { hook: true });
     const settingsAgain = JSON.parse(await fs.readFile(settingsPath, "utf8")) as {
       hooks?: { PreToolUse?: Array<{ matcher?: string }>; PostToolUse?: Array<{ matcher?: string }> };
     };
     expect(settingsAgain.hooks?.PreToolUse?.filter((entry) => entry.matcher === "Bash")).toHaveLength(1);
     expect(settingsAgain.hooks?.PreToolUse?.filter((entry) => entry.matcher === "Grep|Glob")).toHaveLength(1);
     expect(settingsAgain.hooks?.PostToolUse).toHaveLength(1);
-  }, 180_000);
+  });
 
   it("applies host-project hygiene during install (gitignore + tsconfig exclude)", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    await fs.mkdir(path.join(rootDir, ".git"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, ".git"), { recursive: true });
     await fs.writeFile(path.join(rootDir, ".gitignore"), "node_modules/\n", "utf8");
     await fs.writeFile(
       path.join(rootDir, "tsconfig.json"),
@@ -990,7 +969,7 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    const result = await installAgent(rootDir, "claude", { hook: true }, 180_000);
+    const result = await installAgent(rootDir, "claude", { hook: true });
     expect(result.notices?.join(" ")).toContain(".gitignore");
     expect(result.notices?.join(" ")).toContain("tsconfig.json");
 
@@ -1003,11 +982,11 @@ describe("swarmvault workflow", () => {
     expect(tsconfig.exclude).toEqual(expect.arrayContaining(["node_modules", "raw", "wiki", "state", "agent", "inbox"]));
 
     // Idempotent: a second install adds nothing new.
-    const again = await installAgent(rootDir, "claude", { hook: true }, 180_000);
+    const again = await installAgent(rootDir, "claude", { hook: true });
     expect(again.notices ?? []).toHaveLength(0);
     const gitignoreAgain = await fs.readFile(path.join(rootDir, ".gitignore"), "utf8");
     expect(gitignoreAgain.match(/# swarmvault artifacts/g)).toHaveLength(1);
-  }, 180_000);
+  });
 
   it("leaves commented tsconfig files untouched and warns instead", async () => {
     const rootDir = await createTempWorkspace();
@@ -1015,16 +994,16 @@ describe("swarmvault workflow", () => {
     const tsconfigSource = '{\n  // user comment that must survive\n  "compilerOptions": { "strict": true }\n}\n';
     await fs.writeFile(path.join(rootDir, "tsconfig.json"), tsconfigSource, "utf8");
 
-    const result = await installAgent(rootDir, "claude", { hook: true }, 180_000);
+    const result = await installAgent(rootDir, "claude", { hook: true });
     expect(await fs.readFile(path.join(rootDir, "tsconfig.json"), "utf8")).toBe(tsconfigSource);
     expect(result.warnings?.join(" ")).toContain("tsconfig.json contains comments");
-  }, 180_000);
+  });
 
   it("migrates legacy Claude hook settings entries to the current matchers", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
     const settingsPath = path.join(rootDir, ".claude", "settings.json");
-    await fs.mkdir(path.dirname(settingsPath), { recursive: true }, 180_000);
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
     await fs.writeFile(
       settingsPath,
       `${JSON.stringify({
@@ -1041,7 +1020,7 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    await installAgent(rootDir, "claude", { hook: true }, 180_000);
+    await installAgent(rootDir, "claude", { hook: true });
 
     const settings = JSON.parse(await fs.readFile(settingsPath, "utf8")) as {
       hooks?: { PreToolUse?: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> };
@@ -1050,7 +1029,7 @@ describe("swarmvault workflow", () => {
       settings.hooks?.PreToolUse?.filter((entry) => JSON.stringify(entry).includes("swarmvault-graph-first.js")) ?? [];
     expect(swarmvaultEntries.map((entry) => entry.matcher).sort()).toEqual(["Bash", "Grep|Glob"]);
     expect(settings.hooks?.PreToolUse?.some((entry) => JSON.stringify(entry).includes("echo user-owned"))).toBe(true);
-  }, 180_000);
+  });
 
   it("registers the SwarmVault MCP server for Claude with --mcp", async () => {
     const rootDir = await createTempWorkspace();
@@ -1058,7 +1037,7 @@ describe("swarmvault workflow", () => {
     const mcpPath = path.join(rootDir, ".mcp.json");
     await fs.writeFile(`${mcpPath}`, `${JSON.stringify({ mcpServers: { other: { command: "other-server" } } })}\n`, "utf8");
 
-    const result = await installAgent(rootDir, "claude", { hook: true, mcp: true }, 180_000);
+    const result = await installAgent(rootDir, "claude", { hook: true, mcp: true });
     expect(result.targets).toContain(mcpPath);
 
     const config = JSON.parse(await fs.readFile(mcpPath, "utf8")) as {
@@ -1067,13 +1046,13 @@ describe("swarmvault workflow", () => {
     expect(config.mcpServers?.swarmvault?.command).toBe("swarmvault");
     expect(config.mcpServers?.swarmvault?.args).toEqual(["mcp"]);
     expect(config.mcpServers?.other?.command).toBe("other-server");
-  }, 180_000);
+  });
 
   it("installs Codex rules with an optional graph-first pre-search hook", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const codexTarget = await installAgent(rootDir, "codex", { hook: true }, 180_000);
+    const codexTarget = await installAgent(rootDir, "codex", { hook: true });
     expect(codexTarget.target).toBe(path.join(rootDir, "AGENTS.md"));
     expect(codexTarget.targets).toContain(path.join(rootDir, ".codex", "hooks.json"));
     expect(codexTarget.targets).toContain(path.join(rootDir, ".codex", "hooks", "swarmvault-graph-first.js"));
@@ -1090,7 +1069,7 @@ describe("swarmvault workflow", () => {
     expect(hooks.hooks?.PreToolUse?.some((entry) => entry.matcher === "Bash")).toBe(true);
     expect(await fs.readFile(scriptPath, "utf8")).toContain("buildDenyReason");
 
-    await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, "wiki", "graph"), { recursive: true });
     await fs.writeFile(path.join(rootDir, "wiki", "graph", "report.md"), "# Graph report\n", "utf8");
 
     const sessionStart = JSON.parse(await runNodeScript(scriptPath, ["session-start"], JSON.stringify({ cwd: rootDir }), rootDir)) as {
@@ -1119,7 +1098,7 @@ describe("swarmvault workflow", () => {
         rootDir
       )
     ) as Record<string, never>;
-    expect(reportRead).toEqual({}, 180_000);
+    expect(reportRead).toEqual({});
 
     const secondSearch = JSON.parse(
       await runNodeScript(
@@ -1129,20 +1108,20 @@ describe("swarmvault workflow", () => {
         rootDir
       )
     ) as Record<string, never>;
-    expect(secondSearch).toEqual({}, 180_000);
+    expect(secondSearch).toEqual({});
 
-    await installAgent(rootDir, "codex", { hook: true }, 180_000);
+    await installAgent(rootDir, "codex", { hook: true });
     const hooksAgain = await fs.readFile(hooksPath, "utf8");
     expect(hooksAgain.match(/"Bash"/g)?.length ?? 0).toBe(1);
     expect(hooksAgain.match(/swarmvault-graph-first\.js/g)?.length ?? 0).toBe(2);
-  }, 180_000);
+  });
 
   it("installs gemini and opencode graph-first hook artifacts when requested", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const geminiTarget = await installAgent(rootDir, "gemini", { hook: true }, 180_000);
-    const opencodeTarget = await installAgent(rootDir, "opencode", { hook: true }, 180_000);
+    const geminiTarget = await installAgent(rootDir, "gemini", { hook: true });
+    const opencodeTarget = await installAgent(rootDir, "opencode", { hook: true });
 
     expect(geminiTarget.targets).toContain(path.join(rootDir, ".gemini", "settings.json"));
     expect(geminiTarget.targets).toContain(path.join(rootDir, ".gemini", "hooks", "swarmvault-graph-first.js"));
@@ -1156,15 +1135,15 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(path.join(rootDir, ".opencode", "plugins", "swarmvault-graph-first.js"), "utf8")).toContain(
       "tool.execute.before"
     );
-  }, 180_000);
+  });
 
   it("installs copilot hook files and preserves invalid aider config with warnings", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    await fs.mkdir(path.join(rootDir, ".github", "hooks"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, ".github", "hooks"), { recursive: true });
     await fs.writeFile(path.join(rootDir, ".aider.conf.yml"), "read: [keep-this\n", "utf8");
 
-    const copilotTarget = await installAgent(rootDir, "copilot", { hook: true }, 180_000);
+    const copilotTarget = await installAgent(rootDir, "copilot", { hook: true });
     const aiderTarget = await installAgent(rootDir, "aider");
 
     expect(copilotTarget.targets).toContain(path.join(rootDir, ".github", "hooks", "swarmvault-graph-first.json"));
@@ -1174,17 +1153,17 @@ describe("swarmvault workflow", () => {
       "Could not parse .aider.conf.yml. Left the existing file unchanged; add `read: CONVENTIONS.md` manually."
     ]);
     expect(await fs.readFile(path.join(rootDir, ".aider.conf.yml"), "utf8")).toContain("keep-this");
-  }, 180_000);
+  });
 
   it("installs git hooks into an explicit repo below the vault root", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
     const repoDir = path.join(rootDir, "nested-repo");
-    await fs.mkdir(path.join(repoDir, ".git", "hooks"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(repoDir, ".git", "hooks"), { recursive: true });
 
     await expect(installGitHooks(rootDir)).rejects.toThrow(/No git repository found above the current vault/);
 
-    const installed = await installGitHooks(rootDir, { repoPath: "nested-repo" }, 180_000);
+    const installed = await installGitHooks(rootDir, { repoPath: "nested-repo" });
     expect(installed.repoRoot).toBe(repoDir);
     expect(installed.postCommit).toBe("installed");
 
@@ -1192,17 +1171,17 @@ describe("swarmvault workflow", () => {
     // The hook must cd back to the vault root, not the nested repo.
     expect(postCommit).toContain(`cd '${rootDir}'`);
 
-    const status = await getGitHookStatus(rootDir, { repoPath: "nested-repo" }, 180_000);
+    const status = await getGitHookStatus(rootDir, { repoPath: "nested-repo" });
     expect(status.postCommit).toBe("installed");
 
-    const removed = await uninstallGitHooks(rootDir, { repoPath: "nested-repo" }, 180_000);
+    const removed = await uninstallGitHooks(rootDir, { repoPath: "nested-repo" });
     expect(removed.postCommit).toBe("not_installed");
-  }, 180_000);
+  });
 
   it("installs, reports, and removes git hook blocks idempotently", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    await fs.mkdir(path.join(rootDir, ".git", "hooks"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, ".git", "hooks"), { recursive: true });
     await fs.writeFile(path.join(rootDir, ".git", "hooks", "post-commit"), "#!/bin/sh\necho existing\n", "utf8");
 
     const installed = await installGitHooks(rootDir);
@@ -1230,7 +1209,7 @@ describe("swarmvault workflow", () => {
     const postCommitAfter = await fs.readFile(path.join(rootDir, ".git", "hooks", "post-commit"), "utf8");
     expect(postCommitAfter).toContain("echo existing");
     expect(postCommitAfter).not.toContain("watch --repo --once");
-  }, 180_000);
+  });
 
   it("ingests, compiles, queries, and lints using the heuristic provider", async () => {
     const rootDir = await createTempWorkspace();
@@ -1290,7 +1269,7 @@ describe("swarmvault workflow", () => {
     const reparsedSourcePage = matter(await fs.readFile(sourcePagePath, "utf8"));
     expect(reparsedSourcePage.data.created_at).toBe(parsedSourcePage.data.created_at);
 
-    const query = await queryVault(rootDir, { question: "What does SwarmVault optimize for?" }, 180_000);
+    const query = await queryVault(rootDir, { question: "What does SwarmVault optimize for?" });
     expect(query.answer).toContain("Question:");
     expect(query.savedPath).toBeTruthy();
     expect(query.saved).toBe(true);
@@ -1302,7 +1281,7 @@ describe("swarmvault workflow", () => {
     expect(sessionFiles.some((file) => file.includes("-compile-"))).toBe(true);
     expect(sessionFiles.some((file) => file.includes("-query-"))).toBe(true);
     expect(sessionFiles.some((file) => file.includes("-lint-"))).toBe(true);
-  }, 180_000);
+  });
 
   it("reports corrupt JSON state with the path that failed to parse", async () => {
     const rootDir = await createTempWorkspace();
@@ -1312,7 +1291,7 @@ describe("swarmvault workflow", () => {
     await fs.writeFile(path.join(rootDir, "state", "compile-state.json"), "", "utf8");
 
     await expect(compileVault(rootDir)).rejects.toThrow(/compile-state\.json/);
-  }, 180_000);
+  });
 
   it("compiles a larger heuristic markdown corpus without unbounded graph projection", async () => {
     const rootDir = await createTempWorkspace();
@@ -1345,7 +1324,7 @@ describe("swarmvault workflow", () => {
     expect(graph.nodes.length).toBeGreaterThan(sourceCount);
     expect(graph.edges.length).toBeLessThan(sourceCount * sourceCount);
     expect(graph.communities?.length ?? 0).toBeGreaterThan(0);
-  }, 180_000);
+  }, 120_000);
 
   it("extracts PDF text into markdown and extraction metadata sidecars", async () => {
     const rootDir = await createTempWorkspace();
@@ -1376,7 +1355,7 @@ describe("swarmvault workflow", () => {
     expect(analysis.summary).not.toContain("Text extraction is not yet available");
     expect(analysis.summary).toContain("SwarmVault PDF extraction");
     expect(analysis.extractionHash).toBe(manifest.extractionHash);
-  }, 180_000);
+  });
 
   it("extracts DOCX text and metadata into sidecars", async () => {
     const rootDir = await createTempWorkspace();
@@ -1407,7 +1386,7 @@ describe("swarmvault workflow", () => {
     ) as SourceAnalysis;
     expect(analysis.summary).toContain("Local DOCX files should extract readable text before analysis.");
     expect(analysis.extractionHash).toBe(manifest.extractionHash);
-  }, 180_000);
+  });
 
   it("extracts CSV and TSV datasets into bounded table summaries", async () => {
     const rootDir = await createTempWorkspace();
@@ -1442,7 +1421,7 @@ describe("swarmvault workflow", () => {
     await compileVault(rootDir);
     const searchResults = await searchVault(rootDir, "Signups", 5);
     expect(searchResults.some((result) => result.pageId === `source:${tsvManifest.sourceId}`)).toBe(true);
-  }, 180_000);
+  });
 
   it("extracts XLSX workbooks into searchable sheet summaries", async () => {
     const rootDir = await createTempWorkspace();
@@ -1472,7 +1451,7 @@ describe("swarmvault workflow", () => {
       await fs.readFile(path.join(rootDir, "state", "analyses", `${manifest.sourceId}.json`), "utf8")
     ) as SourceAnalysis;
     expect(analysis.summary).toContain("Tiny Workbook");
-  }, 180_000);
+  });
 
   it("extracts PPTX slides and speaker notes into sidecars", async () => {
     const rootDir = await createTempWorkspace();
@@ -1497,7 +1476,7 @@ describe("swarmvault workflow", () => {
     expect(artifact.extractor).toBe("pptx_text");
     expect(artifact.metadata?.slide_count).toBe("1");
     expect(artifact.metadata?.title).toBe("Tiny Slide Deck");
-  }, 180_000);
+  });
 
   it("splits EPUBs into chapter manifests and removes stale parts on re-ingest", async () => {
     const rootDir = await createTempWorkspace();
@@ -1541,7 +1520,7 @@ describe("swarmvault workflow", () => {
     expect(secondIngest.removed).toHaveLength(1);
     expect(secondIngest.updated[0]?.partCount).toBe(1);
     expect(secondIngest.updated[0]?.partTitle).toBe("Only Chapter");
-  }, 180_000);
+  });
 
   it("treats .rst files as first-class text sources with normalized extracted text", async () => {
     const rootDir = await createTempWorkspace();
@@ -1579,7 +1558,7 @@ describe("swarmvault workflow", () => {
 
     const searchResults = await searchVault(rootDir, "Parser diagnostics", 5);
     expect(searchResults.some((result) => result.pageId === `source:${manifest.sourceId}`)).toBe(true);
-  }, 180_000);
+  });
 
   it("uses the configured vision provider to analyze image sources", async () => {
     const rootDir = await createTempWorkspace();
@@ -1614,19 +1593,15 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    await updateConfig(
-      rootDir,
-      (config) => {
-        config.providers.visionTest = {
-          type: "custom",
-          model: "vision-test",
-          module: "./vision-provider.mjs",
-          capabilities: ["structured", "vision"]
-        };
-        config.tasks.visionProvider = "visionTest";
-      },
-      180_000
-    );
+    await updateConfig(rootDir, (config) => {
+      config.providers.visionTest = {
+        type: "custom",
+        model: "vision-test",
+        module: "./vision-provider.mjs",
+        capabilities: ["structured", "vision"]
+      };
+      config.tasks.visionProvider = "visionTest";
+    });
 
     await fs.writeFile(path.join(rootDir, "diagram.png"), MINIMAL_PNG);
     const manifest = await ingestInput(rootDir, "diagram.png");
@@ -1652,7 +1627,7 @@ describe("swarmvault workflow", () => {
     expect(analysis.claims.some((claim) => claim.text.includes("routes work through a queue"))).toBe(true);
     expect(analysis.entities.some((entity) => entity.name === "API")).toBe(true);
     expect(analysis.extractionHash).toBe(manifest.extractionHash);
-  }, 180_000);
+  });
 
   it("records explicit extraction warnings when no real vision provider is configured", async () => {
     const rootDir = await createTempWorkspace();
@@ -1675,7 +1650,7 @@ describe("swarmvault workflow", () => {
     ) as SourceAnalysis;
     expect(analysis.summary).toContain("Vision extraction unavailable");
     expect(analysis.summary).not.toContain("Text extraction is not yet available");
-  }, 180_000);
+  });
 
   it("imports inbox markdown bundles with copied attachments", async () => {
     const rootDir = await createTempWorkspace();
@@ -1683,7 +1658,7 @@ describe("swarmvault workflow", () => {
 
     const inboxDir = path.join(rootDir, "inbox");
     const assetsDir = path.join(inboxDir, "assets");
-    await fs.mkdir(assetsDir, { recursive: true }, 180_000);
+    await fs.mkdir(assetsDir, { recursive: true });
     await fs.writeFile(
       path.join(inboxDir, "clip.md"),
       ["# Browser Clip", "", "SwarmVault can preserve image references from captured markdown.", "", "![Diagram](assets/diagram.png)"].join(
@@ -1703,7 +1678,7 @@ describe("swarmvault workflow", () => {
 
     const storedMarkdown = await fs.readFile(path.join(rootDir, manifest.storedPath), "utf8");
     expect(storedMarkdown).toContain(`../assets/${manifest.sourceId}/assets/diagram.png`);
-  }, 180_000);
+  });
 
   it("imports inbox HTML bundles with copied attachments and readable extracts", async () => {
     const rootDir = await createTempWorkspace();
@@ -1711,7 +1686,7 @@ describe("swarmvault workflow", () => {
 
     const inboxDir = path.join(rootDir, "inbox");
     const assetsDir = path.join(inboxDir, "assets");
-    await fs.mkdir(assetsDir, { recursive: true }, 180_000);
+    await fs.mkdir(assetsDir, { recursive: true });
     await fs.writeFile(
       path.join(inboxDir, "clip.html"),
       [
@@ -1746,7 +1721,7 @@ describe("swarmvault workflow", () => {
 
     const extractedText = await fs.readFile(path.join(rootDir, manifest.extractedTextPath as string), "utf8");
     expect(extractedText).toContain("Inbox import should preserve local HTML image references.");
-  }, 180_000);
+  });
 
   it("ingests HTML URLs with localized remote image assets", async () => {
     const rootDir = await createTempWorkspace();
@@ -1782,39 +1757,36 @@ describe("swarmvault workflow", () => {
       ].join("");
 
       const manifest = await withPrivateUrlAllowance(() => ingestInput(rootDir, articleUrl));
-      // // expect(manifest.attachments || []).toHaveLength(2);
+      expect(manifest.attachments).toHaveLength(2);
 
       const storedMarkdown = await fs.readFile(path.join(rootDir, manifest.storedPath), "utf8");
       const attachmentUrls = new Set(manifest.attachments?.map((attachment) => attachment.originalPath));
-      // expect(attachmentUrls).toEqual(new Set([`${server.baseUrl}/images/relative.png`, `${server.baseUrl}/images/absolute.png`]));
+      expect(attachmentUrls).toEqual(new Set([`${server.baseUrl}/images/relative.png`, `${server.baseUrl}/images/absolute.png`]));
       for (const attachment of manifest.attachments ?? []) {
         expect(storedMarkdown).toContain(`../assets/${manifest.sourceId}/${attachmentRelativePath(manifest.sourceId, attachment.path)}`);
         await expect(fs.access(path.join(rootDir, attachment.path))).resolves.toBeUndefined();
       }
-      // expect(storedMarkdown).not.toContain("/images/relative.png");
-      // // expect(`${server.baseUrl}/images/a...lute.png`);
+      expect(storedMarkdown).not.toContain("/images/relative.png");
+      expect(storedMarkdown).not.toContain(`${server.baseUrl}/images/absolute.png`);
     } finally {
       await server.close();
     }
-  }, 180_000);
+  });
 
   it("ingests markdown URLs with localized remote image assets", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const server = await startFixtureServer(
-      {
-        "/notes.md": {
-          contentType: "text/plain; charset=utf-8",
-          body: ["# Remote Notes", "", "![Diagram](./images/diagram.png)"].join("\n")
-        },
-        "/images/diagram.png": {
-          contentType: "image/png",
-          body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 8, 9, 10, 11])
-        }
+    const server = await startFixtureServer({
+      "/notes.md": {
+        contentType: "text/plain; charset=utf-8",
+        body: ["# Remote Notes", "", "![Diagram](./images/diagram.png)"].join("\n")
       },
-      180_000
-    );
+      "/images/diagram.png": {
+        contentType: "image/png",
+        body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 8, 9, 10, 11])
+      }
+    });
 
     try {
       const manifest = await withPrivateUrlAllowance(() => ingestInput(rootDir, `${server.baseUrl}/notes.md`));
@@ -1831,25 +1803,22 @@ describe("swarmvault workflow", () => {
     } finally {
       await server.close();
     }
-  }, 180_000);
+  });
 
   it("skips oversized remote assets without failing URL ingest", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    const server = await startFixtureServer(
-      {
-        "/notes.md": {
-          contentType: "text/plain; charset=utf-8",
-          body: ["# Large Asset Note", "", "![Oversized](./images/large.png)"].join("\n")
-        },
-        "/images/large.png": {
-          contentType: "image/png",
-          body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-        }
+    const server = await startFixtureServer({
+      "/notes.md": {
+        contentType: "text/plain; charset=utf-8",
+        body: ["# Large Asset Note", "", "![Oversized](./images/large.png)"].join("\n")
       },
-      180_000
-    );
+      "/images/large.png": {
+        contentType: "image/png",
+        body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+      }
+    });
 
     try {
       const manifest = await withPrivateUrlAllowance(() => ingestInput(rootDir, `${server.baseUrl}/notes.md`, { maxAssetSize: 8 }));
@@ -1860,7 +1829,7 @@ describe("swarmvault workflow", () => {
     } finally {
       await server.close();
     }
-  }, 180_000);
+  });
 
   it("captures arXiv ids, DOI/article URLs, and tweet URLs through the add workflow", async () => {
     const rootDir = await createTempWorkspace();
@@ -1959,10 +1928,10 @@ describe("swarmvault workflow", () => {
     }) as typeof globalThis.fetch;
 
     try {
-      const arxiv = await addInput(rootDir, "2401.12345", { author: "Wayde" }, 180_000);
+      const arxiv = await addInput(rootDir, "2401.12345", { author: "Wayde" });
       const doi = await addInput(rootDir, "10.5555/swarmvault-doi");
-      const article = await addInput(rootDir, "https://example.test/article", { contributor: "SwarmVault" }, 180_000);
-      const tweet = await addInput(rootDir, "https://x.com/example/status/1234567890", { contributor: "SwarmVault" }, 180_000);
+      const article = await addInput(rootDir, "https://example.test/article", { contributor: "SwarmVault" });
+      const tweet = await addInput(rootDir, "https://x.com/example/status/1234567890", { contributor: "SwarmVault" });
 
       expect(arxiv.captureType).toBe("arxiv");
       expect(arxiv.fallback).toBe(false);
@@ -1995,7 +1964,7 @@ describe("swarmvault workflow", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
-  }, 180_000);
+  });
 
   it("can save a query after add fallback without compiling the captured source first", async () => {
     const rootDir = await createTempWorkspace();
@@ -2005,14 +1974,10 @@ describe("swarmvault workflow", () => {
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url === "https://example.test/capture.md") {
-        return new Response(
-          ["# Captured Link", "", "Durable outputs should stay on disk."].join("\n"),
-          {
-            status: 200,
-            headers: { "content-type": "text/plain; charset=utf-8" }
-          },
-          180_000
-        );
+        return new Response(["# Captured Link", "", "Durable outputs should stay on disk."].join("\n"), {
+          status: 200,
+          headers: { "content-type": "text/plain; charset=utf-8" }
+        });
       }
       return originalFetch(input as never);
     }) as typeof globalThis.fetch;
@@ -2026,19 +1991,15 @@ describe("swarmvault workflow", () => {
       expect(added.captureType).toBe("url");
       expect(added.fallback).toBe(true);
 
-      const result = await queryVault(
-        rootDir,
-        {
-          question: "What does this vault say about durable outputs?"
-        },
-        180_000
-      );
+      const result = await queryVault(rootDir, {
+        question: "What does this vault say about durable outputs?"
+      });
       expect(result.savedPath).toBeTruthy();
       expect(await fs.readFile(result.savedPath ?? "", "utf8")).toContain("durable outputs");
     } finally {
       globalThis.fetch = originalFetch;
     }
-  }, 180_000);
+  });
 
   it("writes benchmark artifacts and exports svg, graphml, and cypher graph files", async () => {
     const rootDir = await createTempWorkspace();
@@ -2071,13 +2032,9 @@ describe("swarmvault workflow", () => {
     expect(Number.isFinite(autoGraphReportArtifact.benchmark?.summary.reductionRatio ?? Number.NaN)).toBe(true);
     expect(autoGraphReportArtifact.suggestedQuestions.length).toBeGreaterThan(0);
 
-    const benchmark = await benchmarkVault(
-      rootDir,
-      {
-        questions: ["How does this vault describe graph-guided context reduction?"]
-      },
-      180_000
-    );
+    const benchmark = await benchmarkVault(rootDir, {
+      questions: ["How does this vault describe graph-guided context reduction?"]
+    });
     expect(benchmark.sampleQuestions).toHaveLength(1);
     expect(benchmark.avgQueryTokens).toBeGreaterThan(0);
 
@@ -2099,7 +2056,7 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(svg.outputPath, "utf8")).toContain("<svg");
     expect(await fs.readFile(graphml.outputPath, "utf8")).toContain("<graphml");
     expect(await fs.readFile(cypher.outputPath, "utf8")).toContain("MERGE (n:SwarmNode");
-  }, 180_000);
+  });
 
   it("escapes hostile graph strings safely in svg and graphml exports", async () => {
     const rootDir = await createTempWorkspace();
@@ -2195,7 +2152,7 @@ describe("swarmvault workflow", () => {
     expect(graphmlContent).toContain("outputs/&lt;/script&gt;&lt;img src=x onerror=alert(&quot;path&quot;)&gt;.md");
     expect(graphmlContent).not.toContain('</script><img src=x onerror=alert("label")>');
     expect(graphmlContent).not.toContain('</script><img src=x onerror=alert("relation")>');
-  }, 180_000);
+  });
 
   it("escapes Cypher export string literals safely", async () => {
     const rootDir = await createTempWorkspace();
@@ -2264,7 +2221,7 @@ describe("swarmvault workflow", () => {
     expect(cypher).toContain("why: 'Contains \\'quotes\\', backslashes \\\\\\\\, and newlines\\nfor export safety.'");
     expect(cypher).toContain("r:SEMANTICALLY_SIMILAR_TO");
     expect(cypher).toContain("GROUP_MEMBER");
-  }, 180_000);
+  });
 
   it("enriches the graph with semantic similarity, group patterns, and richer graph-tool metadata", async () => {
     const rootDir = await createTempWorkspace();
@@ -2340,7 +2297,7 @@ describe("swarmvault workflow", () => {
     expect(report.groupPatterns[0]?.why).toContain("source nodes");
     expect(report.surprisingConnections.some((connection) => connection.why.length > 0 && connection.pathRelations.length > 0)).toBe(true);
 
-    const queryResult = await queryGraphVault(rootDir, "parser-first graph trust", { budget: 10 }, 180_000);
+    const queryResult = await queryGraphVault(rootDir, "parser-first graph trust", { budget: 10 });
     expect(queryResult.hyperedgeIds.length).toBeGreaterThan(0);
 
     const explainResult = await explainGraphVault(rootDir, similarityEdges[0]?.source ?? "");
@@ -2368,7 +2325,7 @@ describe("swarmvault workflow", () => {
     expect(await fs.readFile(cypher.outputPath, "utf8")).toContain("similarityReasons");
 
     const server = await createMcpServer(rootDir);
-    const client = new Client({ name: "swarmvault-graph-test-client", version: "1.0.0" }, 180_000);
+    const client = new Client({ name: "swarmvault-graph-test-client", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
@@ -2378,25 +2335,25 @@ describe("swarmvault workflow", () => {
     expect(tools.tools.some((tool) => tool.name === "graph_stats")).toBe(true);
     expect(tools.tools.some((tool) => tool.name === "get_community")).toBe(true);
 
-    const graphReport = await client.callTool({ name: "graph_report", arguments: {} }, 180_000);
+    const graphReport = await client.callTool({ name: "graph_report", arguments: {} });
     const graphReportContent = graphReport.content as ToolContent;
     expect(JSON.parse(graphReportContent[0]?.text ?? "{}").groupPatterns.length).toBeGreaterThan(0);
 
-    const hyperedgeTool = await client.callTool({ name: "get_hyperedges", arguments: { limit: 5 } }, 180_000);
+    const hyperedgeTool = await client.callTool({ name: "get_hyperedges", arguments: { limit: 5 } });
     const hyperedgeContent = hyperedgeTool.content as ToolContent;
     expect(JSON.parse(hyperedgeContent[0]?.text ?? "[]").length).toBeGreaterThan(0);
 
-    const graphStatsTool = await client.callTool({ name: "graph_stats", arguments: {} }, 180_000);
+    const graphStatsTool = await client.callTool({ name: "graph_stats", arguments: {} });
     const graphStatsContent = graphStatsTool.content as ToolContent;
     expect(JSON.parse(graphStatsContent[0]?.text ?? "{}").counts.nodes).toBe(graph.nodes.length);
 
-    const communityTool = await client.callTool({ name: "get_community", arguments: { target: firstCommunity?.label, limit: 5 } }, 180_000);
+    const communityTool = await client.callTool({ name: "get_community", arguments: { target: firstCommunity?.label, limit: 5 } });
     const communityContent = communityTool.content as ToolContent;
     expect(JSON.parse(communityContent[0]?.text ?? "{}").nodes.length).toBeGreaterThan(0);
 
     await client.close();
     await server.close();
-  }, 180_000);
+  });
 
   it("uses configured embeddings for semantic graph query, cache artifacts, and inferred similarity edges", async () => {
     const rootDir = await createTempWorkspace();
@@ -2445,20 +2402,16 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    await updateConfig(
-      rootDir,
-      (config) => {
-        config.providers.semanticTest = {
-          type: "custom",
-          model: "semantic-test",
-          module: "./embedding-provider.mjs",
-          capabilities: ["chat", "structured", "embeddings"]
-        };
-        config.tasks.compileProvider = "semanticTest";
-        config.tasks.embeddingProvider = "semanticTest";
-      },
-      180_000
-    );
+    await updateConfig(rootDir, (config) => {
+      config.providers.semanticTest = {
+        type: "custom",
+        model: "semantic-test",
+        module: "./embedding-provider.mjs",
+        capabilities: ["chat", "structured", "embeddings"]
+      };
+      config.tasks.compileProvider = "semanticTest";
+      config.tasks.embeddingProvider = "semanticTest";
+    });
 
     for (const [name, body] of [
       ["alpha.md", "# Alpha Source\n\nDurable memory keeps agent context alive."],
@@ -2480,21 +2433,17 @@ describe("swarmvault workflow", () => {
     expect(Array.isArray(embeddingCache.entries)).toBe(true);
     expect(embeddingCache.entries?.length ?? 0).toBeGreaterThan(0);
 
-    const semanticQuery = await queryGraphVault(rootDir, "compounding memory", { budget: 8 }, 180_000);
+    const semanticQuery = await queryGraphVault(rootDir, "compounding memory", { budget: 8 });
     expect(semanticQuery.matches.some((match) => match.label.includes("Alpha Source") || match.label.includes("Beta Source"))).toBe(true);
-  }, 180_000);
+  });
 
   it("suggests an embedding-capable backend when embeddingProvider lacks embeddings support", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    await updateConfig(
-      rootDir,
-      (config) => {
-        config.tasks.embeddingProvider = "local";
-      },
-      180_000
-    );
+    await updateConfig(rootDir, (config) => {
+      config.tasks.embeddingProvider = "local";
+    });
 
     await fs.writeFile(path.join(rootDir, "alpha.md"), "# Alpha\n\nDurable memory keeps agent context alive.\n", "utf8");
     await fs.writeFile(path.join(rootDir, "beta.md"), "# Beta\n\nPersistent context helps an agent resume prior work.\n", "utf8");
@@ -2507,16 +2456,16 @@ describe("swarmvault workflow", () => {
     await expect(semanticGraphMatches(rootDir, graph, "compounding memory")).rejects.toThrow(
       'Provider local does not support required capability "embeddings". Configure tasks.embeddingProvider to use an embedding-capable backend such as ollama or another openai-compatible embedding service.'
     );
-  }, 180_000);
+  });
 
   it("classifies repo material by source class and keeps graph reporting focused on first-party content", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    await fs.mkdir(path.join(rootDir, "repo", "src"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, "repo", "Pods"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, "repo", "App.xcassets"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, "repo", "dist"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, "repo", "src"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, "repo", "Pods"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, "repo", "App.xcassets"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, "repo", "dist"), { recursive: true });
 
     await fs.writeFile(path.join(rootDir, "repo", "src", "app.ts"), "export function main(): string { return 'ok'; }\n", "utf8");
     await fs.writeFile(path.join(rootDir, "repo", "Pods", "vendor.ts"), "export const vendorValue = 1;\n", "utf8");
@@ -2539,14 +2488,9 @@ describe("swarmvault workflow", () => {
       defaultIngest.skipped.some((entry) => entry.path.endsWith("repo/dist/generated.js") && entry.reason === "source_class:generated")
     ).toBe(true);
 
-    const fullIngest = await ingestDirectory(
-      rootDir,
-      "repo",
-      {
-        extractClasses: ["first_party", "third_party", "resource", "generated"]
-      },
-      180_000
-    );
+    const fullIngest = await ingestDirectory(rootDir, "repo", {
+      extractClasses: ["first_party", "third_party", "resource", "generated"]
+    });
     const manifestsByRepoPath = new Map(
       [...fullIngest.imported, ...fullIngest.updated].map((manifest) => [manifest.repoRelativePath, manifest] as const)
     );
@@ -2572,7 +2516,7 @@ describe("swarmvault workflow", () => {
     expect(report.sourceClassBreakdown.resource.sources).toBeGreaterThan(0);
     expect(report.sourceClassBreakdown.generated.sources).toBeGreaterThan(0);
     expect(report.warnings.length).toBeGreaterThan(0);
-  }, 180_000);
+  });
 
   it("rolls up fragmented tiny communities in report presentation without mutating the graph", async () => {
     const now = "2026-04-08T00:00:00.000Z";
@@ -2640,28 +2584,22 @@ describe("swarmvault workflow", () => {
         title: community.label
       })) ?? [];
 
-    const report = buildGraphReportArtifact(
-      {
-        graph,
-        communityPages,
-        graphHash: "graph-hash"
-      },
-      180_000
-    );
+    const report = buildGraphReportArtifact({
+      graph,
+      communityPages,
+      graphHash: "graph-hash"
+    });
 
     expect(graph.communities).toHaveLength(8);
     expect(report.thinCommunities).toHaveLength(6);
-    expect(report.fragmentedCommunityRollup).toEqual(
-      {
-        totalCommunities: 8,
-        rolledUpCount: 2,
-        rolledUpNodes: 2,
-        exampleLabels: ["Community 7", "Community 8"]
-      },
-      180_000
-    );
+    expect(report.fragmentedCommunityRollup).toEqual({
+      totalCommunities: 8,
+      rolledUpCount: 2,
+      rolledUpNodes: 2,
+      exampleLabels: ["Community 7", "Community 8"]
+    });
     expect(report.warnings.some((warning) => warning.includes("rolled up for readability"))).toBe(true);
-  }, 180_000);
+  });
 
   it("threads the schema through compile and query and marks pages stale when the schema changes", async () => {
     const rootDir = await createTempWorkspace();
@@ -2756,7 +2694,7 @@ describe("swarmvault workflow", () => {
     const sourcePage = await fs.readFile(path.join(rootDir, "wiki", "sources", `${manifest.sourceId}.md`), "utf8");
     expect(sourcePage).toContain("schema_hash:");
 
-    const query = await queryVault(rootDir, { question: "How should this vault behave?" }, 180_000);
+    const query = await queryVault(rootDir, { question: "How should this vault behave?" });
     expect(query.savedPath).toBeTruthy();
 
     const textLog = await fs.readFile(path.join(rootDir, "state", "provider-text.ndjson"), "utf8");
@@ -2784,7 +2722,7 @@ describe("swarmvault workflow", () => {
 
     const findings = await lintVault(rootDir);
     expect(findings.some((finding) => finding.code === "stale_page" && finding.message.includes("vault schema changed"))).toBe(true);
-  }, 180_000);
+  });
 
   it("normalizes non-canonical deep-lint severity labels from provider output", async () => {
     const rootDir = await createTempWorkspace();
@@ -2835,11 +2773,11 @@ describe("swarmvault workflow", () => {
     await ingestInput(rootDir, "notes.md");
     await compileVault(rootDir);
 
-    const findings = await lintVault(rootDir, { deep: true }, 180_000);
+    const findings = await lintVault(rootDir, { deep: true });
     expect(findings.some((finding) => finding.message === "Needs broader coverage." && finding.severity === "warning")).toBe(true);
     expect(findings.some((finding) => finding.message === "A citation is required." && finding.severity === "error")).toBe(true);
     expect(findings.some((finding) => finding.message === "Investigate a related angle." && finding.severity === "info")).toBe(true);
-  }, 180_000);
+  });
 
   it("exposes vault operations through the MCP server", async () => {
     const rootDir = await createTempWorkspace();
@@ -2855,7 +2793,7 @@ describe("swarmvault workflow", () => {
     await compileVault(rootDir);
 
     const server = await createMcpServer(rootDir);
-    const client = new Client({ name: "swarmvault-test-client", version: "1.0.0" }, 180_000);
+    const client = new Client({ name: "swarmvault-test-client", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -2868,64 +2806,52 @@ describe("swarmvault workflow", () => {
     expect(tools.tools.some((tool) => tool.name === "retrieval_status")).toBe(true);
     expect(tools.tools.some((tool) => tool.name === "doctor_vault")).toBe(true);
 
-    const workspaceInfo = await client.callTool({ name: "workspace_info", arguments: {} }, 180_000);
+    const workspaceInfo = await client.callTool({ name: "workspace_info", arguments: {} });
     const workspaceContent = workspaceInfo.content as ToolContent;
     expect(workspaceContent[0]?.type).toBe("text");
     expect(JSON.parse(workspaceContent[0]?.text ?? "{}").rootDir).toBe(rootDir);
     expect(JSON.parse(workspaceContent[0]?.text ?? "{}").schemaPath).toBe(path.join(rootDir, "swarmvault.schema.md"));
 
-    const searchResults = await client.callTool({ name: "search_pages", arguments: { query: "wiki search", limit: 5 } }, 180_000);
+    const searchResults = await client.callTool({ name: "search_pages", arguments: { query: "wiki search", limit: 5 } });
     const searchContent = searchResults.content as ToolContent;
     const parsedSearchResults = JSON.parse(searchContent[0]?.text ?? "[]") as Array<{ title?: string; path?: string }>;
     expect(parsedSearchResults.length).toBeGreaterThan(0);
     expect(typeof parsedSearchResults[0]?.title).toBe("string");
     expect(typeof parsedSearchResults[0]?.path).toBe("string");
 
-    const chartQuery = await client.callTool(
-      {
-        name: "query_vault",
-        arguments: { question: "Show this note as a chart", save: false, format: "chart" }
-      },
-      180_000
-    );
+    const chartQuery = await client.callTool({
+      name: "query_vault",
+      arguments: { question: "Show this note as a chart", save: false, format: "chart" }
+    });
     const chartContent = chartQuery.content as ToolContent;
     expect(JSON.parse(chartContent[0]?.text ?? "{}").outputFormat).toBe("chart");
 
-    const unsavedQuery = await client.callTool(
-      {
-        name: "query_vault",
-        arguments: { question: "Summarize MCP optional response fields", save: false }
-      },
-      180_000
-    );
+    const unsavedQuery = await client.callTool({
+      name: "query_vault",
+      arguments: { question: "Summarize MCP optional response fields", save: false }
+    });
     const unsavedContent = unsavedQuery.content as ToolContent;
     const parsedUnsavedQuery = JSON.parse(unsavedContent[0]?.text ?? "{}") as { savedPath?: string | null };
     expect(parsedUnsavedQuery.savedPath).toBeNull();
 
-    const untargetedContextPack = await client.callTool(
-      {
-        name: "build_context_pack",
-        arguments: { goal: "Prepare MCP context without a target", budgetTokens: 300 }
-      },
-      180_000
-    );
+    const untargetedContextPack = await client.callTool({
+      name: "build_context_pack",
+      arguments: { goal: "Prepare MCP context without a target", budgetTokens: 300 }
+    });
     const untargetedContextContent = untargetedContextPack.content as ToolContent;
     const parsedUntargetedContext = JSON.parse(untargetedContextContent[0]?.text ?? "{}") as {
       pack?: { target?: string | null };
     };
     expect(parsedUntargetedContext.pack?.target).toBeNull();
 
-    const hyphenatedContextPack = await client.callTool(
-      {
-        name: "build_context_pack",
-        arguments: {
-          goal: "Review distributionally robust receive combining",
-          target: "concept:distributionally-robust-receive-combining",
-          budgetTokens: 300
-        }
-      },
-      180_000
-    );
+    const hyphenatedContextPack = await client.callTool({
+      name: "build_context_pack",
+      arguments: {
+        goal: "Review distributionally robust receive combining",
+        target: "concept:distributionally-robust-receive-combining",
+        budgetTokens: 300
+      }
+    });
     const hyphenatedContextContent = hyphenatedContextPack.content as ToolContent;
     const parsedHyphenatedContext = JSON.parse(hyphenatedContextContent[0]?.text ?? "{}") as {
       isError?: boolean;
@@ -2934,127 +2860,109 @@ describe("swarmvault workflow", () => {
     expect(parsedHyphenatedContext.isError).not.toBe(true);
     expect(parsedHyphenatedContext.pack?.target).toBe("concept:distributionally-robust-receive-combining");
 
-    const memoryStart = await client.callTool(
-      {
-        name: "start_memory_task",
-        arguments: { goal: "Remember MCP task work", target: "notes.md", budgetTokens: 300, agent: "test-client" }
-      },
-      180_000
-    );
+    const memoryStart = await client.callTool({
+      name: "start_memory_task",
+      arguments: { goal: "Remember MCP task work", target: "notes.md", budgetTokens: 300, agent: "test-client" }
+    });
     const memoryStartContent = memoryStart.content as ToolContent;
     const memoryTaskId = JSON.parse(memoryStartContent[0]?.text ?? "{}").task.id as string;
     expect(memoryTaskId).toBeTruthy();
 
-    const memoryStartWithoutOptionals = await client.callTool(
-      {
-        name: "start_memory_task",
-        arguments: { goal: "Remember MCP task work without optionals", budgetTokens: 300 }
-      },
-      180_000
-    );
+    const memoryStartWithoutOptionals = await client.callTool({
+      name: "start_memory_task",
+      arguments: { goal: "Remember MCP task work without optionals", budgetTokens: 300 }
+    });
     const parsedMemoryStartWithoutOptionals = JSON.parse((memoryStartWithoutOptionals.content as ToolContent)[0]?.text ?? "{}") as {
       task?: { target?: string | null; agent?: string | null };
     };
     expect(parsedMemoryStartWithoutOptionals.task?.target).toBeNull();
     expect(parsedMemoryStartWithoutOptionals.task?.agent).toBeNull();
 
-    const memoryUpdate = await client.callTool(
-      {
-        name: "update_memory_task",
-        arguments: { id: memoryTaskId, decision: "MCP memory tools mirror the CLI.", changedPath: "notes.md" }
-      },
-      180_000
-    );
+    const memoryUpdate = await client.callTool({
+      name: "update_memory_task",
+      arguments: { id: memoryTaskId, decision: "MCP memory tools mirror the CLI.", changedPath: "notes.md" }
+    });
     expect(JSON.parse((memoryUpdate.content as ToolContent)[0]?.text ?? "{}").task.decisions.length).toBe(1);
 
-    const memoryFinish = await client.callTool(
-      {
-        name: "finish_memory_task",
-        arguments: { id: memoryTaskId, outcome: "MCP memory lifecycle passed.", followUp: "Compile memory graph nodes." }
-      },
-      180_000
-    );
+    const memoryFinish = await client.callTool({
+      name: "finish_memory_task",
+      arguments: { id: memoryTaskId, outcome: "MCP memory lifecycle passed.", followUp: "Compile memory graph nodes." }
+    });
     expect(JSON.parse((memoryFinish.content as ToolContent)[0]?.text ?? "{}").task.status).toBe("completed");
 
-    const memoryList = await client.callTool({ name: "list_memory_tasks", arguments: {} }, 180_000);
+    const memoryList = await client.callTool({ name: "list_memory_tasks", arguments: {} });
     expect(JSON.parse((memoryList.content as ToolContent)[0]?.text ?? "[]").some((task: { id: string }) => task.id === memoryTaskId)).toBe(
       true
     );
 
-    const memoryRead = await client.callTool({ name: "read_memory_task", arguments: { id: memoryTaskId } }, 180_000);
+    const memoryRead = await client.callTool({ name: "read_memory_task", arguments: { id: memoryTaskId } });
     expect(JSON.parse((memoryRead.content as ToolContent)[0]?.text ?? "{}").id).toBe(memoryTaskId);
 
-    const memoryResume = await client.callTool({ name: "resume_memory_task", arguments: { id: memoryTaskId, format: "llms" } }, 180_000);
+    const memoryResume = await client.callTool({ name: "resume_memory_task", arguments: { id: memoryTaskId, format: "llms" } });
     expect(JSON.parse((memoryResume.content as ToolContent)[0]?.text ?? "{}").rendered).toContain("Agent Task Resume");
 
-    const taskStart = await client.callTool(
-      {
-        name: "start_task",
-        arguments: { goal: "Remember MCP task alias work", target: "notes.md", agent: "test-client" }
-      },
-      180_000
-    );
+    const taskStart = await client.callTool({
+      name: "start_task",
+      arguments: { goal: "Remember MCP task alias work", target: "notes.md", agent: "test-client" }
+    });
     const taskId = JSON.parse((taskStart.content as ToolContent)[0]?.text ?? "{}").task.id as string;
     expect(taskId).toBeTruthy();
 
-    const taskStartWithoutOptionals = await client.callTool(
-      {
-        name: "start_task",
-        arguments: { goal: "Remember MCP task alias work without optionals", budgetTokens: 300 }
-      },
-      180_000
-    );
+    const taskStartWithoutOptionals = await client.callTool({
+      name: "start_task",
+      arguments: { goal: "Remember MCP task alias work without optionals", budgetTokens: 300 }
+    });
     const parsedTaskStartWithoutOptionals = JSON.parse((taskStartWithoutOptionals.content as ToolContent)[0]?.text ?? "{}") as {
       task?: { target?: string | null; agent?: string | null };
     };
     expect(parsedTaskStartWithoutOptionals.task?.target).toBeNull();
     expect(parsedTaskStartWithoutOptionals.task?.agent).toBeNull();
 
-    const taskStatus = await client.callTool({ name: "retrieval_status", arguments: {} }, 180_000);
+    const taskStatus = await client.callTool({ name: "retrieval_status", arguments: {} });
     expect(JSON.parse((taskStatus.content as ToolContent)[0]?.text ?? "{}").configured.backend).toBe("sqlite");
 
-    const doctorStatus = await client.callTool({ name: "doctor_vault", arguments: {} }, 180_000);
+    const doctorStatus = await client.callTool({ name: "doctor_vault", arguments: {} });
     const parsedDoctor = JSON.parse((doctorStatus.content as ToolContent)[0]?.text ?? "{}") as { checks?: Array<{ id: string }> };
     expect(parsedDoctor.checks?.some((check) => check.id === "graph")).toBe(true);
 
-    const configResource = await client.readResource({ uri: "swarmvault://config" }, 180_000);
+    const configResource = await client.readResource({ uri: "swarmvault://config" });
     expect(configResource.contents[0]?.uri).toBe("swarmvault://config");
     expect((configResource.contents[0] as { text: string }).text).toContain('"inboxDir"');
 
-    const schemaResource = await client.readResource({ uri: "swarmvault://schema" }, 180_000);
+    const schemaResource = await client.readResource({ uri: "swarmvault://schema" });
     expect(schemaResource.contents[0]?.uri).toBe("swarmvault://schema");
     expect((schemaResource.contents[0] as { text: string }).text).toContain("# SwarmVault Schema");
 
-    const sessionsResource = await client.readResource({ uri: "swarmvault://sessions" }, 180_000);
+    const sessionsResource = await client.readResource({ uri: "swarmvault://sessions" });
     expect((sessionsResource.contents[0] as { text: string }).text).toContain("compile");
 
-    const memoryResource = await client.readResource({ uri: "swarmvault://memory-tasks" }, 180_000);
+    const memoryResource = await client.readResource({ uri: "swarmvault://memory-tasks" });
     expect((memoryResource.contents[0] as { text: string }).text).toContain(memoryTaskId);
 
-    const taskResource = await client.readResource({ uri: "swarmvault://tasks" }, 180_000);
+    const taskResource = await client.readResource({ uri: "swarmvault://tasks" });
     expect((taskResource.contents[0] as { text: string }).text).toContain(taskId);
 
     // A failing tool handler (e.g. get_node with an unknown target) must not
     // crash the server. The safeHandler wrapper should return an MCP error
     // response and the session should stay alive for subsequent tool calls.
-    const unresolved = await client.callTool({ name: "get_node", arguments: { target: "definitely-not-in-the-graph" } }, 180_000);
+    const unresolved = await client.callTool({ name: "get_node", arguments: { target: "definitely-not-in-the-graph" } });
     expect(unresolved.isError).toBe(true);
     const unresolvedContent = unresolved.content as ToolContent;
     expect(unresolvedContent[0]?.text).toMatch(/could not resolve/i);
 
     // After the failing call the server should still answer healthy tools.
-    const postFailureInfo = await client.callTool({ name: "workspace_info", arguments: {} }, 180_000);
+    const postFailureInfo = await client.callTool({ name: "workspace_info", arguments: {} });
     const postFailureContent = postFailureInfo.content as ToolContent;
     expect(JSON.parse(postFailureContent[0]?.text ?? "{}").rootDir).toBe(rootDir);
 
     await client.close();
     await server.close();
-  }, 180_000);
+  });
 
   it("watches the inbox and records automation runs", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    const controller = await watchVault(rootDir, { lint: true, debounceMs: 100 }, 180_000);
+    const controller = await watchVault(rootDir, { lint: true, debounceMs: 100 });
 
     try {
       await fs.writeFile(
@@ -3083,7 +2991,7 @@ describe("swarmvault workflow", () => {
         .trim()
         .split("\n")
         .filter(Boolean)
-        .map((line) => JSON.parse(line) as { success: boolean; importedCount: number }, 180_000);
+        .map((line) => JSON.parse(line) as { success: boolean; importedCount: number });
 
       expect(runs.length).toBeGreaterThan(0);
       expect(runs.at(-1)?.success).toBe(true);
@@ -3099,8 +3007,8 @@ describe("swarmvault workflow", () => {
   it("watches tracked repos and recompiles code changes", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
-    await fs.mkdir(path.join(rootDir, "repo", ".git"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, "repo", "src"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, "repo", ".git"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, "repo", "src"), { recursive: true });
     await fs.writeFile(path.join(rootDir, "repo", "src", "util.py"), "def helper(name):\n    return name.upper()\n", "utf8");
     await fs.writeFile(
       path.join(rootDir, "repo", "src", "app.py"),
@@ -3112,7 +3020,7 @@ describe("swarmvault workflow", () => {
     const utilManifest = result.imported.find((manifest) => manifest.originalPath?.endsWith("src/util.py"));
     await compileVault(rootDir);
 
-    const controller = await watchVault(rootDir, { repo: true, debounceMs: 100 }, 180_000);
+    const controller = await watchVault(rootDir, { repo: true, debounceMs: 100 });
     try {
       await fs.writeFile(path.join(rootDir, "repo", "src", "util.py"), "def helper(name):\n    return f'watched:{name}'\n", "utf8");
 
@@ -3130,7 +3038,7 @@ describe("swarmvault workflow", () => {
         .trim()
         .split("\n")
         .filter(Boolean)
-        .map((line) => JSON.parse(line) as { success: boolean; importedCount: number }, 180_000);
+        .map((line) => JSON.parse(line) as { success: boolean; importedCount: number });
       expect(runs.at(-1)?.success).toBe(true);
       expect((runs.at(-1)?.importedCount ?? 0) > 0).toBe(true);
     } finally {
@@ -3142,8 +3050,8 @@ describe("swarmvault workflow", () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
 
-    await fs.mkdir(path.join(rootDir, "repo", ".git"), { recursive: true }, 180_000);
-    await fs.mkdir(path.join(rootDir, "repo", "docs"), { recursive: true }, 180_000);
+    await fs.mkdir(path.join(rootDir, "repo", ".git"), { recursive: true });
+    await fs.mkdir(path.join(rootDir, "repo", "docs"), { recursive: true });
     await fs.writeFile(
       path.join(rootDir, "repo", "docs", "guide.md"),
       ["# Repo Guide", "", "Initial repo documentation."].join("\n"),
@@ -3166,7 +3074,7 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
 
-    const cycle = await runWatchCycle(rootDir, { repo: true, debounceMs: 50 }, 180_000);
+    const cycle = await runWatchCycle(rootDir, { repo: true, debounceMs: 50 });
     expect(cycle.pendingSemanticRefreshCount).toBe(1);
     expect(cycle.pendingSemanticRefreshPaths.some((entry) => entry.endsWith("docs/guide.md"))).toBe(true);
 
@@ -3176,7 +3084,7 @@ describe("swarmvault workflow", () => {
 
     const sourcePage = matter(await fs.readFile(path.join(rootDir, "wiki", "sources", `${guideManifest?.sourceId}.md`), "utf8"));
     expect(sourcePage.data.freshness).toBe("stale");
-  }, 180_000);
+  });
 
   it("includes tags field in analysis and page frontmatter after compile", async () => {
     const rootDir = await createTempWorkspace();
@@ -3205,7 +3113,7 @@ describe("swarmvault workflow", () => {
     const parsed = matter(await fs.readFile(sourcePagePath, "utf8"));
     expect(Array.isArray(parsed.data.tags)).toBe(true);
     expect(parsed.data.tags).toContain("source");
-  }, 180_000);
+  });
 
   it("propagates tags from analysis onto source nodes in graph.json", async () => {
     const rootDir = await createTempWorkspace();
@@ -3230,7 +3138,7 @@ describe("swarmvault workflow", () => {
     expect(sourceNode).toBeDefined();
     expect(sourceNode).toHaveProperty("tags");
     expect(Array.isArray(sourceNode?.tags)).toBe(true);
-  }, 180_000);
+  });
 
   it("detects contradictions between opposing claims across sources", async () => {
     const rootDir = await createTempWorkspace();
@@ -3254,7 +3162,7 @@ describe("swarmvault workflow", () => {
     expect(conflictedEdges[0].evidenceClass).toBe("ambiguous");
     const report = await fs.readFile(path.join(rootDir, "wiki", "graph", "report.md"), "utf8");
     expect(report).toContain("Contradictions");
-  }, 180_000);
+  });
 
   it("lint --conflicts surfaces deterministic contradiction findings", async () => {
     const rootDir = await createTempWorkspace();
@@ -3272,10 +3180,10 @@ describe("swarmvault workflow", () => {
     await ingestInput(rootDir, "yes.md");
     await ingestInput(rootDir, "no.md");
     await compileVault(rootDir);
-    const findings = await lintVault(rootDir, { deep: false, web: false, conflicts: true }, 180_000);
+    const findings = await lintVault(rootDir, { deep: false, web: false, conflicts: true });
     const contradictionFindings = findings.filter((f) => f.code === "contradiction");
     expect(contradictionFindings.length).toBeGreaterThan(0);
-  }, 180_000);
+  });
 
   it("review show includes a change summary for approval entries", async () => {
     const rootDir = await createTempWorkspace();
@@ -3289,7 +3197,7 @@ describe("swarmvault workflow", () => {
       "utf8"
     );
     await ingestInput(rootDir, "evolving.md");
-    await compileVault(rootDir, { approve: true }, 180_000);
+    await compileVault(rootDir, { approve: true });
     const approvals = await listApprovals(rootDir);
     expect(approvals.length).toBeGreaterThan(0);
     const detail = await readApproval(rootDir, approvals[0].approvalId);
@@ -3298,7 +3206,7 @@ describe("swarmvault workflow", () => {
     expect(updatedEntries[0].changeSummary).toBeDefined();
     expect(typeof updatedEntries[0].changeSummary).toBe("string");
     expect(updatedEntries[0].changeSummary!.length).toBeGreaterThan(0);
-  }, 180_000);
+  });
 
   it("review show with diff option includes unified diff output", async () => {
     const rootDir = await createTempWorkspace();
@@ -3308,15 +3216,15 @@ describe("swarmvault workflow", () => {
     await compileVault(rootDir);
     await fs.writeFile(path.join(rootDir, "diffme.md"), "# Original\n\nLine one changed.\nLine two.\nLine three added.", "utf8");
     await ingestInput(rootDir, "diffme.md");
-    await compileVault(rootDir, { approve: true }, 180_000);
+    await compileVault(rootDir, { approve: true });
     const approvals = await listApprovals(rootDir);
-    const detail = await readApproval(rootDir, approvals[0].approvalId, { diff: true }, 180_000);
+    const detail = await readApproval(rootDir, approvals[0].approvalId, { diff: true });
     const updatedEntries = detail.entries.filter((e) => e.changeType === "update");
     expect(updatedEntries.length).toBeGreaterThan(0);
     expect(updatedEntries[0].diff).toBeDefined();
     expect(updatedEntries[0].diff).toContain("---");
     expect(updatedEntries[0].diff).toContain("+++");
-  }, 180_000);
+  });
 
   it("ignores operational markdown frontmatter changes when semantic content is unchanged", async () => {
     const rootDir = await createTempWorkspace();
@@ -3341,7 +3249,7 @@ describe("swarmvault workflow", () => {
 
     const compile = await compileVault(rootDir);
     expect(compile.changedPages).toEqual([]);
-  }, 180_000);
+  });
 
   it("falls back to legacy source_hashes when source_semantic_hashes are absent", async () => {
     const rootDir = await createTempWorkspace();
@@ -3362,7 +3270,7 @@ describe("swarmvault workflow", () => {
 
     const findings = await lintVault(rootDir);
     expect(findings.some((finding) => finding.code === "stale_page" && finding.pagePath === sourcePagePath)).toBe(true);
-  }, 180_000);
+  });
 
   it("scopes uncited_claims lint to the Claims section only", async () => {
     const rootDir = await createTempWorkspace();
@@ -3412,7 +3320,7 @@ describe("swarmvault workflow", () => {
 
     const dirtyFindings = await lintVault(rootDir);
     expect(dirtyFindings.some((finding) => finding.code === "uncited_claims" && finding.pagePath === sourcePagePath)).toBe(true);
-  }, 180_000);
+  });
 
   it("does not fire uncited_claims on the 'No claims extracted.' placeholder bullet", async () => {
     const rootDir = await createTempWorkspace();
@@ -3445,7 +3353,7 @@ describe("swarmvault workflow", () => {
 
     const findings = await lintVault(rootDir);
     expect(findings.some((finding) => finding.code === "uncited_claims" && finding.pagePath === sourcePagePath)).toBe(false);
-  }, 180_000);
+  });
 
   it("does not fire uncited_claims when ## Claims appears only inside embedded source text", async () => {
     const rootDir = await createTempWorkspace();
@@ -3491,12 +3399,12 @@ describe("swarmvault workflow", () => {
       "# Embedded Source text ## Summary Something. ## Claims - inline bullet with no citation - another inline bullet",
       ""
     ].join("\n");
-    await fs.mkdir(path.dirname(outputPath), { recursive: true }, 180_000);
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, matter.stringify(body, frontmatter), "utf8");
 
     const findings = await lintVault(rootDir);
     expect(findings.some((finding) => finding.code === "uncited_claims" && finding.pagePath === outputPath)).toBe(false);
-  }, 180_000);
+  });
 
   it("rejects sibling-prefix path traversal in readPage", async () => {
     const rootDir = await createTempWorkspace();
@@ -3505,12 +3413,12 @@ describe("swarmvault workflow", () => {
     // Create a sibling directory whose name shares a prefix with the wiki
     // directory. A naive startsWith(wikiDir) fence would be bypassed here.
     const siblingDir = path.join(rootDir, "wiki-evil");
-    await fs.mkdir(siblingDir, { recursive: true }, 180_000);
+    await fs.mkdir(siblingDir, { recursive: true });
     await fs.writeFile(path.join(siblingDir, "secret.md"), "top-secret-content", "utf8");
 
     const page = await readPage(rootDir, "../wiki-evil/secret.md");
     expect(page).toBeNull();
-  }, 180_000);
+  });
 
   it("returns null from readPage for empty or directory paths", async () => {
     const rootDir = await createTempWorkspace();
@@ -3520,21 +3428,21 @@ describe("swarmvault workflow", () => {
     // and surface EISDIR when trying to read it.
     expect(await readPage(rootDir, "")).toBeNull();
     expect(await readPage(rootDir, "sources")).toBeNull();
-  }, 180_000);
+  });
 
   it("rejects empty or whitespace-only query questions", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
     await expect(queryVault(rootDir, { question: "" })).rejects.toThrow(/Query question is required/);
     await expect(queryVault(rootDir, { question: "   \t\n " })).rejects.toThrow(/Query question is required/);
-  }, 180_000);
+  });
 
   it("rejects empty or whitespace-only exploration questions", async () => {
     const rootDir = await createTempWorkspace();
     await initVault(rootDir);
     await expect(exploreVault(rootDir, { question: "" })).rejects.toThrow(/Explore question is required/);
     await expect(exploreVault(rootDir, { question: "   " })).rejects.toThrow(/Explore question is required/);
-  }, 180_000);
+  });
 
   it("rejects empty or whitespace-only graph query questions", async () => {
     const rootDir = await createTempWorkspace();
@@ -3542,7 +3450,7 @@ describe("swarmvault workflow", () => {
     await compileVault(rootDir);
     await expect(queryGraphVault(rootDir, "")).rejects.toThrow(/Graph query question is required/);
     await expect(queryGraphVault(rootDir, "   ")).rejects.toThrow(/Graph query question is required/);
-  }, 180_000);
+  });
 
   it("loads a swarmvault.config.json that omits the viewer block by defaulting to port 4123", async () => {
     const rootDir = await createTempWorkspace();
@@ -3581,5 +3489,5 @@ describe("swarmvault workflow", () => {
 
     const { config } = await loadVaultConfig(rootDir);
     expect(config.viewer.port).toBe(4123);
-  }, 180_000);
-}, 180_000);
+  });
+});

@@ -1,4 +1,4 @@
-// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode.
+// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { fromMarkdown } from "mdast-util-from-markdown";
 import type { SourceRationale } from "./types.js";
 import { normalizeWhitespace, truncate } from "./utils.js";

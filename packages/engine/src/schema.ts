@@ -1,4 +1,4 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity.
+// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: MEDIUM-HIGH (Near-leaf, Depth: 1/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { defaultVaultSchema, loadVaultConfig } from "./config.js";
