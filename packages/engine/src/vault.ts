@@ -5400,6 +5400,7 @@ async function runConfiguredBenchmark(rootDir: string, config: VaultConfig): Pro
  * @param options - Compilation configuration.
  * @returns The final state and graph result of the compilation.
  */
+// TODO: PORT_TO_GO {rationale: High sidecar spawn overhead during compilation due to bridging granular file system operations (fileExists, readJsonFile, etc.) inside the loop. Port compileVault to reduce IPC overhead.}
 export async function compileVault(rootDir: string, options: CompileOptions = {}): Promise<CompileResult> {
   const startedAt = new Date().toISOString();
   const { config, paths } = await initWorkspace(rootDir);

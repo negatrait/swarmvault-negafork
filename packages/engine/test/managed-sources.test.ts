@@ -202,7 +202,7 @@ describe("managed sources", () => {
 
     const second = await addManagedSource(rootDir, filePath);
     expect(second.source.id).toBe(first.source.id);
-    // TODO: Fix logic to complete the test, see CHANGELOG.md v.0.6.5
+    // TODO: PORT_TO_GO {rationale: This test times out due to sidecar spawn overhead from internal TS loops. Fix FileExists("") logic parity applied, but full migration needed to pass within timeout.}
     expect(second.source.changed).toBe(false);
     expect(second.compile).toBeUndefined();
     expect(second.briefGenerated).toBe(false);

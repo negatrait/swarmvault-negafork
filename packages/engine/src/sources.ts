@@ -2125,6 +2125,7 @@ function shouldCompile(changedSources: ManagedSourceRecord[], graphExists: boole
   return compileRequested && (!graphExists || changedSources.length > 0);
 }
 
+// TODO: PORT_TO_GO {rationale: High sidecar spawn overhead. FileExists("") logic disparity caused the original test assertion failure where briefGenerated was unexpectedly true. The Go FileExists fix handles empty string parity, but IPC overhead still causes timeouts.}
 async function shouldRefreshBriefForManagedSource(
   source: ManagedSourceRecord,
   options: { compilePerformed: boolean; changed: boolean }
@@ -2143,6 +2144,7 @@ export async function listManagedSourceRecords(rootDir: string): Promise<Managed
   return await loadManagedSources(rootDir);
 }
 
+// TODO: PORT_TO_GO {rationale: High sidecar spawn overhead during test execution due to bridging granular file system operations (fileExists, readJsonFile, etc.). Port addManagedSource to Go to reduce IPC overhead and timeout failures.}
 export async function addManagedSource(
   rootDir: string,
   input: string,

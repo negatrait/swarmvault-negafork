@@ -17,6 +17,9 @@ func EnsureDir(dirPath string) error {
 }
 
 func FileExists(filePath string) (bool, error) {
+	if filePath == "" {
+		return false, nil
+	}
 	_, err := os.Stat(filePath)
 	if err == nil {
 		return true, nil
