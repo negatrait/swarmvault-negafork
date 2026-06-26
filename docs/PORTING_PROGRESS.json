@@ -105,7 +105,7 @@
     },
     {
       "path": "src/findings.ts",
-      "status": "bridged",
+      "status": "completed",
       "subcommand": "findings",
       "bridged": true
     },
