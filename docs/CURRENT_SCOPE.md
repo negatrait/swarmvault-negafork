@@ -1,22 +1,22 @@
-# Daily Porting Scope: tokenize
+# Daily Porting Scope: large-repo-defaults
 
 ## 1. Goal
-Port the stateless utility file `packages/engine/src/tokenize.ts` to Go. This file is a pure leaf node and its entire contents (under 150 lines) will be ported in a single run. The physical audit of the Go codebase revealed NO stubs, TODOs, fakes or mocks. We are cleared to progress according to Scenario A of the migration decision tree.
-  - **Metrics:** `internal/parser/tokenize.go` created. The functions `tokenize` and `contentTokens` are fully implemented in Go.
-  - **Pitfalls:** Ensure parity with the regex fallback tokenization since compromise NLP is not easily replicated in Go. As indicated by the fallback, `[a-z0-9][a-z0-9-]{1,}` is the regex pattern to be used.
+Port the stateless utility file `packages/engine/src/large-repo-defaults.ts` to Go. This file is a pure leaf node and its entire contents (around 100 lines) will be ported in a single run. The physical audit of the Go codebase revealed NO stubs, TODOs, fakes or mocks. We are cleared to progress according to Scenario A of the migration decision tree.
+  - **Metrics:** `internal/config/large_repo_defaults.go` created. The function `resolveLargeRepoDefaults` is fully implemented in Go.
+  - **Pitfalls:** Ensure exact parity with the math/floor calculations for similarity thresholds.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/tokenize.ts`
-- **Source Export(s):** `function tokenize(...)`, `function contentTokens(...)`
-- **Target File:** `internal/parser/tokenize.go`
-- **Target Export:** `func Tokenize(...)`, `func ContentTokens(...)`
+- **Source File:** `packages/engine/src/large-repo-defaults.ts`
+- **Source Export(s):** `function resolveLargeRepoDefaults(...)`
+- **Target File:** `internal/config/large_repo_defaults.go`
+- **Target Export:** `func ResolveLargeRepoDefaults(...)`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native parser` (or generic handler in `cmd/swarmvault-native`)
-- **TS Delegation Call:** Update `packages/engine/src/tokenize.ts` to route execution for the function through the centralized `runGoSidecarSync` wrapper using specific action payloads (e.g., `action: "tokenize"` and `action: "contentTokens"`).
+- **CLI Subcommand:** `swarmvault-native config` (or generic handler in `cmd/swarmvault-native`)
+- **TS Delegation Call:** Update `packages/engine/src/large-repo-defaults.ts` to route execution for the function through the centralized `runGoSidecarSync` wrapper using specific action payloads (e.g., `action: "resolveLargeRepoDefaults"`).
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard Go libraries only (`regexp`, `strings`). No external dependencies or stubs are needed.
+- **Verified Go Dependencies:** Standard Go libraries only (`math`). No external dependencies or stubs are needed.
 - **Go-to-Go Native Imports:** None required. This is a pure leaf.
 - **Transitive Blocks:** Stubbing is strictly forbidden. The logic must be fully implemented in Go.
 
