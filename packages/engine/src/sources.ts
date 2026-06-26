@@ -2160,6 +2160,7 @@ export async function addManagedSource(
   const source: ManagedSourceRecord = existing
     ? {
         ...existing,
+        changed: existing.changed,
         branch: resolved.kind === "github_repo" ? resolved.branch : existing.branch,
         ref: resolved.kind === "github_repo" ? resolved.ref : existing.ref,
         checkoutDir: resolved.kind === "github_repo" ? (resolved.checkoutDir ?? existing.checkoutDir) : existing.checkoutDir
