@@ -447,9 +447,9 @@
     },
     {
       "path": "src/tokenize.ts",
-      "status": "active",
+      "status": "completed",
       "subcommand": "parser",
-      "bridged": false
+      "bridged": true
     },
     {
       "path": "src/types.ts",

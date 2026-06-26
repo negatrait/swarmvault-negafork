@@ -1,3 +1,5 @@
+env:
+  SWARMVAULT_LIVE_SMOKE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
 name: Live Smoke
 
 on:
