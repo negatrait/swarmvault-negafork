@@ -447,8 +447,8 @@
     },
     {
       "path": "src/tokenize.ts",
-      "status": "pending",
-      "subcommand": null,
+      "status": "active",
+      "subcommand": "parser",
       "bridged": false
     },
     {
