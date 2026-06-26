@@ -163,7 +163,7 @@ func handleUtilsFsOpsBasic(action string, rawArgs json.RawMessage) error {
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
 			return fmt.Errorf("error decoding args: %w", err)
 		}
-		result, err := utils.ReadJsonFile[any](args.FilePath)
+		result, err := utils.ReadJsonFile[json.RawMessage](args.FilePath)
 		if err != nil {
 			return err
 		}
@@ -172,8 +172,8 @@ func handleUtilsFsOpsBasic(action string, rawArgs json.RawMessage) error {
 		}
 	case "writeJsonFile":
 		var args struct {
-			FilePath string `json:"filePath"`
-			Value    any    `json:"value"`
+			FilePath string          `json:"filePath"`
+			Value    json.RawMessage `json:"value"`
 		}
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
 			return fmt.Errorf("error decoding args: %w", err)
@@ -192,8 +192,8 @@ func handleUtilsFsOpsAdvanced(action string, rawArgs json.RawMessage) error {
 	switch action {
 	case "appendJsonLine":
 		var args struct {
-			FilePath string `json:"filePath"`
-			Value    any    `json:"value"`
+			FilePath string          `json:"filePath"`
+			Value    json.RawMessage `json:"value"`
 		}
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
 			return fmt.Errorf("error decoding args: %w", err)
