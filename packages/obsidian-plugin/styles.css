@@ -11,10 +11,18 @@
   display: inline-block;
 }
 
-.swarmvault-status-bar__dot--fresh { background: var(--color-green); }
-.swarmvault-status-bar__dot--stale { background: var(--color-orange); }
-.swarmvault-status-bar__dot--outdated { background: var(--color-red); }
-.swarmvault-status-bar__dot--unknown { background: var(--text-muted); }
+.swarmvault-status-bar__dot--fresh {
+  background: var(--color-green);
+}
+.swarmvault-status-bar__dot--stale {
+  background: var(--color-orange);
+}
+.swarmvault-status-bar__dot--outdated {
+  background: var(--color-red);
+}
+.swarmvault-status-bar__dot--unknown {
+  background: var(--text-muted);
+}
 
 .swarmvault-stale {
   opacity: 0.6;
