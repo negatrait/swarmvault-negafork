@@ -1,1 +1,0 @@
-The commit is successfully created on branch port/daily-scope, which targets staging.

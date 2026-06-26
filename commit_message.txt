@@ -1,6 +1,0 @@
-style(refactor): weekly architectural cleanup and patternization of Go modules
-
-*   🎯 **What:** The duplicated utilities removed, standard library replacements made (`min`, `max`, `cmp.Compare` instead of `math.Min/Max` and `strings.Compare`), `any` substituted for `interface{}`, and Go command files refactored to remove all `os.Exit(1)` calls inside of `internal/cmd/*.go` sub-handlers.
-*   💡 **Why:** This improves the maintainability and readability of the Go codebase, eliminating "agentic entropy" (e.g. unidiomatic loose typings, float conversions for ints, and process-crashing error handling).
-*   ✅ **Verification:** Confirmation of successful `go build`, package tests, and verification of the hybrid `install.sh` path (tested locally).
-*   ✨ **Result:** Clean, centralized packages and streamlined internal Go files with standard library replacements and solid error bubbling to `main.go`.
