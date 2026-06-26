@@ -249,7 +249,7 @@
     },
     {
       "path": "src/large-repo-defaults.ts",
-      "status": "pending",
+      "status": "active",
       "subcommand": null,
       "bridged": false
     },
