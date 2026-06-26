@@ -105,9 +105,9 @@
     },
     {
       "path": "src/findings.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "findings",
+      "bridged": true
     },
     {
       "path": "src/freshness.ts",
