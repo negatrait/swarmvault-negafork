@@ -1,4 +1,4 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
 import type { VaultConfig } from "./types.js";
 
 /**
@@ -66,6 +66,13 @@ export function resolveLargeRepoDefaults(input: {
   totalCommunities?: number;
   config?: VaultConfig | null;
 }): ResolvedLargeRepoDefaults {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<ResolvedLargeRepoDefaults>("config", {
+      action: "resolveLargeRepoDefaults",
+      args: input
+    });
+  }
+
   const nodeCount = Math.max(0, Math.floor(input.nodeCount));
   const totalCommunities = Math.max(0, Math.floor(input.totalCommunities ?? 0));
   const graphConfig = input.config?.graph;

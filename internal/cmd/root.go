@@ -23,6 +23,8 @@ func Execute() error {
 		return HandleBenchmark()
 	case "candidate-promotion":
 		return HandleCandidatePromotion()
+	case "config":
+		return HandleConfig()
 	case "utils":
 		return HandleUtils()
 	case "chat":
@@ -46,6 +48,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  auto-commit")
 	fmt.Fprintln(os.Stderr, "  benchmark")
 	fmt.Fprintln(os.Stderr, "  candidate-promotion")
+	fmt.Fprintln(os.Stderr, "  config")
 	fmt.Fprintln(os.Stderr, "  utils")
 	fmt.Fprintln(os.Stderr, "  chat")
 	fmt.Fprintln(os.Stderr, "  confidence")
