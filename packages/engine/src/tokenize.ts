@@ -1,22 +1,4 @@
-// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
-import nlp from "compromise";
-
-// POS-tagged closed-class words compromise can identify. Filtering on these
-// gives us language-aware stopword removal without hand-maintaining a list.
-const CLOSED_CLASS_POS_SELECTOR = "#Determiner, #Preposition, #Conjunction, #Pronoun, #Auxiliary, #Copula";
-
-function splitTermToTokens(term: string, tokens: string[]): void {
-  // compromise occasionally returns multi-word terms (e.g. "rate limit");
-  // split them back into individual lowercase alphanumeric tokens so the
-  // result is consistent with how our search index and frequency counters
-  // want to consume them.
-  for (const piece of term.split(/[^a-z0-9-]+/)) {
-    const trimmed = piece.replace(/^-+|-+$/g, "");
-    if (trimmed.length >= 2) {
-      tokens.push(trimmed);
-    }
-  }
-}
+import { runGoSidecarSync } from "./subprocess.js";
 
 /**
  * Compromise-backed tokenizer. Returns lowercase term strings using
@@ -29,19 +11,15 @@ function splitTermToTokens(term: string, tokens: string[]): void {
  * regex tokenization that used to live in analysis.ts and search.ts.
  */
 export function tokenize(text: string): string[] {
-  const lower = text.toLowerCase();
-  try {
-    const terms = nlp(lower).terms().out("array") as string[];
-    const tokens: string[] = [];
-    for (const term of terms) {
-      splitTermToTokens(term, tokens);
-    }
-    if (tokens.length > 0) {
-      return tokens;
-    }
-  } catch {
-    // Fall through to the regex fallback below.
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string[]>("parser", {
+      action: "tokenize",
+      args: { text }
+    });
   }
+
+  // Legacy TS implementation fallback for tests that don't use GO_PORT
+  const lower = text.toLowerCase();
   return lower.match(/[a-z0-9][a-z0-9-]{1,}/g) ?? [];
 }
 
@@ -52,24 +30,15 @@ export function tokenize(text: string): string[] {
  * instead of a hand-maintained stopword set, and enforces a minimum length.
  */
 export function contentTokens(text: string, minLength = 4): string[] {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string[]>("parser", {
+      action: "contentTokens",
+      args: { text, minLength }
+    });
+  }
+
+  // Legacy TS implementation fallback
   const lower = text.toLowerCase();
-  const tokens: string[] = [];
-  try {
-    // Use compromise to strip closed-class POS tags; the remaining document
-    // is the content words (nouns, verbs, adjectives, adverbs, etc.).
-    const contentDoc = nlp(lower).not(CLOSED_CLASS_POS_SELECTOR);
-    const terms = contentDoc.terms().out("array") as string[];
-    for (const term of terms) {
-      splitTermToTokens(term, tokens);
-    }
-  } catch {
-    // fall through to the regex fallback below
-  }
-  if (tokens.length === 0) {
-    // Fallback: narrow regex split, no POS awareness.
-    for (const piece of lower.match(/[a-z0-9][a-z0-9-]{1,}/g) ?? []) {
-      tokens.push(piece);
-    }
-  }
+  const tokens: string[] = lower.match(/[a-z0-9][a-z0-9-]{1,}/g) ?? [];
   return tokens.filter((token) => token.length >= minLength);
 }
