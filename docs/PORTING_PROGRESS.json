@@ -249,9 +249,9 @@
     },
     {
       "path": "src/large-repo-defaults.ts",
-      "status": "active",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "config",
+      "bridged": true
     },
     {
       "path": "src/logs.ts",
