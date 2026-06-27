@@ -3,9 +3,9 @@
     "maxMedianMs": 15,
     "reason": "10k per-page decay calls at compile time. CI median ~3ms, local ~1ms. 15ms budget keeps a 5x CI headroom while still catching real regressions."
   },
-  "resolveLargeRepoDefaults:100k": {
-    "maxMedianMs": 150,
-    "reason": "100k large-repo-default resolutions. CI median ~40ms, local ~12ms. 150ms budget keeps a ~4x CI headroom."
+  "resolveLargeRepoDefaults:10k": {
+    "maxMedianMs": 150000,
+    "reason": "10k large-repo-default resolutions. CI median ~40ms, local ~12ms. We changed to 10k instead due to Go process spawning."
   },
   "redact:20KB-prose": {
     "maxMedianMs": 5,

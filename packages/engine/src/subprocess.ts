@@ -1,46 +1,52 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+// Avoid dual CJS/ESM target __dirname issues
+function getDirname() {
+  try {
+    return new URL(".", import.meta.url).pathname;
+  } catch (_e) {
+    return process.cwd();
+  }
+}
+
 export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     // Resolve absolute path to avoid pnpm workspace cwd confusion
-    // import.meta.url points to dist/subprocess.js when built
-    /**
-     * We fall back to `__dirname` which is available in CJS outputs since the TypeScript compiler
-     * configuration (`module` set to ESNext) causes TS1343 errors on `import.meta.url`
-     * when compiled, and using ignores violates build constraints.
-     */
-    const _dirname = __dirname;
-
-    // In dev it's in packages/engine/src/subprocess.ts -> ../../../swarmvault-native
-    // In prod it's in packages/engine/dist/subprocess.js -> ../../../swarmvault-native
     const isWin = process.platform === "win32";
     const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
     const binaryPath = (() => {
-      // Check multiple locations for the binary
-      const workspaceRoot = path.resolve(_dirname, "..", "..", "..");
-      const binDir = path.resolve(workspaceRoot, "bin");
-
-      const candidates = [
-        path.join(binDir, binaryName),
-        path.join(workspaceRoot, binaryName),
-        path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName)
-      ];
+      // Find the binary by looking up from either the source or compiled file, or from cwd
+      let current = typeof __dirname !== "undefined" ? __dirname : getDirname();
+      while (current !== "/" && current !== path.parse(current).root) {
+        if (fs.existsSync(path.join(current, "bin", binaryName))) {
+          return path.join(current, "bin", binaryName);
+        }
+        if (fs.existsSync(path.join(current, binaryName))) {
+          return path.join(current, binaryName);
+        }
+        current = path.dirname(current);
+      }
+      current = process.cwd();
+      while (current !== "/" && current !== path.parse(current).root) {
+        if (fs.existsSync(path.join(current, "bin", binaryName))) {
+          return path.join(current, "bin", binaryName);
+        }
+        if (fs.existsSync(path.join(current, binaryName))) {
+          return path.join(current, binaryName);
+        }
+        current = path.dirname(current);
+      }
 
       const paths = (process.env.PATH || "").split(path.delimiter);
       for (const p of paths) {
-        if (p) candidates.push(path.join(p, binaryName));
+        if (p && fs.existsSync(path.join(p, binaryName))) return path.join(p, binaryName);
       }
+      const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
+      if (fs.existsSync(homeBin)) return homeBin;
 
-      for (const c of candidates) {
-        if (fs.existsSync(c)) {
-          return c;
-        }
-      }
-
-      return path.join(workspaceRoot, binaryName);
+      return path.join(process.cwd(), binaryName);
     })();
 
     // Explicitly define stdio routing
@@ -66,8 +72,8 @@ export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload
       }
       try {
         resolve(JSON.parse(stdout));
-      } catch (e) {
-        reject(new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${stdout}`));
+      } catch (_e) {
+        reject(new Error(`Failed to parse Go sidecar output: ${_e}\nOutput was: ${stdout}`));
       }
     });
 
@@ -80,37 +86,38 @@ export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload
 import { spawnSync } from "node:child_process";
 
 export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: unknown): T {
-  /**
-   * We fall back to `__dirname` which is available in CJS outputs since the TypeScript compiler
-   * configuration (`module` set to ESNext) causes TS1343 errors on `import.meta.url`
-   * when compiled, and using ignores violates build constraints.
-   */
-  const _dirname = __dirname;
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
   const binaryPath = (() => {
-    // Check multiple locations for the binary
-    const workspaceRoot = path.resolve(_dirname, "..", "..", "..");
-    const binDir = path.resolve(workspaceRoot, "bin");
-
-    const candidates = [
-      path.join(binDir, binaryName),
-      path.join(workspaceRoot, binaryName),
-      path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName)
-    ];
+    let current = typeof __dirname !== "undefined" ? __dirname : getDirname();
+    while (current !== "/" && current !== path.parse(current).root) {
+      if (fs.existsSync(path.join(current, "bin", binaryName))) {
+        return path.join(current, "bin", binaryName);
+      }
+      if (fs.existsSync(path.join(current, binaryName))) {
+        return path.join(current, binaryName);
+      }
+      current = path.dirname(current);
+    }
+    current = process.cwd();
+    while (current !== "/" && current !== path.parse(current).root) {
+      if (fs.existsSync(path.join(current, "bin", binaryName))) {
+        return path.join(current, "bin", binaryName);
+      }
+      if (fs.existsSync(path.join(current, binaryName))) {
+        return path.join(current, binaryName);
+      }
+      current = path.dirname(current);
+    }
 
     const paths = (process.env.PATH || "").split(path.delimiter);
     for (const p of paths) {
-      if (p) candidates.push(path.join(p, binaryName));
+      if (p && fs.existsSync(path.join(p, binaryName))) return path.join(p, binaryName);
     }
+    const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
+    if (fs.existsSync(homeBin)) return homeBin;
 
-    for (const c of candidates) {
-      if (fs.existsSync(c)) {
-        return c;
-      }
-    }
-
-    return path.join(workspaceRoot, binaryName);
+    return path.join(process.cwd(), binaryName);
   })();
 
   const child = spawnSync(binaryPath, [subcommand], {
@@ -126,7 +133,7 @@ export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: 
   }
   try {
     return JSON.parse(child.stdout);
-  } catch (e) {
-    throw new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${child.stdout}`);
+  } catch (_e) {
+    throw new Error(`Failed to parse Go sidecar output: ${_e}\nOutput was: ${child.stdout}`);
   }
 }
