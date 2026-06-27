@@ -1,3 +1,4 @@
+// TODO: Dead code
 import { runGoSidecarSync } from "./subprocess.js";
 import type { VaultConfig } from "./types.js";
 
