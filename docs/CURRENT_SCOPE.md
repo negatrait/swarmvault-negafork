@@ -1,22 +1,22 @@
-# Daily Porting Scope: large-repo-defaults
+# Daily Porting Scope: source-classification
 
 ## 1. Goal
-Port the stateless utility file `packages/engine/src/large-repo-defaults.ts` to Go. This file is a pure leaf node and its entire contents (around 100 lines) will be ported in a single run. The physical audit of the Go codebase revealed NO stubs, TODOs, fakes or mocks. We are cleared to progress according to Scenario A of the migration decision tree.
-  - **Metrics:** `internal/config/large_repo_defaults.go` created. The function `resolveLargeRepoDefaults` is fully implemented in Go.
-  - **Pitfalls:** Ensure exact parity with the math/floor calculations for similarity thresholds.
+Port the stateless utility file `packages/engine/src/source-classification.ts` to Go. This file is a pure leaf node and its entire contents will be ported in a single run. The physical audit of the Go codebase revealed NO stubs, TODOs, fakes or mocks. We are cleared to progress according to Scenario A of the migration decision tree.
+  - **Metrics:** `internal/config/source_classification.go` created. The classification functions are fully implemented in Go.
+  - **Pitfalls:** Ensure exact parity with the glob matching behavior for the `classifyRepoPath` function.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/large-repo-defaults.ts`
-- **Source Export(s):** `function resolveLargeRepoDefaults(...)`
-- **Target File:** `internal/config/large_repo_defaults.go`
-- **Target Export:** `func ResolveLargeRepoDefaults(...)`
+- **Source File:** `packages/engine/src/source-classification.ts`
+- **Source Export(s):** `classifyRepoPath`, `normalizeExtractClasses`, `aggregateSourceClass`, `aggregateManifestSourceClass`
+- **Target File:** `internal/config/source_classification.go`
+- **Target Export:** `ClassifyRepoPath`, `NormalizeExtractClasses`, `AggregateSourceClass`, `AggregateManifestSourceClass`
 
 ## 3. Subcommand & Bridge Contract
 - **CLI Subcommand:** `swarmvault-native config` (or generic handler in `cmd/swarmvault-native`)
-- **TS Delegation Call:** Update `packages/engine/src/large-repo-defaults.ts` to route execution for the function through the centralized `runGoSidecarSync` wrapper using specific action payloads (e.g., `action: "resolveLargeRepoDefaults"`).
+- **TS Delegation Call:** Update `packages/engine/src/source-classification.ts` to route execution for the functions through the centralized `runGoSidecarSync` wrapper using specific action payloads (e.g., `action: "classifyRepoPath"`).
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard Go libraries only (`math`). No external dependencies or stubs are needed.
+- **Verified Go Dependencies:** Standard Go libraries only (`path/filepath`, `strings`). No external dependencies or stubs are needed.
 - **Go-to-Go Native Imports:** None required. This is a pure leaf.
 - **Transitive Blocks:** Stubbing is strictly forbidden. The logic must be fully implemented in Go.
 
