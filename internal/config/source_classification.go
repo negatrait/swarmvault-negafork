@@ -1,12 +1,20 @@
 package config
 
 import (
-	"github.com/bmatcuk/doublestar/v4"
 	"path/filepath"
 	"strings"
+
+	"github.com/bmatcuk/doublestar/v4"
 )
 
-var AllSourceClasses = []string{"first_party", "third_party", "resource", "generated"}
+const (
+	ClassFirstParty = "first_party"
+	ClassThirdParty = "third_party"
+	ClassResource   = "resource"
+	ClassGenerated  = "generated"
+)
+
+var AllSourceClasses = []string{ClassFirstParty, ClassThirdParty, ClassResource, ClassGenerated}
 
 var thirdPartySegments = map[string]bool{
 	"node_modules": true,
@@ -66,16 +74,16 @@ func ClassifyRepoPath(relativePath string, repoAnalysis *RepoAnalysis) string {
 	if repoAnalysis != nil && repoAnalysis.ClassifyGlobs != nil {
 		custom := repoAnalysis.ClassifyGlobs
 		if len(custom.FirstParty) > 0 && matchesAnyGlob(normalized, custom.FirstParty) {
-			return "first_party"
+			return ClassFirstParty
 		}
 		if len(custom.ThirdParty) > 0 && matchesAnyGlob(normalized, custom.ThirdParty) {
-			return "third_party"
+			return ClassThirdParty
 		}
 		if len(custom.Resource) > 0 && matchesAnyGlob(normalized, custom.Resource) {
-			return "resource"
+			return ClassResource
 		}
 		if len(custom.Generated) > 0 && matchesAnyGlob(normalized, custom.Generated) {
-			return "generated"
+			return ClassGenerated
 		}
 	}
 
@@ -85,21 +93,21 @@ func ClassifyRepoPath(relativePath string, repoAnalysis *RepoAnalysis) string {
 			continue
 		}
 		if thirdPartySegments[segment] {
-			return "third_party"
+			return ClassThirdParty
 		}
 		if generatedSegments[segment] {
-			return "generated"
+			return ClassGenerated
 		}
 		if strings.HasSuffix(segment, ".xcassets") || strings.HasSuffix(segment, ".imageset") {
-			return "resource"
+			return ClassResource
 		}
 	}
 
-	return "first_party"
+	return ClassFirstParty
 }
 
 func NormalizeExtractClasses(repoAnalysis *RepoAnalysis, extra []string) []string {
-	configured := []string{"first_party"}
+	configured := []string{ClassFirstParty}
 	if repoAnalysis != nil && len(repoAnalysis.ExtractClasses) > 0 {
 		configured = repoAnalysis.ExtractClasses
 	}
@@ -144,25 +152,25 @@ func AggregateSourceClass(values []*string) *string {
 	}
 
 	for _, a := range available {
-		if a == "first_party" {
-			res := "first_party"
+		if a == ClassFirstParty {
+			res := ClassFirstParty
 			return &res
 		}
 	}
 	for _, a := range available {
-		if a == "resource" {
-			res := "resource"
+		if a == ClassResource {
+			res := ClassResource
 			return &res
 		}
 	}
 	for _, a := range available {
-		if a == "third_party" {
-			res := "third_party"
+		if a == ClassThirdParty {
+			res := ClassThirdParty
 			return &res
 		}
 	}
 
-	res := "generated"
+	res := ClassGenerated
 	return &res
 }
 
