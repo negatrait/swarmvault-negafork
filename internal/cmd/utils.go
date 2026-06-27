@@ -163,7 +163,7 @@ func handleUtilsFsOpsBasic(action string, rawArgs json.RawMessage) error {
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
 			return fmt.Errorf("error decoding args: %w", err)
 		}
-		result, err := utils.ReadJsonFile[any](args.FilePath)
+		result, err := utils.ReadJsonFile[json.RawMessage](args.FilePath)
 		if err != nil {
 			return err
 		}
