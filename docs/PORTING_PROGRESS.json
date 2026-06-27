@@ -411,7 +411,7 @@
     },
     {
       "path": "src/source-classification.ts",
-      "status": "pending",
+      "status": "active",
       "subcommand": null,
       "bridged": false
     },
