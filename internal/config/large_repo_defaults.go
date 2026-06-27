@@ -5,13 +5,13 @@ import (
 )
 
 const (
-	LargeRepoNodeThreshold = 1000
-	DefaultSmallGodNodeLimit = 20
-	DefaultLargeGodNodeLimit = 10
+	LargeRepoNodeThreshold    = 1000
+	DefaultSmallGodNodeLimit  = 20
+	DefaultLargeGodNodeLimit  = 10
 	DefaultSimilarityIdfFloor = 0.5
-	SimilarityEdgeCapMax = 20000
-	SimilarityEdgeCapPerNode = 5
-	MinFoldBelow = 3
+	SimilarityEdgeCapMax      = 20000
+	SimilarityEdgeCapPerNode  = 5
+	MinFoldBelow              = 3
 )
 
 type VaultConfig struct {
@@ -19,23 +19,23 @@ type VaultConfig struct {
 }
 
 type GraphConfig struct {
-	GodNodeLimit *int `json:"godNodeLimit,omitempty"`
-	FoldCommunitiesBelow *int `json:"foldCommunitiesBelow,omitempty"`
-	SimilarityEdgeCap *int `json:"similarityEdgeCap,omitempty"`
-	SimilarityIdfFloor *float64 `json:"similarityIdfFloor,omitempty"`
+	GodNodeLimit         *int     `json:"godNodeLimit,omitempty"`
+	FoldCommunitiesBelow *int     `json:"foldCommunitiesBelow,omitempty"`
+	SimilarityEdgeCap    *int     `json:"similarityEdgeCap,omitempty"`
+	SimilarityIdfFloor   *float64 `json:"similarityIdfFloor,omitempty"`
 }
 
 type ResolveLargeRepoDefaultsInput struct {
-	NodeCount float64 `json:"nodeCount"`
-	TotalCommunities *float64 `json:"totalCommunities,omitempty"`
-	Config *VaultConfig `json:"config,omitempty"`
+	NodeCount        float64      `json:"nodeCount"`
+	TotalCommunities *float64     `json:"totalCommunities,omitempty"`
+	Config           *VaultConfig `json:"config,omitempty"`
 }
 
 type ResolvedLargeRepoDefaults struct {
-	GodNodeLimit int `json:"godNodeLimit"`
-	FoldCommunitiesBelow int `json:"foldCommunitiesBelow"`
-	SimilarityEdgeCap int `json:"similarityEdgeCap"`
-	SimilarityIdfFloor float64 `json:"similarityIdfFloor"`
+	GodNodeLimit         int     `json:"godNodeLimit"`
+	FoldCommunitiesBelow int     `json:"foldCommunitiesBelow"`
+	SimilarityEdgeCap    int     `json:"similarityEdgeCap"`
+	SimilarityIdfFloor   float64 `json:"similarityIdfFloor"`
 }
 
 func clampPositiveInteger(value float64, fallback int) int {
@@ -93,9 +93,9 @@ func ResolveLargeRepoDefaults(input ResolveLargeRepoDefaultsInput) ResolvedLarge
 	}
 
 	return ResolvedLargeRepoDefaults{
-		GodNodeLimit: godNodeLimit,
+		GodNodeLimit:         godNodeLimit,
 		FoldCommunitiesBelow: foldCommunitiesBelow,
-		SimilarityEdgeCap: similarityEdgeCap,
-		SimilarityIdfFloor: similarityIdfFloor,
+		SimilarityEdgeCap:    similarityEdgeCap,
+		SimilarityIdfFloor:   similarityIdfFloor,
 	}
 }

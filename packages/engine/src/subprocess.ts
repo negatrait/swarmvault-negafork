@@ -1,18 +1,31 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Helper to reliably get __dirname in both ESM and CJS environments without syntax ambiguity
+function getDirname() {
+  if (typeof __dirname !== "undefined") {
+    return __dirname;
+  }
+  // @ts-ignore
+  if (typeof import.meta.url !== "undefined") {
+    // @ts-ignore
+    return path.dirname(fileURLToPath(import.meta.url));
+  }
+  throw new Error("Cannot determine __dirname or import.meta.url");
+}
 
 export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     // Resolve absolute path to avoid pnpm workspace cwd confusion
     // import.meta.url points to dist/subprocess.js when built
     /**
-     * We fall back to `__dirname` which is available in CJS outputs since the TypeScript compiler
-     * configuration (`module` set to ESNext) causes TS1343 errors on `import.meta.url`
+     * We fall back to \`__dirname\` which is available in CJS outputs since the TypeScript compiler
+     * configuration (\`module\` set to ESNext) causes TS1343 errors on \`import.meta.url\`
      * when compiled, and using ignores violates build constraints.
      */
-    const _dirname = __dirname;
+    const _dirname = getDirname();
 
     // In dev it's in packages/engine/src/subprocess.ts -> ../../../swarmvault-native
     // In prod it's in packages/engine/dist/subprocess.js -> ../../../swarmvault-native
@@ -81,11 +94,11 @@ import { spawnSync } from "node:child_process";
 
 export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: unknown): T {
   /**
-   * We fall back to `__dirname` which is available in CJS outputs since the TypeScript compiler
-   * configuration (`module` set to ESNext) causes TS1343 errors on `import.meta.url`
+   * We fall back to \`__dirname\` which is available in CJS outputs since the TypeScript compiler
+   * configuration (\`module\` set to ESNext) causes TS1343 errors on \`import.meta.url\`
    * when compiled, and using ignores violates build constraints.
    */
-  const _dirname = __dirname;
+  const _dirname = getDirname();
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
   const binaryPath = (() => {
