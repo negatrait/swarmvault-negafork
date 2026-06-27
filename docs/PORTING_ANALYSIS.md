@@ -74,6 +74,17 @@ Migrating the entire codebase at once is risky and disruptive. Instead, we will 
 4. **Assert & Validate:** Run live data through both paths, validating output parity.
 5. **Deprecate:** Remove the legacy TS module once performance and accuracy are proven.
 
+## Analyzing Subprocess Sidecar Limits & Overhead
+
+While the sidecar strategy allows for an incremental migration, **spinning up a child process incurs a severe performance penalty** due to OS context switching, process initialization, and JSON serialization/deserialization across standard I/O streams.
+
+These overheads become critically exposed in two specific scenarios:
+
+1.  **Tight Loops (CI Timeouts):** Iterating through thousands of items in TypeScript and calling `runGoSidecar` or `runGoSidecarSync` on every single iteration causes catastrophic slowdowns. This pattern frequently triggers CI job timeouts as the system thrashes trying to spawn and tear down processes rapidly.
+2.  **High-Frequency Utility Functions:** Fine-grained functions (e.g., small string manipulations, path normalization, small mathematical assertions) that execute hundreds or thousands of times across the orchestrator codebase. The IPC bridge transit time completely eclipses the execution time of the actual Go logic.
+
+To mitigate this, the architecture strictly demands **"Batching & Idiomatic Go Concurrency"** and **"Lifting the Bridge"** (detailed in `MIGRATION_SPEC.md`).
+
 ## High-Impact Areas for Porting
 
 If porting incrementally, these sections of the SwarmVault `@swarmvaultai/engine` will yield the highest ROI for memory footprint reduction.
