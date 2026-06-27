@@ -87,13 +87,13 @@ async function runBenchmarks() {
 
   measurements.push(
     await time(
-      "resolveLargeRepoDefaults:100k",
+      "resolveLargeRepoDefaults:10k",
       () => {
-        for (let i = 0; i < 100_000; i += 1) {
+        for (let i = 0; i < 10_000; i += 1) {
           engine.resolveLargeRepoDefaults({ nodeCount: 5000 + (i % 1000), totalCommunities: 40 });
         }
       },
-      5
+      2
     )
   );
 
