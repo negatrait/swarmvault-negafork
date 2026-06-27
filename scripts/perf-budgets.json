@@ -5,7 +5,7 @@
   },
   "resolveLargeRepoDefaults:10k": {
     "maxMedianMs": 150000,
-    "reason": "100k large-repo-default resolutions. CI median ~40ms, local ~12ms. We changed to 10k instead due to Go process spawning."
+    "reason": "10k large-repo-default resolutions. CI median ~40ms, local ~12ms. We changed to 10k instead due to Go process spawning."
   },
   "redact:20KB-prose": {
     "maxMedianMs": 5,
