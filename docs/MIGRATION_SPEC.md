@@ -48,6 +48,58 @@ Testing is at the absolute center of the migration. Before a Go module replaces 
 
 ---
 
+## 4.5 Addressing Subprocess Sidecar Limits (Loops & Overhead)
+
+The basic Subprocess Sidecar strategy (`runGoSidecar`) works well for heavy, isolated tasks. However, it **fails catastrophically** when called repeatedly inside loops or for highly frequent, fine-grained utility functions. The overhead of OS process creation, context switching, and JSON IPC serialization can cause CI job timeouts and massive runtime slowdowns.
+
+To solve this, developers must apply one of two architectural patterns when porting code:
+
+### Pattern A: Batching & Idiomatic Go Concurrency (For Loops)
+
+**Never** spawn the Go sidecar inside a TypeScript loop. Instead, pass the entire collection of data across the bridge in a single payload. Once inside Go, **do not** just write a sequential `for` loop. You must leverage idiomatic Go concurrency (Goroutines, Worker Pools, `sync.WaitGroup`) to process the batch in parallel.
+
+**Anti-Pattern (TypeScript):**
+```typescript
+// BAD: Spawns 1,000 child processes! Causes timeouts.
+const results = [];
+for (const item of massiveArray) {
+  results.push(runGoSidecarSync("processItem", { item }));
+}
+```
+
+**Correct Pattern (TypeScript):**
+```typescript
+// GOOD: One process, one IPC overhead.
+const results = runGoSidecarSync("processBatch", { items: massiveArray });
+```
+
+**Correct Pattern (Go):**
+```go
+// GOOD: Idiomatic Go Concurrency
+func ProcessBatch(items []Item) []Result {
+	var wg sync.WaitGroup
+	results := make([]Result, len(items))
+
+	// Example of a simple Goroutine spawn per item (or use a worker pool for massive sets)
+	for i, item := range items {
+		wg.Add(1)
+		go func(index int, val Item) {
+			defer wg.Done()
+			results[index] = processSingleItem(val)
+		}(i, item)
+	}
+	wg.Wait()
+	return results
+}
+```
+
+### Pattern B: Lifting the Bridge (For Fine-Grained Utilities)
+
+When a small, fast utility function (e.g., path normalization, string hashing) is ported, the IPC overhead of calling it via the sidecar often exceeds the execution time of the function itself. If this utility is used frequently across the TypeScript orchestrator, **do not port it in isolation.**
+
+Instead, **"Lift the Bridge"**. Move the Sidecar boundary higher up the call stack. Port the entire orchestration layer or the larger business logic block that relies on these utilities, so the execution stays entirely within the Go runtime, eliminating the need to ping-pong across standard I/O streams.
+
+
 ## 5. Granular Migration Sequence: The "Toggled" Release Loop
 
 The roadmap details how we swap TS code for Go code safely across small, reviewable Pull Requests (PRs). Each port must follow this 5-step loop:
