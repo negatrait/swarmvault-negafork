@@ -1,16 +1,8 @@
 package utils
 
 import (
-	"regexp"
 	"slices"
-	"strings"
 )
-
-var whitespaceRegex = regexp.MustCompile(`\s+`)
-
-func NormalizeWhitespace(value string) string {
-	return strings.TrimSpace(whitespaceRegex.ReplaceAllString(value, " "))
-}
 
 func UniqueStrings(items []string) []string {
 	seen := make(map[string]bool)
