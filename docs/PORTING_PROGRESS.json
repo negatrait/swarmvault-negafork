@@ -411,9 +411,9 @@
     },
     {
       "path": "src/source-classification.ts",
-      "status": "active",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "config",
+      "bridged": true
     },
     {
       "path": "src/source-registry.ts",
