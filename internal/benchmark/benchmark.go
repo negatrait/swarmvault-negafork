@@ -35,9 +35,6 @@ func EstimateTokens(text string) int {
 	return max(1, (len(text)+CharsPerToken-1)/CharsPerToken)
 }
 
-func NormalizeWhitespace(value string) string {
-	return utils.NormalizeWhitespace(value)
-}
 func EstimateCorpusWords(texts []string) int {
 	total := 0
 	for _, text := range texts {
@@ -80,7 +77,7 @@ func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pa
 		}
 		content := ""
 		if c, ok := pageContentsById[pageId]; ok {
-			content = NormalizeWhitespace(c)
+			content = utils.NormalizeWhitespace(c)
 		}
 		if len(content) > 280 {
 			content = content[:280]

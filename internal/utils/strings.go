@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+var whitespaceRegex = regexp.MustCompile(`\s+`)
+
+func NormalizeWhitespace(value string) string {
+	return strings.TrimSpace(whitespaceRegex.ReplaceAllString(value, " "))
+}
+
 var nonAlphanumericRegex = regexp.MustCompile(`[^a-z0-9]+`)
 var leadingTrailingHyphensRegex = regexp.MustCompile(`^-+|-+$`)
 var markdownJsonFenceRegex = regexp.MustCompile(`(?i)\x60\x60\x60json\s*([\s\S]*?)\x60\x60\x60`)
