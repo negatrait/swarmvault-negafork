@@ -1,11 +1,25 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphEdge, GraphHyperedge, GraphNode, GraphPage, GraphPushCounts, SourceClass } from "./types.js";
 
 export function exportHyperedgeNodeId(hyperedge: GraphHyperedge): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string>("graph", {
+      action: "exportHyperedgeNodeId",
+      args: { hyperedge }
+    });
+  }
+
   return `hyperedge:${hyperedge.id}`;
 }
 
 export function relationType(relation: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string>("graph", {
+      action: "relationType",
+      args: { relation }
+    });
+  }
+
   const normalized = relation
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "_")
@@ -14,6 +28,13 @@ export function relationType(relation: string): string {
 }
 
 export function cypherStringLiteral(value: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string>("graph", {
+      action: "cypherStringLiteral",
+      args: { value }
+    });
+  }
+
   let escaped = "";
   for (const char of value) {
     switch (char) {
@@ -48,14 +69,37 @@ export function cypherStringLiteral(value: string): string {
 }
 
 export function graphPageById(graph: GraphArtifact): Map<string, GraphPage> {
+  if (process.env.USE_GO_PORT === "true") {
+    const rawMap = runGoSidecarSync<Record<string, GraphPage>>("graph", {
+      action: "graphPageById",
+      args: { graph }
+    });
+    return new Map(Object.entries(rawMap));
+  }
+
   return new Map(graph.pages.map((page) => [page.id, page]));
 }
 
 export function graphNodeById(graph: GraphArtifact): Map<string, GraphNode> {
+  if (process.env.USE_GO_PORT === "true") {
+    const rawMap = runGoSidecarSync<Record<string, GraphNode>>("graph", {
+      action: "graphNodeById",
+      args: { graph }
+    });
+    return new Map(Object.entries(rawMap));
+  }
+
   return new Map(graph.nodes.map((node) => [node.id, node]));
 }
 
 export function normalizeSwarmNodeProps(node: GraphNode, page?: GraphPage): Record<string, boolean | number | string> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<Record<string, boolean | number | string>>("graph", {
+      action: "normalizeSwarmNodeProps",
+      args: { node, page }
+    });
+  }
+
   return {
     id: node.id,
     label: node.label,
@@ -79,6 +123,13 @@ export function normalizeSwarmNodeProps(node: GraphNode, page?: GraphPage): Reco
 }
 
 export function normalizeHyperedgeNodeProps(hyperedge: GraphHyperedge): Record<string, boolean | number | string> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<Record<string, boolean | number | string>>("graph", {
+      action: "normalizeHyperedgeNodeProps",
+      args: { hyperedge }
+    });
+  }
+
   return {
     id: exportHyperedgeNodeId(hyperedge),
     label: hyperedge.label,
@@ -92,6 +143,13 @@ export function normalizeHyperedgeNodeProps(hyperedge: GraphHyperedge): Record<s
 }
 
 export function normalizeEdgeProps(edge: GraphEdge): Record<string, boolean | number | string> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<Record<string, boolean | number | string>>("graph", {
+      action: "normalizeEdgeProps",
+      args: { edge }
+    });
+  }
+
   return {
     id: edge.id,
     relation: edge.relation,
@@ -105,6 +163,13 @@ export function normalizeEdgeProps(edge: GraphEdge): Record<string, boolean | nu
 }
 
 export function normalizeGroupMemberProps(hyperedge: GraphHyperedge, nodeId: string): Record<string, boolean | number | string> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<Record<string, boolean | number | string>>("graph", {
+      action: "normalizeGroupMemberProps",
+      args: { hyperedge, nodeId }
+    });
+  }
+
   return {
     id: `member:${hyperedge.id}:${nodeId}`,
     relation: "group_member",
@@ -116,6 +181,13 @@ export function normalizeGroupMemberProps(hyperedge: GraphHyperedge, nodeId: str
 }
 
 export function filterGraphBySourceClasses(graph: GraphArtifact, includeClasses: SourceClass[]): GraphArtifact {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<GraphArtifact>("graph", {
+      action: "filterGraphBySourceClasses",
+      args: { graph, includeClasses }
+    });
+  }
+
   const allowed = new Set(includeClasses);
   const nodeIds = new Set(graph.nodes.filter((node) => node.sourceClass && allowed.has(node.sourceClass)).map((node) => node.id));
   const pageIds = new Set(graph.pages.filter((page) => page.sourceClass && allowed.has(page.sourceClass)).map((page) => page.id));
@@ -141,6 +213,13 @@ export function filterGraphBySourceClasses(graph: GraphArtifact, includeClasses:
 }
 
 export function graphCounts(graph: GraphArtifact): GraphPushCounts {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<GraphPushCounts>("graph", {
+      action: "graphCounts",
+      args: { graph }
+    });
+  }
+
   return {
     sources: graph.sources.length,
     pages: graph.pages.length,

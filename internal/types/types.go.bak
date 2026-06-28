@@ -1,5 +1,26 @@
 package types
 
+type GraphNode struct {
+	ID         string   `json:"id"`
+	Type       string   `json:"type"`
+	Name       string   `json:"name"`
+	Label      *string  `json:"label,omitempty"`
+	Degree     *int     `json:"degree,omitempty"`
+	Centrality *float64 `json:"centrality,omitempty"`
+}
+
+type GraphPage struct {
+	ID         string  `json:"id"`
+	Kind       string  `json:"kind"`
+	Title      string  `json:"title"`
+	SourceType *string `json:"sourceType,omitempty"`
+}
+
+type GraphArtifact struct {
+	Nodes []GraphNode `json:"nodes"`
+	Pages []GraphPage `json:"pages"`
+}
+
 type ClaimStatus string
 
 const (
@@ -24,19 +45,4 @@ type SourceClaim struct {
 	Status     ClaimStatus `json:"status"`
 	Polarity   Polarity    `json:"polarity"`
 	Citation   string      `json:"citation"`
-}
-
-type SourceClass string
-
-type SourceManifest struct {
-	SourceId         string       `json:"sourceId"`
-	Title            string       `json:"title"`
-	OriginType       string       `json:"originType"`
-	SourceKind       string       `json:"sourceKind"`
-	SourceType       *string      `json:"sourceType,omitempty"`
-	SourceClass      *SourceClass `json:"sourceClass,omitempty"`
-	Language         *string      `json:"language,omitempty"`
-	OriginalPath     *string      `json:"originalPath,omitempty"`
-	RepoRelativePath *string      `json:"repoRelativePath,omitempty"`
-	Url              *string      `json:"url,omitempty"`
 }
