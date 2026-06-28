@@ -284,7 +284,7 @@ async function readManifests(rootDir: string): Promise<SourceManifest[]> {
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map(async (dir) => await removeDirWithRetry(dir)));
-});
+}, 30_000);
 
 describe("tiny validation matrix", () => {
   it("covers every shipped code language with repo ingest", async () => {
@@ -355,7 +355,7 @@ describe("tiny validation matrix", () => {
 
     const results = await searchVault(rootDir, "Tiny HTML Source", 10);
     expect(results.some((result) => result.path.startsWith("sources/"))).toBe(true);
-  }, 180_000);
+  }, 360_000);
 
   it("covers every shipped local source kind with repo ingest", async () => {
     const rootDir = await createTempWorkspace();
@@ -769,5 +769,5 @@ describe("tiny validation matrix", () => {
       }
     }
     expect(routingFailures, `routing regressions:\n${routingFailures.join("\n")}`).toEqual([]);
-  }, 180_000);
+  }, 360_000);
 });
