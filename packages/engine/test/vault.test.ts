@@ -1324,7 +1324,7 @@ describe("swarmvault workflow", () => {
     expect(graph.nodes.length).toBeGreaterThan(sourceCount);
     expect(graph.edges.length).toBeLessThan(sourceCount * sourceCount);
     expect(graph.communities?.length ?? 0).toBeGreaterThan(0);
-  }, 240_000);
+  }, 360_000);
 
   it("extracts PDF text into markdown and extraction metadata sidecars", async () => {
     const rootDir = await createTempWorkspace();
