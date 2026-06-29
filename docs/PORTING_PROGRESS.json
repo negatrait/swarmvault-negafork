@@ -375,9 +375,9 @@
     },
     {
       "path": "src/redaction.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "redaction",
+      "bridged": true
     },
     {
       "path": "src/retrieval.ts",
