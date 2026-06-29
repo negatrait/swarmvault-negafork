@@ -1,4 +1,5 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
+
 export interface RedactionPattern {
   id: string;
   pattern: RegExp | string;
@@ -170,6 +171,31 @@ export function resolveRedactionPatterns(config?: RedactionConfig | null): {
   placeholder: string;
   patterns: RedactionPattern[];
 } {
+  if (process.env.USE_GO_PORT === "true") {
+    // Note: The Go side returns plain string patterns. We must convert them to RegExp
+    // objects with the "g" flag, exactly matching legacy logic, so the caller receives the expected types.
+    type GoResult = {
+      enabled: boolean;
+      placeholder: string;
+      patterns: { id: string; pattern: string; placeholder?: string; description?: string; flags?: string }[];
+    };
+    const goResult = runGoSidecarSync<GoResult>("redaction", {
+      action: "resolveRedactionPatterns",
+      args: [config ?? null]
+    });
+    const parsedPatterns: RedactionPattern[] = goResult.patterns.map((entry) => ({
+      id: entry.id,
+      pattern: new RegExp(entry.pattern, entry.flags ?? "g"),
+      placeholder: entry.placeholder,
+      description: entry.description
+    }));
+    return {
+      enabled: goResult.enabled,
+      placeholder: goResult.placeholder,
+      patterns: parsedPatterns
+    };
+  }
+
   const enabled = config?.enabled ?? true;
   const placeholder = config?.placeholder ?? DEFAULT_PLACEHOLDER;
   const useDefaults = config?.useDefaults ?? true;

@@ -35,6 +35,8 @@ func Execute() error {
 		return HandleFindings()
 	case "config":
 		return HandleConfig()
+	case "redaction":
+		return HandleRedaction()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -54,4 +56,5 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  parser")
 	fmt.Fprintln(os.Stderr, "  findings")
 	fmt.Fprintln(os.Stderr, "  config")
+	fmt.Fprintln(os.Stderr, "  redaction")
 }
