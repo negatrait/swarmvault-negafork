@@ -1,6 +1,5 @@
 package redaction
 
-
 const DefaultPlaceholder = "[REDACTED]"
 
 type RedactionPattern struct {
