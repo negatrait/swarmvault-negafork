@@ -31,7 +31,8 @@ const build = spawnSync(
   {
     cwd: workspaceRoot,
     stdio: "inherit",
-    shell: true
+    shell: true,
+    env: { ...process.env, CGO_ENABLED: "0" }
   }
 );
 

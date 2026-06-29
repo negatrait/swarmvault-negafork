@@ -122,7 +122,8 @@ export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: 
 
   const child = spawnSync(binaryPath, [subcommand], {
     input: JSON.stringify(inputPayload),
-    encoding: "utf-8"
+    encoding: "utf-8",
+    maxBuffer: 50 * 1024 * 1024
   });
 
   if (child.error) {

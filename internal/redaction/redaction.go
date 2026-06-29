@@ -1,5 +1,10 @@
 package redaction
 
+import (
+	"fmt"
+	"regexp"
+)
+
 const DefaultPlaceholder = "[REDACTED]"
 
 type RedactionPattern struct {
@@ -122,6 +127,11 @@ func ResolveRedactionPatterns(config *RedactionConfig) (*ResolvedRedactionPatter
 			flags := entry.Flags
 			if flags == "" {
 				flags = "g"
+			}
+
+			// Validate regex to match TS behavior
+			if _, err := regexp.Compile(entry.Pattern); err != nil {
+				return nil, fmt.Errorf("Invalid redaction pattern `%s`: %v", entry.ID, err)
 			}
 
 			patterns = append(patterns, RedactionPattern{

@@ -62,7 +62,7 @@ if [ "$OS" = "Linux" ]; then
       echo "=> Failed to download pre-compiled binary. Attempting local Go compilation..."
       if command -v go > /dev/null 2>&1; then
         echo "=> Compiling Go binary locally..."
-        go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
+        CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
       else
         echo "=> Warning: Go is not installed. Skipping native binary compilation."
       fi
@@ -72,7 +72,7 @@ if [ "$OS" = "Linux" ]; then
     if command -v go > /dev/null 2>&1; then
       mkdir -p bin
       echo "=> Compiling Go binary locally..."
-      go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
+      CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
     else
       echo "=> Warning: Go is not installed. Skipping native binary compilation."
     fi
@@ -82,7 +82,7 @@ else
   if command -v go > /dev/null 2>&1; then
     mkdir -p bin
     echo "=> Compiling Go binary locally..."
-    go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/swarmvault-native ./cmd/swarmvault-native
   else
     echo "=> Warning: Go is not installed. Skipping native binary compilation."
   fi
