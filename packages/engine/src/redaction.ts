@@ -183,12 +183,21 @@ export function resolveRedactionPatterns(config?: RedactionConfig | null): {
       action: "resolveRedactionPatterns",
       args: [config ?? null]
     });
-    const parsedPatterns: RedactionPattern[] = goResult.patterns.map((entry) => ({
-      id: entry.id,
-      pattern: new RegExp(entry.pattern, entry.flags ?? "g"),
-      placeholder: entry.placeholder,
-      description: entry.description
-    }));
+    const parsedPatterns: RedactionPattern[] = goResult.patterns.map((entry) => {
+      let regex: RegExp;
+      try {
+        regex = new RegExp(entry.pattern, entry.flags ?? "g");
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`Invalid redaction pattern \`${entry.id}\`: ${reason}`);
+      }
+      return {
+        id: entry.id,
+        pattern: regex,
+        placeholder: entry.placeholder,
+        description: entry.description
+      };
+    });
     return {
       enabled: goResult.enabled,
       placeholder: goResult.placeholder,
