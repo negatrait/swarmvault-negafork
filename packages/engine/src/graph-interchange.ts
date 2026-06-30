@@ -1,7 +1,10 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphEdge, GraphHyperedge, GraphNode, GraphPage, GraphPushCounts, SourceClass } from "./types.js";
 
 export function exportHyperedgeNodeId(hyperedge: GraphHyperedge): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<string>("graph", { action: "exportHyperedgeNodeId", args: { hyperedge } });
+  }
   return `hyperedge:${hyperedge.id}`;
 }
 

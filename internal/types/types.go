@@ -46,3 +46,22 @@ type SourceClaim struct {
 	Polarity   Polarity    `json:"polarity"`
 	Citation   string      `json:"citation"`
 }
+
+type EvidenceClass string
+
+const (
+	EvidenceClassExtracted EvidenceClass = "extracted"
+	EvidenceClassInferred  EvidenceClass = "inferred"
+	EvidenceClassAmbiguous EvidenceClass = "ambiguous"
+)
+
+type GraphHyperedge struct {
+	ID            string        `json:"id"`
+	Label         string        `json:"label"`
+	Relation      string        `json:"relation"`
+	NodeIDs       []string      `json:"nodeIds"`
+	EvidenceClass EvidenceClass `json:"evidenceClass"`
+	Confidence    float64       `json:"confidence"`
+	SourcePageIDs []string      `json:"sourcePageIds"`
+	Why           string        `json:"why"`
+}
