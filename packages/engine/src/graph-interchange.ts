@@ -1,6 +1,5 @@
+import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphEdge, GraphHyperedge, GraphNode, GraphPage, GraphPushCounts, SourceClass } from "./types.js";
-
-import { runGoSidecarSync } from "./utils.js";
 
 export function exportHyperedgeNodeId(hyperedge: GraphHyperedge): string {
   const USE_GO_PORT = process.env.USE_GO_PORT === "true" || process.env.USE_GO_PORT === "1";
