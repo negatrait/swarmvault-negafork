@@ -33,12 +33,12 @@ func Execute() error {
 		return HandleParser()
 	case "findings":
 		return HandleFindings()
+	case "graph":
+		return HandleGraph()
 	case "config":
 		return HandleConfig()
 	case "redaction":
 		return HandleRedaction()
-	case "graph":
-		return HandleGraph()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -57,7 +57,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  confidence")
 	fmt.Fprintln(os.Stderr, "  parser")
 	fmt.Fprintln(os.Stderr, "  findings")
+	fmt.Fprintln(os.Stderr, "  graph")
 	fmt.Fprintln(os.Stderr, "  config")
 	fmt.Fprintln(os.Stderr, "  redaction")
-	fmt.Fprintln(os.Stderr, "  graph")
 }
