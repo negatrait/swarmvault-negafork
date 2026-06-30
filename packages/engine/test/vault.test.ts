@@ -1,3 +1,5 @@
+process.env.USE_GO_PORT = "false";
+
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import { createServer } from "node:http";

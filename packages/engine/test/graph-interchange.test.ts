@@ -12,7 +12,11 @@ describe("graph-interchange", () => {
     const fixturePath = path.join(__dirname, "shared-fixtures", "hyperedge.json");
     const hyperedge: GraphHyperedge = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
 
+    // Explicitly delete VITEST to force the Go sidecar to execute
+    const originalVitest = process.env.VITEST;
+    delete process.env.VITEST;
     const result = exportHyperedgeNodeId(hyperedge);
+    process.env.VITEST = originalVitest;
     expect(result).toBe("hyperedge:test-hyperedge-123");
   });
 });
