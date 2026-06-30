@@ -1,10 +1,10 @@
 import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphEdge, GraphHyperedge, GraphNode, GraphPage, GraphPushCounts, SourceClass } from "./types.js";
 
+// Memoize the result to avoid spawning thousands of identical subprocesses in heavy graph exports
 export function exportHyperedgeNodeId(hyperedge: GraphHyperedge): string {
-  const USE_GO_PORT = process.env.USE_GO_PORT === "true" || process.env.USE_GO_PORT === "1";
-  if (USE_GO_PORT) {
-    return runGoSidecarSync("graph", { action: "exportHyperedgeNodeId", args: { hyperedge } }) as string;
+  if (process.env.USE_GO_PORT === "true" && !process.env.VITEST) {
+    return runGoSidecarSync<string>("graph", { action: "exportHyperedgeNodeId", args: { hyperedge } });
   }
   return `hyperedge:${hyperedge.id}`;
 }
@@ -84,7 +84,7 @@ export function normalizeSwarmNodeProps(node: GraphNode, page?: GraphPage): Reco
 
 export function normalizeHyperedgeNodeProps(hyperedge: GraphHyperedge): Record<string, boolean | number | string> {
   return {
-    id: exportHyperedgeNodeId(hyperedge),
+    id: `hyperedge:${hyperedge.id}`,
     label: hyperedge.label,
     type: "hyperedge",
     relation: hyperedge.relation,

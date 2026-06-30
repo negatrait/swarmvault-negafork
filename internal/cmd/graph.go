@@ -20,18 +20,22 @@ func HandleGraph() error {
 	}
 
 	if err := utils.DecodePayload(&payload); err != nil {
-		return err
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	switch payload.Action {
 	case "exportHyperedgeNodeId":
 		var args graphPayload
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			return fmt.Errorf("failed to decode args for exportHyperedgeNodeId: %v", err)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := graph.ExportHyperedgeNodeId(args.Hyperedge)
-		return utils.EncodeResponse(result)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
 	default:
-		return fmt.Errorf("unknown action: %s", payload.Action)
+		return fmt.Errorf("unknown graph action: %s", payload.Action)
 	}
+
+	return nil
 }

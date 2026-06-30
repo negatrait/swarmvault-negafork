@@ -1,0 +1,10 @@
+{
+  "id": "test-hyperedge-123",
+  "label": "Test Hyperedge",
+  "relation": "participate_in",
+  "nodeIds": ["node1", "node2"],
+  "evidenceClass": "inferred",
+  "confidence": 0.95,
+  "sourcePageIds": ["page1"],
+  "why": "Because I said so"
+}
