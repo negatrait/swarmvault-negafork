@@ -135,9 +135,9 @@
     },
     {
       "path": "src/graph-interchange.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "graph",
+      "bridged": true
     },
     {
       "path": "src/graph-merge.ts",
