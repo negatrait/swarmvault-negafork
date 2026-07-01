@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
 
@@ -85,7 +85,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
 
@@ -138,7 +138,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
 
@@ -198,7 +198,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: env.OPENAI_API_KEY != ''
         with:
-          node-version: 24
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
         if: env.OPENAI_API_KEY != ''
@@ -270,7 +270,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: env.OLLAMA_API_KEY != ''
         with:
-          node-version: 24
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
         if: env.OLLAMA_API_KEY != ''
