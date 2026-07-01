@@ -1,4 +1,4 @@
-// TODO: Port web search and external HTTP querying components to Go. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "../subprocess.js";
 import type { WebSearchAdapter, WebSearchProviderConfig, WebSearchResult } from "../types.js";
 
 function deepGet(value: unknown, pathValue: string | undefined): unknown {
@@ -30,6 +30,18 @@ export class HttpJsonWebSearchAdapter implements WebSearchAdapter {
   ) {}
 
   public async search(query: string, limit = 5): Promise<WebSearchResult[]> {
+    if (process.env.USE_GO_PORT === "true") {
+      return runGoSidecarSync<WebSearchResult[]>("websearch", {
+        action: "http-json-search",
+        args: {
+          id: this.id,
+          config: this.config,
+          query,
+          limit
+        }
+      });
+    }
+
     if (!this.config.endpoint) {
       throw new Error(`Web search provider ${this.id} is missing an endpoint.`);
     }

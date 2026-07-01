@@ -39,6 +39,8 @@ func Execute() error {
 		return HandleConfig()
 	case "redaction":
 		return HandleRedaction()
+	case "websearch":
+		return HandleWebSearch()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -60,4 +62,5 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  graph")
 	fmt.Fprintln(os.Stderr, "  config")
 	fmt.Fprintln(os.Stderr, "  redaction")
+	fmt.Fprintln(os.Stderr, "  websearch")
 }
