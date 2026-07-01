@@ -1,0 +1,99 @@
+
+> @swarmvaultai/engine@3.20.0 pretest /app/packages/engine
+> tsup --config tsup.hooks.config.ts
+
+CLI Building entry: {"claude":"src/hooks/claude.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI Building entry: {"gemini":"src/hooks/gemini.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI Building entry: {"copilot":"src/hooks/copilot.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI Building entry: {"codex":"src/hooks/codex.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI Building entry: {"opencode":"src/hooks/opencode.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /app/packages/engine/tsup.hooks.config.ts
+CLI tsup v8.5.1
+CLI Using tsup config: /app/packages/engine/tsup.hooks.config.ts
+CLI tsup v8.5.1
+CLI Using tsup config: /app/packages/engine/tsup.hooks.config.ts
+CLI tsup v8.5.1
+CLI Using tsup config: /app/packages/engine/tsup.hooks.config.ts
+CLI tsup v8.5.1
+CLI Using tsup config: /app/packages/engine/tsup.hooks.config.ts
+CLI Target: es2022
+ESM Build start
+CLI Target: es2022
+ESM Build start
+CLI Target: es2022
+ESM Build start
+CLI Target: es2022
+ESM Build start
+CLI Target: es2022
+ESM Build start
+ESM dist/hooks/opencode.js 1.61 KB
+ESM ⚡️ Build success in 20ms
+ESM dist/hooks/gemini.js 10.74 KB
+ESM ⚡️ Build success in 31ms
+ESM dist/hooks/copilot.js 7.77 KB
+ESM ⚡️ Build success in 30ms
+ESM dist/hooks/codex.js 11.49 KB
+ESM ⚡️ Build success in 25ms
+ESM dist/hooks/claude.js 14.14 KB
+ESM ⚡️ Build success in 36ms
+
+> @swarmvaultai/engine@3.20.0 test /app/packages/engine
+> SWARMVAULT_ALLOW_PRIVATE_URLS=1 vitest run --testTimeout=90000 test/vault.test.ts
+
+
+ RUN  v3.2.4 /app/packages/engine
+
+stderr | test/vault.test.ts > swarmvault workflow > exposes vault operations through the MCP server
+[swarmvault-mcp] tool handler failed: Could not resolve graph target: definitely-not-in-the-graph
+
+[swarmvault watch] Non-code changes detected (1 file(s)) — run `swarmvault compile` to include LLM re-analysis.
+[swarmvault watch] Code-only changes detected — skipping LLM re-analysis.
+ ✓ test/vault.test.ts (74 tests) 79955ms
+   ✓ swarmvault workflow > resolves generated artifacts under SWARMVAULT_OUT while keeping config in the project root  1284ms
+   ✓ swarmvault workflow > installs skill bundles for the extended coding-agent roster  333ms
+   ✓ swarmvault workflow > installs Claude rules with a graph-first redirect hook and post-edit refresh wiring  594ms
+   ✓ swarmvault workflow > ingests, compiles, queries, and lints using the heuristic provider  1466ms
+   ✓ swarmvault workflow > compiles a larger heuristic markdown corpus without unbounded graph projection  50122ms
+   ✓ swarmvault workflow > extracts PDF text into markdown and extraction metadata sidecars  932ms
+   ✓ swarmvault workflow > extracts DOCX text and metadata into sidecars  795ms
+   ✓ swarmvault workflow > extracts CSV and TSV datasets into bounded table summaries  813ms
+   ✓ swarmvault workflow > extracts XLSX workbooks into searchable sheet summaries  859ms
+   ✓ swarmvault workflow > splits EPUBs into chapter manifests and removes stale parts on re-ingest  841ms
+   ✓ swarmvault workflow > treats .rst files as first-class text sources with normalized extracted text  530ms
+   ✓ swarmvault workflow > uses the configured vision provider to analyze image sources  491ms
+   ✓ swarmvault workflow > records explicit extraction warnings when no real vision provider is configured  400ms
+   ✓ swarmvault workflow > can save a query after add fallback without compiling the captured source first  786ms
+   ✓ swarmvault workflow > writes benchmark artifacts and exports svg, graphml, and cypher graph files  720ms
+   ✓ swarmvault workflow > enriches the graph with semantic similarity, group patterns, and richer graph-tool metadata  720ms
+   ✓ swarmvault workflow > uses configured embeddings for semantic graph query, cache artifacts, and inferred similarity edges  662ms
+   ✓ swarmvault workflow > suggests an embedding-capable backend when embeddingProvider lacks embeddings support  649ms
+   ✓ swarmvault workflow > classifies repo material by source class and keeps graph reporting focused on first-party content  873ms
+   ✓ swarmvault workflow > threads the schema through compile and query and marks pages stale when the schema changes  700ms
+   ✓ swarmvault workflow > normalizes non-canonical deep-lint severity labels from provider output  586ms
+   ✓ swarmvault workflow > exposes vault operations through the MCP server  1199ms
+   ✓ swarmvault workflow > watches the inbox and records automation runs  1133ms
+   ✓ swarmvault workflow > watches tracked repos and recompiles code changes  1735ms
+   ✓ swarmvault workflow > flags pending semantic refresh for tracked non-code repo changes  1346ms
+   ✓ swarmvault workflow > includes tags field in analysis and page frontmatter after compile  502ms
+   ✓ swarmvault workflow > propagates tags from analysis onto source nodes in graph.json  488ms
+   ✓ swarmvault workflow > detects contradictions between opposing claims across sources  597ms
+   ✓ swarmvault workflow > lint --conflicts surfaces deterministic contradiction findings  639ms
+   ✓ swarmvault workflow > review show includes a change summary for approval entries  681ms
+   ✓ swarmvault workflow > review show with diff option includes unified diff output  606ms
+   ✓ swarmvault workflow > ignores operational markdown frontmatter changes when semantic content is unchanged  1445ms
+   ✓ swarmvault workflow > falls back to legacy source_hashes when source_semantic_hashes are absent  564ms
+   ✓ swarmvault workflow > scopes uncited_claims lint to the Claims section only  508ms
+   ✓ swarmvault workflow > does not fire uncited_claims on the 'No claims extracted.' placeholder bullet  493ms
+   ✓ swarmvault workflow > does not fire uncited_claims when ## Claims appears only inside embedded source text  457ms
+   ✓ swarmvault workflow > rejects empty or whitespace-only graph query questions  376ms
+
+ Test Files  1 passed (1)
+      Tests  74 passed (74)
+   Start at  07:03:52
+   Duration  85.37s (transform 2.04s, setup 0ms, collect 5.06s, tests 79.95s, environment 0ms, prepare 87ms)
