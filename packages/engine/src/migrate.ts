@@ -1,3 +1,4 @@
+// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover. | Porting Priority: MEDIUM (Internal logic, Depth: 2/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";

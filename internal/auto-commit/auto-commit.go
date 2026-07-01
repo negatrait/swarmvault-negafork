@@ -4,19 +4,23 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
+// Git runs a git command and returns its stdout or an error with stderr details.
 func Git(rootDir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = rootDir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("git error: %w (stderr: %q)", err, stderr.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func IsGitRepo(rootDir string) bool {
@@ -43,11 +47,19 @@ func AutoCommitWikiChanges(rootDir string, operation string, detail string, conf
 		return nil, nil
 	}
 
-	wikiRelative := strings.TrimPrefix(config.WikiDir, rootDir+"/")
-	stateRelative := strings.TrimPrefix(config.StateDir, rootDir+"/")
+	wikiRelative, err := filepath.Rel(rootDir, config.WikiDir)
+	if err != nil {
+		return nil, fmt.Errorf("invalid wiki directory path relative to root: %w", err)
+	}
+	stateRelative, err := filepath.Rel(rootDir, config.StateDir)
+	if err != nil {
+		return nil, fmt.Errorf("invalid state directory path relative to root: %w", err)
+	}
 
 	// git add wikiRelative stateRelative
-	_, _ = Git(rootDir, "add", wikiRelative, stateRelative)
+	if _, err := Git(rootDir, "add", wikiRelative, stateRelative); err != nil {
+		return nil, err
+	}
 
 	// git diff --cached --stat
 	status, err := Git(rootDir, "diff", "--cached", "--stat")
@@ -60,8 +72,7 @@ func AutoCommitWikiChanges(rootDir string, operation string, detail string, conf
 		message = fmt.Sprintf("vault %s: %s", operation, detail)
 	}
 
-	_, err = Git(rootDir, "commit", "-m", message)
-	if err != nil {
+	if _, err := Git(rootDir, "commit", "-m", message); err != nil {
 		return nil, err
 	}
 

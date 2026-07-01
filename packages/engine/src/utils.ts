@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { runGoSidecar, runGoSidecarSync } from "./subprocess.js";
 
 export function slugify(value: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "slugify", args: { value } }) as string;
+  }
   return (
     value
       .toLowerCase()
@@ -13,14 +17,25 @@ export function slugify(value: string): string {
 }
 
 export function sha256(value: string | Uint8Array): string {
+  const stringValue = typeof value === "string" ? value : new TextDecoder().decode(value);
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "sha256", args: { value: stringValue } }) as string;
+  }
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
 export async function ensureDir(dirPath: string): Promise<void> {
+  if (process.env.USE_GO_PORT === "true") {
+    await runGoSidecar("utils", { action: "ensureDir", args: { dirPath } });
+    return;
+  }
   await fs.mkdir(dirPath, { recursive: true });
 }
 
 export async function fileExists(filePath: string): Promise<boolean> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("utils", { action: "fileExists", args: { filePath } }) as Promise<boolean>;
+  }
   try {
     await fs.access(filePath);
     return true;
@@ -30,6 +45,9 @@ export async function fileExists(filePath: string): Promise<boolean> {
 }
 
 export async function readJsonFile<T>(filePath: string): Promise<T | null> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("utils", { action: "readJsonFile", args: { filePath } }) as Promise<T | null>;
+  }
   try {
     const content = await fs.readFile(filePath, "utf8");
     return JSON.parse(content) as T;
@@ -45,6 +63,10 @@ export async function readJsonFile<T>(filePath: string): Promise<T | null> {
 }
 
 export async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
+  if (process.env.USE_GO_PORT === "true") {
+    await runGoSidecar("utils", { action: "writeJsonFile", args: { filePath, value } });
+    return;
+  }
   await ensureDir(path.dirname(filePath));
   const dir = path.dirname(filePath);
   const tempPath = path.join(dir, `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`);
@@ -58,11 +80,18 @@ export async function writeJsonFile(filePath: string, value: unknown): Promise<v
 }
 
 export async function appendJsonLine(filePath: string, value: unknown): Promise<void> {
+  if (process.env.USE_GO_PORT === "true") {
+    await runGoSidecar("utils", { action: "appendJsonLine", args: { filePath, value } });
+    return;
+  }
   await ensureDir(path.dirname(filePath));
   await fs.appendFile(filePath, `${JSON.stringify(value)}\n`, "utf8");
 }
 
 export async function writeFileIfChanged(filePath: string, content: string): Promise<boolean> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("utils", { action: "writeFileIfChanged", args: { filePath, content } }) as Promise<boolean>;
+  }
   await ensureDir(path.dirname(filePath));
   if (await fileExists(filePath)) {
     const existing = await fs.readFile(filePath, "utf8");
@@ -75,10 +104,16 @@ export async function writeFileIfChanged(filePath: string, content: string): Pro
 }
 
 export function toPosix(value: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "toPosix", args: { value } }) as string;
+  }
   return value.split(path.sep).join(path.posix.sep);
 }
 
 export function isPathWithin(rootDir: string, candidate: string): boolean {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "isPathWithin", args: { rootDir, candidate } }) as boolean;
+  }
   const normalizedRoot = path.resolve(rootDir);
   const normalizedCandidate = path.resolve(candidate);
   if (normalizedCandidate === normalizedRoot) {
@@ -89,6 +124,9 @@ export function isPathWithin(rootDir: string, candidate: string): boolean {
 }
 
 export function firstSentences(value: string, count = 3): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "firstSentences", args: { value, count } }) as string;
+  }
   const sentences = value
     .replace(/\s+/g, " ")
     .split(/(?<=[.!?])\s+/)
@@ -113,6 +151,9 @@ export function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
 }
 
 export function extractJson(text: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "extractJson", args: { text } }) as string;
+  }
   const fencedMatch = text.match(/```json\s*([\s\S]*?)```/i);
   if (fencedMatch) {
     return fencedMatch[1].trim();
@@ -136,21 +177,23 @@ export function extractJson(text: string): string {
 }
 
 export function normalizeWhitespace(value: string): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "normalizeWhitespace", args: { value } }) as string;
+  }
   return value.replace(/\s+/g, " ").trim();
 }
 
-/**
- * Drop undefined values from a frontmatter-shaped record before passing it to
- * a YAML serializer. js-yaml refuses to dump `undefined`, so any optional
- * frontmatter field that wasn't supplied (e.g. `target`, `agent`) would
- * otherwise crash matter.stringify with `unacceptable kind of an object to
- * dump [object Undefined]`.
- */
 export function safeFrontmatter<T extends Record<string, unknown>>(value: T): T {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "safeFrontmatter", args: { value } }) as T;
+  }
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
 export function truncate(value: string, maxLength: number): string {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("utils", { action: "truncate", args: { value, maxLength } }) as string;
+  }
   if (value.length <= maxLength) {
     return value;
   }
@@ -161,6 +204,9 @@ export function truncate(value: string, maxLength: number): string {
 }
 
 export async function listFilesRecursive(rootDir: string): Promise<string[]> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("utils", { action: "listFilesRecursive", args: { rootDir } }) as Promise<string[]>;
+  }
   const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => []);
   const files: string[] = [];
 

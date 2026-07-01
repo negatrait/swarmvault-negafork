@@ -3,9 +3,9 @@
   "files": [
     {
       "path": "src/agents.ts",
-      "status": "completed",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "agents",
+      "bridged": true
     },
     {
       "path": "src/ai-export.ts",
@@ -57,9 +57,9 @@
     },
     {
       "path": "src/confidence.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "confidence",
+      "bridged": true
     },
     {
       "path": "src/config.ts",
@@ -105,9 +105,9 @@
     },
     {
       "path": "src/findings.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "findings",
+      "bridged": true
     },
     {
       "path": "src/freshness.ts",
@@ -135,9 +135,9 @@
     },
     {
       "path": "src/graph-interchange.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "graph",
+      "bridged": true
     },
     {
       "path": "src/graph-merge.ts",
@@ -249,9 +249,9 @@
     },
     {
       "path": "src/large-repo-defaults.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "config",
+      "bridged": true
     },
     {
       "path": "src/logs.ts",
@@ -375,9 +375,9 @@
     },
     {
       "path": "src/redaction.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "redaction",
+      "bridged": true
     },
     {
       "path": "src/retrieval.ts",
@@ -411,9 +411,9 @@
     },
     {
       "path": "src/source-classification.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "config",
+      "bridged": true
     },
     {
       "path": "src/source-registry.ts",
@@ -441,15 +441,15 @@
     },
     {
       "path": "src/token-estimation.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "parser",
+      "bridged": true
     },
     {
       "path": "src/tokenize.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "parser",
+      "bridged": true
     },
     {
       "path": "src/types.ts",
@@ -459,9 +459,9 @@
     },
     {
       "path": "src/utils.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "bridged",
+      "subcommand": "utils",
+      "bridged": true
     },
     {
       "path": "src/vault.ts",
@@ -489,9 +489,9 @@
     },
     {
       "path": "src/web-search/http-json.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "websearch",
+      "bridged": true
     },
     {
       "path": "src/web-search/registry.ts",

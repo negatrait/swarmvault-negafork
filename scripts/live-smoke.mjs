@@ -123,6 +123,14 @@ try {
     await assertExists(path.join(workspaceDir, "state"));
   });
 
+  await runStep("demo", async () => {
+    const demoResult = await runCliJson(["demo", "--no-serve"], { cwd: artifactDir });
+    assert.ok(demoResult.demoDir, "demo command did not return demoDir");
+    assert.ok(demoResult.shareCardPath, "demo command did not return shareCardPath");
+    await assertExists(demoResult.demoDir);
+    await assertExists(demoResult.shareCardPath);
+  });
+
   if (lane === "openai" || lane === "ollama" || lane === "anthropic") {
     await runStep(`configure-${lane}`, async () => {
       const configPath = path.join(workspaceDir, "swarmvault.config.json");

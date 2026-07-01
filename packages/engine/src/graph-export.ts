@@ -1,3 +1,4 @@
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: MEDIUM (Internal logic, Depth: 2/10)
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -408,7 +409,7 @@ function renderGraphMl(graph: GraphArtifact): string {
     lines.push("    </node>");
   }
   for (const hyperedge of [...(graph.hyperedges ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
-    lines.push(`    <node id="${xmlEscape(exportHyperedgeNodeId(hyperedge))}">`);
+    lines.push(`    <node id="${xmlEscape(`hyperedge:${hyperedge.id}`)}">`);
     for (const [key, value] of [
       ["n_label", hyperedge.label],
       ["n_type", "hyperedge"],
@@ -438,7 +439,7 @@ function renderGraphMl(graph: GraphArtifact): string {
   for (const hyperedge of [...(graph.hyperedges ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
     for (const nodeId of hyperedge.nodeIds) {
       lines.push(
-        `    <edge id="${xmlEscape(`member:${hyperedge.id}:${nodeId}`)}" source="${xmlEscape(exportHyperedgeNodeId(hyperedge))}" target="${xmlEscape(nodeId)}">`
+        `    <edge id="${xmlEscape(`member:${hyperedge.id}:${nodeId}`)}" source="${xmlEscape(`hyperedge:${hyperedge.id}`)}" target="${xmlEscape(nodeId)}">`
       );
       for (const [key, value] of [
         ["e_relation", "group_member"],
@@ -469,7 +470,7 @@ function renderCypher(graph: GraphArtifact): string {
   }
   lines.push("");
   for (const hyperedge of [...(graph.hyperedges ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
-    const hyperedgeNodeId = exportHyperedgeNodeId(hyperedge);
+    const hyperedgeNodeId = `hyperedge:${hyperedge.id}`;
     const props = Object.entries(normalizeHyperedgeNodeProps(hyperedge))
       .map(([key, value]) => `${key}: ${typeof value === "string" ? cypherStringLiteral(value) : value}`)
       .join(", ");
@@ -479,7 +480,7 @@ function renderCypher(graph: GraphArtifact): string {
     lines.push("");
   }
   for (const hyperedge of [...(graph.hyperedges ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
-    const hyperedgeNodeId = exportHyperedgeNodeId(hyperedge);
+    const hyperedgeNodeId = `hyperedge:${hyperedge.id}`;
     for (const nodeId of hyperedge.nodeIds) {
       const props = Object.entries(normalizeGroupMemberProps(hyperedge, nodeId))
         .map(([key, value]) => `${key}: ${typeof value === "string" ? cypherStringLiteral(value) : value}`)

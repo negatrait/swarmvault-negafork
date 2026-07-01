@@ -1,9 +1,9 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noForEach": "off"
       },
@@ -25,21 +25,30 @@
       "semicolons": "always"
     }
   },
+  "css": {
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space"
+    }
+  },
   "assist": {
     "enabled": true
   },
   "files": {
+    "ignoreUnknown": true,
     "includes": [
       "**/*.ts",
       "**/*.tsx",
       "**/*.js",
       "**/*.jsx",
       "**/*.json",
-      "!**/dist",
-      "!.live-smoke-artifacts",
-      "!.oss-corpus-artifacts",
-      "!node_modules",
-      "!.next",
+      "**/*.css",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/.live-smoke-artifacts",
+      "!!**/.oss-corpus-artifacts",
+      "!!**/node_modules",
+      "!!.next",
       "!out",
       "!pnpm-lock.yaml",
       "!**/raw",
@@ -47,8 +56,9 @@
       "!**/state",
       "!**/agent",
       "!**/inbox",
-      "!**/.claude",
-      "!**/.cursor"
+      "!!**/.claude",
+      "!!**/.cursor",
+      "!!**/.agents"
     ]
   }
 }

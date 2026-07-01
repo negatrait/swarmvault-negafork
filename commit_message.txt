@@ -1,9 +1,0 @@
-docs: Add PORTING_ANALYSIS.md evaluating WASM/Go/Rust ports
-
-Added an architectural analysis document evaluating the feasibility and
-benefits of porting SwarmVault to WebAssembly, Go, or Rust.
-
-This analysis addresses the goals of shrinking the memory footprint,
-compiling to a standalone CLI binary without dependencies, and keeping
-WASM as a compatible target. The document identifies Rust as the ideal
-candidate to meet all criteria and outlines a recommended roadmap.

@@ -1,3 +1,4 @@
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: MEDIUM-HIGH (Near-leaf, Depth: 1/10)
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";
 import type { CodeSymbolKind, GraphArtifact, GraphNode } from "./types.js";

@@ -1,3 +1,4 @@
+// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: MEDIUM (Internal logic, Depth: 2/10)
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";
 import { rebuildSearchIndex } from "./search.js";

@@ -1,3 +1,5 @@
+import { runGoSidecarSync } from "./subprocess.js";
+
 export interface RedactionPattern {
   id: string;
   pattern: RegExp | string;
@@ -169,6 +171,40 @@ export function resolveRedactionPatterns(config?: RedactionConfig | null): {
   placeholder: string;
   patterns: RedactionPattern[];
 } {
+  if (process.env.USE_GO_PORT === "true") {
+    // Note: The Go side returns plain string patterns. We must convert them to RegExp
+    // objects with the "g" flag, exactly matching legacy logic, so the caller receives the expected types.
+    type GoResult = {
+      enabled: boolean;
+      placeholder: string;
+      patterns: { id: string; pattern: string; placeholder?: string; description?: string; flags?: string }[];
+    };
+    const goResult = runGoSidecarSync<GoResult>("redaction", {
+      action: "resolveRedactionPatterns",
+      args: [config ?? null]
+    });
+    const parsedPatterns: RedactionPattern[] = goResult.patterns.map((entry) => {
+      let regex: RegExp;
+      try {
+        regex = new RegExp(entry.pattern, entry.flags ?? "g");
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`Invalid redaction pattern \`${entry.id}\`: ${reason}`);
+      }
+      return {
+        id: entry.id,
+        pattern: regex,
+        placeholder: entry.placeholder,
+        description: entry.description
+      };
+    });
+    return {
+      enabled: goResult.enabled,
+      placeholder: goResult.placeholder,
+      patterns: parsedPatterns
+    };
+  }
+
   const enabled = config?.enabled ?? true;
   const placeholder = config?.placeholder ?? DEFAULT_PLACEHOLDER;
   const useDefaults = config?.useDefaults ?? true;

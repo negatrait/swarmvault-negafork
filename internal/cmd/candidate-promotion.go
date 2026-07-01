@@ -3,19 +3,17 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	candidatepromotion "swarmvault-native/internal/candidate-promotion"
 	"swarmvault-native/internal/utils"
 )
 
-func HandleCandidatePromotion() {
+func HandleCandidatePromotion() error {
 	var payload struct {
 		Action string          `json:"action"`
 		Args   json.RawMessage `json:"args"`
 	}
 	if err := utils.DecodePayload(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	switch payload.Action {
@@ -28,12 +26,11 @@ func HandleCandidatePromotion() {
 			Now     int64                                               `json:"now"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := candidatepromotion.EvaluateCandidateForPromotion(args.Page, args.Graph, args.History, args.Config, args.Now)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "sortDecisionsForPromotion":
@@ -41,12 +38,11 @@ func HandleCandidatePromotion() {
 			Decisions []candidatepromotion.PromotionDecision `json:"decisions"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := candidatepromotion.SortDecisionsForPromotion(args.Decisions)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "renderPromotionSessionMarkdown":
@@ -60,16 +56,16 @@ func HandleCandidatePromotion() {
 			} `json:"options"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result := candidatepromotion.RenderPromotionSessionMarkdown(args.Decisions, args.PromotedPageIds, args.Options.DryRun, args.Options.StartedAt, args.Options.FinishedAt)
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown candidate-promotion action: %s\n", payload.Action)
-		os.Exit(1)
+		return fmt.Errorf("unknown candidate-promotion action: %s", payload.Action)
 	}
+
+	return nil
 }

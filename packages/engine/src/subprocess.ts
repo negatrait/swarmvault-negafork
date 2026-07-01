@@ -1,31 +1,52 @@
 import { spawn } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
-// biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
-export async function runGoSidecar(subcommand: string, inputPayload: unknown): Promise<any> {
+// Avoid dual CJS/ESM target __dirname issues
+function getDirname() {
+  try {
+    return new URL(".", import.meta.url).pathname;
+  } catch (_e) {
+    return process.cwd();
+  }
+}
+
+export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     // Resolve absolute path to avoid pnpm workspace cwd confusion
-    // import.meta.url points to dist/subprocess.js when built
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-    // In dev it's in packages/engine/src/subprocess.ts -> ../../../swarmvault-native
-    // In prod it's in packages/engine/dist/subprocess.js -> ../../../swarmvault-native
     const isWin = process.platform === "win32";
     const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
     const binaryPath = (() => {
-      // Check multiple locations for the binary
-      const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
-      const binDir = path.resolve(workspaceRoot, "bin");
-
-      // Default to the bin folder if it exists
-      if (fs.existsSync(path.join(binDir, binaryName))) {
-        return path.join(binDir, binaryName);
+      // Find the binary by looking up from either the source or compiled file, or from cwd
+      let current = typeof __dirname !== "undefined" ? __dirname : getDirname();
+      while (current !== "/" && current !== path.parse(current).root) {
+        if (fs.existsSync(path.join(current, "bin", binaryName))) {
+          return path.join(current, "bin", binaryName);
+        }
+        if (fs.existsSync(path.join(current, binaryName))) {
+          return path.join(current, binaryName);
+        }
+        current = path.dirname(current);
+      }
+      current = process.cwd();
+      while (current !== "/" && current !== path.parse(current).root) {
+        if (fs.existsSync(path.join(current, "bin", binaryName))) {
+          return path.join(current, "bin", binaryName);
+        }
+        if (fs.existsSync(path.join(current, binaryName))) {
+          return path.join(current, binaryName);
+        }
+        current = path.dirname(current);
       }
 
-      // Fall back to root for legacy locations
-      return path.join(workspaceRoot, binaryName);
+      const paths = (process.env.PATH || "").split(path.delimiter);
+      for (const p of paths) {
+        if (p && fs.existsSync(path.join(p, binaryName))) return path.join(p, binaryName);
+      }
+      const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
+      if (fs.existsSync(homeBin)) return homeBin;
+
+      return path.join(process.cwd(), binaryName);
     })();
 
     // Explicitly define stdio routing
@@ -51,8 +72,8 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
       }
       try {
         resolve(JSON.parse(stdout));
-      } catch (e) {
-        reject(new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${stdout}`));
+      } catch (_e) {
+        reject(new Error(`Failed to parse Go sidecar output: ${_e}\nOutput was: ${stdout}`));
       }
     });
 
@@ -64,28 +85,45 @@ export async function runGoSidecar(subcommand: string, inputPayload: unknown): P
 
 import { spawnSync } from "node:child_process";
 
-// biome-ignore lint/suspicious/noExplicitAny: This is a generic boundary wrapper for all payloads
-export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: unknown): T {
   const isWin = process.platform === "win32";
   const binaryName = isWin ? "swarmvault-native.exe" : "swarmvault-native";
   const binaryPath = (() => {
-    // Check multiple locations for the binary
-    const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
-    const binDir = path.resolve(workspaceRoot, "bin");
-
-    // Default to the bin folder if it exists
-    if (fs.existsSync(path.join(binDir, binaryName))) {
-      return path.join(binDir, binaryName);
+    let current = typeof __dirname !== "undefined" ? __dirname : getDirname();
+    while (current !== "/" && current !== path.parse(current).root) {
+      if (fs.existsSync(path.join(current, "bin", binaryName))) {
+        return path.join(current, "bin", binaryName);
+      }
+      if (fs.existsSync(path.join(current, binaryName))) {
+        return path.join(current, binaryName);
+      }
+      current = path.dirname(current);
+    }
+    current = process.cwd();
+    while (current !== "/" && current !== path.parse(current).root) {
+      if (fs.existsSync(path.join(current, "bin", binaryName))) {
+        return path.join(current, "bin", binaryName);
+      }
+      if (fs.existsSync(path.join(current, binaryName))) {
+        return path.join(current, binaryName);
+      }
+      current = path.dirname(current);
     }
 
-    // Fall back to root for legacy locations
-    return path.join(workspaceRoot, binaryName);
+    const paths = (process.env.PATH || "").split(path.delimiter);
+    for (const p of paths) {
+      if (p && fs.existsSync(path.join(p, binaryName))) return path.join(p, binaryName);
+    }
+    const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
+    if (fs.existsSync(homeBin)) return homeBin;
+
+    return path.join(process.cwd(), binaryName);
   })();
 
   const child = spawnSync(binaryPath, [subcommand], {
     input: JSON.stringify(inputPayload),
-    encoding: "utf-8"
+    encoding: "utf-8",
+    maxBuffer: 50 * 1024 * 1024
   });
 
   if (child.error) {
@@ -96,7 +134,7 @@ export function runGoSidecarSync(subcommand: string, inputPayload: unknown): any
   }
   try {
     return JSON.parse(child.stdout);
-  } catch (e) {
-    throw new Error(`Failed to parse Go sidecar output: ${e}\nOutput was: ${child.stdout}`);
+  } catch (_e) {
+    throw new Error(`Failed to parse Go sidecar output: ${_e}\nOutput was: ${child.stdout}`);
   }
 }

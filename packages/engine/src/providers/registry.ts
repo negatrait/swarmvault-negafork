@@ -1,3 +1,4 @@
+// TODO: Port API provider structures and local model integrations to Go sidecar under internal/providers. Ensure environment inheritance is maintained. | Porting Priority: MEDIUM (Internal logic, Depth: 2/10)
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";

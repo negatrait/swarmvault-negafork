@@ -1,3 +1,4 @@
+// TODO: Port orchestration, configuration, or CLI command entry points to Go in Phase 5 shell cutover. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

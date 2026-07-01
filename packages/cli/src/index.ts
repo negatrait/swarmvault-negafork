@@ -410,6 +410,86 @@ function dedupeNextRecommendations(recommendations: NextCommandRecommendation[])
     .sort((left, right) => rank[left.priority] - rank[right.priority] || left.command.localeCompare(right.command));
 }
 
+type WorkspaceStateResult =
+  | { type: "report"; report: NextCommandReport }
+  | { type: "valid"; paths: ResolvedPaths; nextPaths: NextCommandPaths };
+
+async function checkWorkspaceState(rootDir: string, generatedAt: string): Promise<WorkspaceStateResult> {
+  const fallbackPaths = resolvePaths(rootDir, defaultVaultConfig());
+  const fallbackNextPaths = serializeNextPaths(fallbackPaths);
+  const [configExists, schemaExists] = await Promise.all([pathExists(fallbackPaths.configPath), pathExists(fallbackPaths.schemaPath)]);
+
+  if (!configExists && !schemaExists) {
+    return {
+      type: "report",
+      report: {
+        status: "uninitialized",
+        rootDir,
+        generatedAt,
+        paths: fallbackNextPaths,
+        checks: [
+          {
+            id: "workspace",
+            label: "Workspace",
+            status: "error",
+            summary: "No SwarmVault workspace files were found in this directory.",
+            command: "swarmvault quickstart ./your-repo"
+          }
+        ],
+        recommendations: [
+          nextRecommendation(
+            "Fast start",
+            "swarmvault quickstart ./your-repo",
+            "Initialize, ingest, compile, and open the graph viewer.",
+            "high"
+          ),
+          nextRecommendation("Try a sample", "swarmvault demo", "Build a small demo vault before using your own files.", "medium"),
+          nextRecommendation(
+            "Manual setup",
+            "swarmvault init",
+            "Create an empty vault when you want to ingest and compile step by step.",
+            "medium"
+          )
+        ]
+      }
+    };
+  }
+
+  try {
+    const { paths } = await loadVaultConfig(rootDir);
+    const nextPaths = serializeNextPaths(paths);
+    return { type: "valid", paths, nextPaths };
+  } catch (error: unknown) {
+    return {
+      type: "report",
+      report: {
+        status: "initialized",
+        rootDir,
+        generatedAt,
+        paths: fallbackNextPaths,
+        checks: [
+          {
+            id: "config",
+            label: "Config",
+            status: "error",
+            summary: "SwarmVault workspace files exist, but the config could not be loaded.",
+            detail: error instanceof Error ? error.message : String(error),
+            command: "swarmvault doctor"
+          }
+        ],
+        recommendations: [
+          nextRecommendation(
+            "Inspect workspace health",
+            "swarmvault doctor",
+            "Review the config/schema issue before ingesting or compiling.",
+            "high"
+          )
+        ]
+      }
+    };
+  }
+}
+
 /**
  * @summary Generates a context-aware report recommending the next CLI actions for a workspace.
  *
@@ -428,77 +508,16 @@ function dedupeNextRecommendations(recommendations: NextCommandRecommendation[])
  * @param rootDir - The absolute path to the workspace root directory.
  * @returns A structured report detailing the current status, paths, counts, health checks, and prioritized command recommendations.
  */
-// TODO: Simplify and extract workspace state and config fallback checking. The fallback configuration generation, file access checks, and schema validation should be wrapped in an isolated function.
 async function buildNextCommandReport(rootDir: string): Promise<NextCommandReport> {
   const generatedAt = new Date().toISOString();
-  const fallbackPaths = resolvePaths(rootDir, defaultVaultConfig());
-  const fallbackNextPaths = serializeNextPaths(fallbackPaths);
-  const [configExists, schemaExists] = await Promise.all([pathExists(fallbackPaths.configPath), pathExists(fallbackPaths.schemaPath)]);
+  const stateResult = await checkWorkspaceState(rootDir, generatedAt);
 
-  if (!configExists && !schemaExists) {
-    return {
-      status: "uninitialized",
-      rootDir,
-      generatedAt,
-      paths: fallbackNextPaths,
-      checks: [
-        {
-          id: "workspace",
-          label: "Workspace",
-          status: "error",
-          summary: "No SwarmVault workspace files were found in this directory.",
-          command: "swarmvault quickstart ./your-repo"
-        }
-      ],
-      recommendations: [
-        nextRecommendation(
-          "Fast start",
-          "swarmvault quickstart ./your-repo",
-          "Initialize, ingest, compile, and open the graph viewer.",
-          "high"
-        ),
-        nextRecommendation("Try a sample", "swarmvault demo", "Build a small demo vault before using your own files.", "medium"),
-        nextRecommendation(
-          "Manual setup",
-          "swarmvault init",
-          "Create an empty vault when you want to ingest and compile step by step.",
-          "medium"
-        )
-      ]
-    };
+  if (stateResult.type === "report") {
+    return stateResult.report;
   }
 
-  let paths: ResolvedPaths;
-  try {
-    ({ paths } = await loadVaultConfig(rootDir));
-  } catch (error: unknown) {
-    return {
-      status: "initialized",
-      rootDir,
-      generatedAt,
-      paths: fallbackNextPaths,
-      checks: [
-        {
-          id: "config",
-          label: "Config",
-          status: "error",
-          summary: "SwarmVault workspace files exist, but the config could not be loaded.",
-          detail: error instanceof Error ? error.message : String(error),
-          command: "swarmvault doctor"
-        }
-      ],
-      recommendations: [
-        nextRecommendation(
-          "Inspect workspace health",
-          "swarmvault doctor",
-          "Review the config/schema issue before ingesting or compiling.",
-          "high"
-        )
-      ]
-    };
-  }
+  const { paths, nextPaths } = stateResult;
 
-  const nextPaths = serializeNextPaths(paths);
   const graphStatus = await getGraphStatus(rootDir).catch(() => null);
   const graphExists = graphStatus?.graphExists ?? (await pathExists(paths.graphPath));
 

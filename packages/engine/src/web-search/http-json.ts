@@ -1,3 +1,4 @@
+import { runGoSidecar } from "../subprocess.js";
 import type { WebSearchAdapter, WebSearchProviderConfig, WebSearchResult } from "../types.js";
 
 function deepGet(value: unknown, pathValue: string | undefined): unknown {
@@ -29,6 +30,18 @@ export class HttpJsonWebSearchAdapter implements WebSearchAdapter {
   ) {}
 
   public async search(query: string, limit = 5): Promise<WebSearchResult[]> {
+    if (process.env.USE_GO_PORT === "true") {
+      return await runGoSidecar<WebSearchResult[]>("websearch", {
+        action: "http-json-search",
+        args: {
+          id: this.id,
+          config: this.config,
+          query,
+          limit
+        }
+      });
+    }
+
     if (!this.config.endpoint) {
       throw new Error(`Web search provider ${this.id} is missing an endpoint.`);
     }

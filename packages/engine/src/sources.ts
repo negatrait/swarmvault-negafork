@@ -1,3 +1,4 @@
+// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: LOW (Root-facing orchestrator, Depth: 7/10)
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -470,7 +471,7 @@ async function syncFileSource(rootDir: string, inputPath: string): Promise<Manag
       removedCount: result.removed.length,
       skippedCount: result.skipped.length
     },
-    changed: result.created.length + result.updated.length + result.removed.length > 0
+    changed: result.created.length > 0 || result.updated.length > 0 || result.removed.length > 0
   };
 }
 
@@ -2159,6 +2160,7 @@ export async function addManagedSource(
   const source: ManagedSourceRecord = existing
     ? {
         ...existing,
+        changed: existing.changed,
         branch: resolved.kind === "github_repo" ? resolved.branch : existing.branch,
         ref: resolved.kind === "github_repo" ? resolved.ref : existing.ref,
         checkoutDir: resolved.kind === "github_repo" ? (resolved.checkoutDir ?? existing.checkoutDir) : existing.checkoutDir

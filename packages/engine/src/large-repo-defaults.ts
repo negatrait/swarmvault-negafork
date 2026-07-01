@@ -1,3 +1,5 @@
+// TODO: Dead code
+import { runGoSidecarSync } from "./subprocess.js";
 import type { VaultConfig } from "./types.js";
 
 /**
@@ -65,6 +67,13 @@ export function resolveLargeRepoDefaults(input: {
   totalCommunities?: number;
   config?: VaultConfig | null;
 }): ResolvedLargeRepoDefaults {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<ResolvedLargeRepoDefaults>("config", {
+      action: "resolveLargeRepoDefaults",
+      args: input
+    });
+  }
+
   const nodeCount = Math.max(0, Math.floor(input.nodeCount));
   const totalCommunities = Math.max(0, Math.floor(input.totalCommunities ?? 0));
   const graphConfig = input.config?.graph;

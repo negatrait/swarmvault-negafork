@@ -1,3 +1,4 @@
+// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: MEDIUM-LOW (Composite logic, Depth: 4/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -3841,6 +3842,20 @@ export async function ingestInputDetailed(rootDir: string, input: string, option
   return result;
 }
 
+/**
+ * @summary Ingests a new input source into the vault.
+ *
+ * @remarks
+ * Orchestrates fetching, deduplicating, and persisting raw source materials (e.g., URLs, local files) into the configured workspace.
+ *
+ * Future Refactoring Note:
+ * The extraction pipelines based on source type (text, audio, code) are currently interwoven here. Move these into a dedicated strategy pattern to simplify this orchestration function.
+ *
+ * @param rootDir - The root directory of the workspace.
+ * @param input - The source input identifier (URL, path, etc.).
+ * @param options - Configuration options for the ingestion process.
+ * @returns The resulting source manifest.
+ */
 export async function ingestInput(rootDir: string, input: string, options?: IngestOptions): Promise<SourceManifest> {
   const result = await ingestInputDetailed(rootDir, input, options);
   const manifest = [...result.created, ...result.updated, ...result.unchanged][0];

@@ -1,3 +1,4 @@
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: MEDIUM-LOW (Composite logic, Depth: 5/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadVaultConfig } from "./config.js";

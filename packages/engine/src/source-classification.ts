@@ -1,4 +1,5 @@
 import path from "node:path";
+import { runGoSidecarSync } from "./subprocess.js";
 import type { SourceClass, SourceManifest, VaultConfig } from "./types.js";
 
 export const ALL_SOURCE_CLASSES: SourceClass[] = ["first_party", "third_party", "resource", "generated"];
@@ -13,6 +14,13 @@ function matchesAnyGlob(relativePath: string, patterns: string[]): boolean {
 }
 
 export function classifyRepoPath(relativePath: string, repoAnalysis?: VaultConfig["repoAnalysis"]): SourceClass {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<SourceClass>("config", {
+      action: "classifyRepoPath",
+      args: { relativePath, repoAnalysis }
+    });
+  }
+
   const normalized = relativePath.replace(/\\/g, "/");
   const custom = repoAnalysis?.classifyGlobs;
 
@@ -41,11 +49,27 @@ export function classifyRepoPath(relativePath: string, repoAnalysis?: VaultConfi
 }
 
 export function normalizeExtractClasses(repoAnalysis?: VaultConfig["repoAnalysis"], extra: SourceClass[] = []): SourceClass[] {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<SourceClass[]>("config", {
+      action: "normalizeExtractClasses",
+      args: { repoAnalysis, extra }
+    });
+  }
+
   const configured = repoAnalysis?.extractClasses?.length ? repoAnalysis.extractClasses : ["first_party"];
   return ALL_SOURCE_CLASSES.filter((sourceClass) => new Set([...configured, ...extra]).has(sourceClass));
 }
 
 export function aggregateSourceClass(values: Array<SourceClass | undefined>): SourceClass | undefined {
+  if (process.env.USE_GO_PORT === "true") {
+    return (
+      runGoSidecarSync<SourceClass | undefined>("config", {
+        action: "aggregateSourceClass",
+        args: { values }
+      }) ?? undefined
+    );
+  }
+
   const available = ALL_SOURCE_CLASSES.filter((sourceClass) => values.includes(sourceClass));
   if (!available.length) {
     return undefined;
@@ -63,6 +87,15 @@ export function aggregateSourceClass(values: Array<SourceClass | undefined>): So
 }
 
 export function aggregateManifestSourceClass(manifests: SourceManifest[], sourceIds: string[]): SourceClass | undefined {
+  if (process.env.USE_GO_PORT === "true") {
+    return (
+      runGoSidecarSync<SourceClass | undefined>("config", {
+        action: "aggregateManifestSourceClass",
+        args: { manifests, sourceIds }
+      }) ?? undefined
+    );
+  }
+
   const byId = new Map(manifests.map((manifest) => [manifest.sourceId, manifest.sourceClass] as const));
   return aggregateSourceClass(sourceIds.map((sourceId) => byId.get(sourceId)));
 }

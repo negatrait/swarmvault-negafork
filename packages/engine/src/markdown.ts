@@ -1,3 +1,4 @@
+// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: MEDIUM-LOW (Composite logic, Depth: 4/10)
 import matter from "gray-matter";
 import { modulePageTitle } from "./code-analysis.js";
 import { filterGraphBySourceClass, sourceClassBreakdown } from "./embeddings.js";

@@ -1,6 +1,15 @@
+import { runGoSidecarSync } from "./subprocess.js";
+
 export type FindingSeverity = "error" | "warning" | "info";
 
 export function normalizeFindingSeverity(value: unknown): FindingSeverity {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<FindingSeverity>("findings", {
+      action: "normalizeFindingSeverity",
+      args: { value }
+    });
+  }
+
   if (typeof value !== "string") {
     return "info";
   }

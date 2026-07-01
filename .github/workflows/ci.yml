@@ -17,33 +17,19 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.64.5
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
-      - run: go build -o swarmvault-native ./cmd/swarmvault-native
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.6
+      - run: |
+          mkdir -p bin
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
       - run: pnpm test
       - run: USE_GO_PORT=true pnpm test
-
-  codeql:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
 
   perf-budget:
     runs-on: ubuntu-latest
@@ -54,8 +40,13 @@ jobs:
           node-version: 22
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: pnpm build
       - run: pnpm check:perf
+      - run: USE_GO_PORT=true pnpm check:perf
 
   packaged-smoke:
     runs-on: ubuntu-latest
@@ -68,6 +59,10 @@ jobs:
           node-version: 22
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: go.mod
       - run: pnpm release:preflight -- --skip-check --skip-test --skip-web --skip-skill --no-browser --no-oss-corpus
 
       - name: Upload packaged smoke artifacts

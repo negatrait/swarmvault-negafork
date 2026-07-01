@@ -3,19 +3,17 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"swarmvault-native/internal/chat"
 	"swarmvault-native/internal/utils"
 )
 
-func HandleChat() {
+func HandleChat() error {
 	var payload struct {
 		Action string          `json:"action"`
 		Args   json.RawMessage `json:"args"`
 	}
 	if err := utils.DecodePayload(&payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	switch payload.Action {
@@ -24,19 +22,17 @@ func HandleChat() {
 			RootDir string `json:"rootDir"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result, err := chat.ListChatSessions(args.RootDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error listing chat sessions: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 		if result == nil {
 			result = make([]chat.VaultChatSessionSummary, 0)
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "readChatSession":
@@ -45,16 +41,14 @@ func HandleChat() {
 			IdOrPrefix string `json:"idOrPrefix"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result, err := chat.ReadChatSession(args.RootDir, args.IdOrPrefix)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading chat session: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "deleteChatSession":
@@ -63,16 +57,14 @@ func HandleChat() {
 			IdOrPrefix string `json:"idOrPrefix"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result, err := chat.DeleteChatSession(args.RootDir, args.IdOrPrefix)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error deleting chat session: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "askChatSessionPrepare":
@@ -82,13 +74,11 @@ func HandleChat() {
 			Now     string              `json:"now"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		session, prompt, err := chat.PrepareChatSession(args.RootDir, args.Options, args.Now)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error preparing chat session: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 
 		result := struct {
@@ -99,7 +89,7 @@ func HandleChat() {
 			Prompt:  prompt,
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	case "askChatSessionSave":
@@ -111,20 +101,19 @@ func HandleChat() {
 			Now         string                `json:"now"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding args: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error decoding args: %w", err)
 		}
 		result, err := chat.SaveChatSessionTurn(args.RootDir, args.Session, args.Options, args.QueryResult, args.Now)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error saving chat session turn: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 		if err := utils.EncodeResponse(result); err != nil {
-			os.Exit(1)
+			return err
 		}
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown chat action: %s\n", payload.Action)
-		os.Exit(1)
+		return fmt.Errorf("unknown chat action: %s", payload.Action)
 	}
+
+	return nil
 }

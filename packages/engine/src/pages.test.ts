@@ -134,4 +134,52 @@ kind: insight
     expect(createdTime).toBeLessThanOrEqual(after);
     expect(updatedTime).toBe(createdTime);
   });
+
+  describe("edge cases", () => {
+    it("should fall back compiledFrom to sourceIds when compiled_from is empty or missing", () => {
+      const relativePath = "insights/fallback.md";
+      const content = `---
+kind: insight
+source_ids: ["source-a", "source-b"]
+---
+# Content`;
+
+      const result = parseStoredPage(relativePath, content);
+      expect(result.sourceIds).toEqual(["source-a", "source-b"]);
+      expect(result.compiledFrom).toEqual(["source-a", "source-b"]);
+    });
+
+    it("should ignore kind-specific fields when page is of a different kind", () => {
+      const relativePath = "concepts/mixed-fields.md";
+      const content = `---
+kind: concept
+tier: procedural
+consolidated_from_page_ids: ["some-page"]
+output_format: markdown
+---
+# Content`;
+
+      const result = parseStoredPage(relativePath, content);
+
+      expect(result.kind).toBe("concept");
+      expect(result.tier).toBeUndefined();
+      expect(result.consolidatedFromPageIds).toBeUndefined();
+      expect(result.outputFormat).toBeUndefined();
+    });
+
+    it("should handle empty strings and whitespace gracefully for optional string fields", () => {
+      const relativePath = "insights/empty-strings.md";
+      const content = `---
+kind: insight
+superseded_by: "   "
+schema_hash: ""
+---
+# Content`;
+
+      const result = parseStoredPage(relativePath, content);
+
+      expect(result.supersededBy).toBeUndefined();
+      expect(result.schemaHash).toBe("");
+    });
+  });
 });

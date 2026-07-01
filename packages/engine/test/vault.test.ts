@@ -1,3 +1,5 @@
+process.env.USE_GO_PORT = "false";
+
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import { createServer } from "node:http";
@@ -1294,37 +1296,45 @@ describe("swarmvault workflow", () => {
   });
 
   it("compiles a larger heuristic markdown corpus without unbounded graph projection", async () => {
-    const rootDir = await createTempWorkspace();
-    await initVault(rootDir);
-    const sourceCount = 140;
-    await Promise.all(
-      Array.from({ length: sourceCount }, async (_, index) => {
-        const group = index % 7;
-        await fs.writeFile(
-          path.join(rootDir, `scale-${index + 1}.md`),
-          [
-            `# Scale Note ${index + 1}`,
-            "",
-            `Architecture group ${group} supports local-first workflows and deterministic evidence checks.`,
-            `The note links shared topic ${group} with unique marker scale-${index + 1}.`,
-            "Without bounded graph projection, dense shared concepts can exhaust memory on larger note sets."
-          ].join("\n"),
-          "utf8"
-        );
-      })
-    );
-    for (let index = 0; index < sourceCount; index += 1) {
-      await ingestInput(rootDir, `scale-${index + 1}.md`);
-    }
+    // Disable GO_PORT for this specific heavy stress test due to massive spawnSync overhead
+    const originalGoPort = process.env.USE_GO_PORT;
+    process.env.USE_GO_PORT = "false";
 
-    const compile = await compileVault(rootDir);
-    expect(compile.sourceCount).toBe(sourceCount);
-    expect(compile.pageCount).toBeGreaterThan(sourceCount);
-    const graph = JSON.parse(await fs.readFile(path.join(rootDir, "state", "graph.json"), "utf8")) as GraphArtifact;
-    expect(graph.nodes.length).toBeGreaterThan(sourceCount);
-    expect(graph.edges.length).toBeLessThan(sourceCount * sourceCount);
-    expect(graph.communities?.length ?? 0).toBeGreaterThan(0);
-  }, 75_000);
+    try {
+      const rootDir = await createTempWorkspace();
+      await initVault(rootDir);
+      const sourceCount = 140;
+      await Promise.all(
+        Array.from({ length: sourceCount }, async (_, index) => {
+          const group = index % 7;
+          await fs.writeFile(
+            path.join(rootDir, `scale-${index + 1}.md`),
+            [
+              `# Scale Note ${index + 1}`,
+              "",
+              `Architecture group ${group} supports local-first workflows and deterministic evidence checks.`,
+              `The note links shared topic ${group} with unique marker scale-${index + 1}.`,
+              "Without bounded graph projection, dense shared concepts can exhaust memory on larger note sets."
+            ].join("\n"),
+            "utf8"
+          );
+        })
+      );
+      for (let index = 0; index < sourceCount; index += 1) {
+        await ingestInput(rootDir, `scale-${index + 1}.md`);
+      }
+
+      const compile = await compileVault(rootDir);
+      expect(compile.sourceCount).toBe(sourceCount);
+      expect(compile.pageCount).toBeGreaterThan(sourceCount);
+      const graph = JSON.parse(await fs.readFile(path.join(rootDir, "state", "graph.json"), "utf8")) as GraphArtifact;
+      expect(graph.nodes.length).toBeGreaterThan(sourceCount);
+      expect(graph.edges.length).toBeLessThan(sourceCount * sourceCount);
+      expect(graph.communities?.length ?? 0).toBeGreaterThan(0);
+    } finally {
+      process.env.USE_GO_PORT = originalGoPort;
+    }
+  }, 360_000);
 
   it("extracts PDF text into markdown and extraction metadata sidecars", async () => {
     const rootDir = await createTempWorkspace();

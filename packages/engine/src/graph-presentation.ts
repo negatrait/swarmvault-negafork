@@ -1,3 +1,4 @@
+// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import type { GraphArtifact, GraphHyperedge, GraphNode, GraphReportArtifact } from "./types.js";
 
 const OVERVIEW_THRESHOLD = 5_000;

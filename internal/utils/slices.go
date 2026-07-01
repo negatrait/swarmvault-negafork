@@ -1,15 +1,8 @@
 package utils
 
 import (
-	"regexp"
-	"strings"
+	"slices"
 )
-
-var whitespaceRegex = regexp.MustCompile(`\s+`)
-
-func NormalizeWhitespace(value string) string {
-	return strings.TrimSpace(whitespaceRegex.ReplaceAllString(value, " "))
-}
 
 func UniqueStrings(items []string) []string {
 	seen := make(map[string]bool)
@@ -48,4 +41,10 @@ func Jaccard(left, right []string) float64 {
 		return 0
 	}
 	return float64(intersection) / float64(union)
+}
+
+func SortStrings(s []string) []string {
+	res := slices.Clone(s)
+	slices.Sort(res)
+	return res
 }

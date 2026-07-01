@@ -1,14 +1,13 @@
 package benchmark
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
-	"time"
 
 	"swarmvault-native/internal/utils"
 )
@@ -33,32 +32,18 @@ var AllSourceClasses = []SourceClass{
 }
 
 func EstimateTokens(text string) int {
-	return int(math.Max(1, math.Ceil(float64(len(text))/float64(CharsPerToken))))
+	return max(1, (len(text)+CharsPerToken-1)/CharsPerToken)
 }
 
-func NormalizeWhitespace(value string) string {
-	return utils.NormalizeWhitespace(value)
-}
 func EstimateCorpusWords(texts []string) int {
 	total := 0
 	for _, text := range texts {
-		normalized := NormalizeWhitespace(text)
-		if normalized == "" {
-			continue
-		}
-		words := strings.Split(normalized, " ")
-		count := 0
-		for _, w := range words {
-			if w != "" {
-				count++
-			}
-		}
-		total += count
+		total += len(strings.Fields(text))
 	}
 	return total
 }
 
-func nodeMap(graph GraphArtifact) map[string]GraphNode {
+func nodeMap(graph *GraphArtifact) map[string]GraphNode {
 	m := make(map[string]GraphNode)
 	for _, node := range graph.Nodes {
 		m[node.ID] = node
@@ -66,7 +51,7 @@ func nodeMap(graph GraphArtifact) map[string]GraphNode {
 	return m
 }
 
-func pageMap(graph GraphArtifact) map[string]GraphPage {
+func pageMap(graph *GraphArtifact) map[string]GraphPage {
 	m := make(map[string]GraphPage)
 	for _, page := range graph.Pages {
 		m[page.ID] = page
@@ -74,7 +59,7 @@ func pageMap(graph GraphArtifact) map[string]GraphPage {
 	return m
 }
 
-func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pageContentsById map[string]string) BenchmarkQuestionResult {
+func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pageContentsById map[string]string) BenchmarkQuestionResult {
 	nodesById := nodeMap(graph)
 	pagesById := pageMap(graph)
 
@@ -92,7 +77,7 @@ func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pag
 		}
 		content := ""
 		if c, ok := pageContentsById[pageId]; ok {
-			content = NormalizeWhitespace(c)
+			content = utils.NormalizeWhitespace(c)
 		}
 		if len(content) > 280 {
 			content = content[:280]
@@ -147,37 +132,53 @@ func BenchmarkQueryTokens(graph GraphArtifact, queryResult GraphQueryResult, pag
 	}
 }
 
-// Custom sort functions
-func sortStrings(s []string) []string {
-	res := slices.Clone(s)
-	slices.Sort(res)
-	return res
+type mappedNode struct {
+	ID          string       `json:"id"`
+	Type        string       `json:"type"`
+	Label       string       `json:"label"`
+	PageID      *string      `json:"pageId"`
+	SourceClass *SourceClass `json:"sourceClass"`
+	CommunityID *string      `json:"communityId"`
+	Degree      *int         `json:"degree"`
+	BridgeScore *float64     `json:"bridgeScore"`
+	IsGodNode   bool         `json:"isGodNode"`
+	SourceIDs   []string     `json:"sourceIds"`
+	ProjectIDs  []string     `json:"projectIds"`
 }
 
-func GraphHash(graph GraphArtifact) string {
-	var hashedPages []GraphPage
-	for _, p := range graph.Pages {
-		if p.Kind != "graph_report" && p.Kind != "community_summary" {
-			hashedPages = append(hashedPages, p)
-		}
-	}
+type mappedEdge struct {
+	ID              string        `json:"id"`
+	Source          string        `json:"source"`
+	Target          string        `json:"target"`
+	Relation        string        `json:"relation"`
+	Status          ClaimStatus   `json:"status"`
+	EvidenceClass   EvidenceClass `json:"evidenceClass"`
+	SimilarityBasis *string       `json:"similarityBasis"`
+	Confidence      float64       `json:"confidence"`
+	Provenance      []string      `json:"provenance"`
+}
 
-	type mappedNode struct {
-		ID          string       `json:"id"`
-		Type        string       `json:"type"`
-		Label       string       `json:"label"`
-		PageID      *string      `json:"pageId"`
-		SourceClass *SourceClass `json:"sourceClass"`
-		CommunityID *string      `json:"communityId"`
-		Degree      *int         `json:"degree"`
-		BridgeScore *float64     `json:"bridgeScore"`
-		IsGodNode   bool         `json:"isGodNode"`
-		SourceIDs   []string     `json:"sourceIds"`
-		ProjectIDs  []string     `json:"projectIds"`
-	}
+type mappedPage struct {
+	ID          string             `json:"id"`
+	Path        string             `json:"path"`
+	Kind        PageKind           `json:"kind"`
+	Status      *string            `json:"status"`
+	SourceType  *SourceCaptureType `json:"sourceType"`
+	SourceClass *SourceClass       `json:"sourceClass"`
+	SourceIDs   []string           `json:"sourceIds"`
+	ProjectIDs  []string           `json:"projectIds"`
+	NodeIDs     []string           `json:"nodeIds"`
+}
 
+type mappedCommunity struct {
+	ID      string   `json:"id"`
+	Label   string   `json:"label"`
+	NodeIDs []string `json:"nodeIds"`
+}
+
+func mapNodes(nodes []GraphNode) []mappedNode {
 	var mappedNodes []mappedNode
-	for _, n := range graph.Nodes {
+	for _, n := range nodes {
 		isGod := false
 		if n.IsGodNode != nil {
 			isGod = *n.IsGodNode
@@ -192,25 +193,17 @@ func GraphHash(graph GraphArtifact) string {
 			Degree:      n.Degree,
 			BridgeScore: n.BridgeScore,
 			IsGodNode:   isGod,
-			SourceIDs:   sortStrings(n.SourceIDs),
-			ProjectIDs:  sortStrings(n.ProjectIDs),
+			SourceIDs:   utils.SortStrings(n.SourceIDs),
+			ProjectIDs:  utils.SortStrings(n.ProjectIDs),
 		})
 	}
-	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedNodes, func(a, b mappedNode) int { return cmp.Compare(a.ID, b.ID) })
+	return mappedNodes
+}
 
-	type mappedEdge struct {
-		ID              string        `json:"id"`
-		Source          string        `json:"source"`
-		Target          string        `json:"target"`
-		Relation        string        `json:"relation"`
-		Status          ClaimStatus   `json:"status"`
-		EvidenceClass   EvidenceClass `json:"evidenceClass"`
-		SimilarityBasis *string       `json:"similarityBasis"`
-		Confidence      float64       `json:"confidence"`
-		Provenance      []string      `json:"provenance"`
-	}
+func mapEdges(edges []GraphEdge) []mappedEdge {
 	var mappedEdges []mappedEdge
-	for _, e := range graph.Edges {
+	for _, e := range edges {
 		mappedEdges = append(mappedEdges, mappedEdge{
 			ID:              e.ID,
 			Source:          e.Source,
@@ -220,24 +213,16 @@ func GraphHash(graph GraphArtifact) string {
 			EvidenceClass:   e.EvidenceClass,
 			SimilarityBasis: e.SimilarityBasis,
 			Confidence:      e.Confidence,
-			Provenance:      sortStrings(e.Provenance),
+			Provenance:      utils.SortStrings(e.Provenance),
 		})
 	}
-	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedEdges, func(a, b mappedEdge) int { return cmp.Compare(a.ID, b.ID) })
+	return mappedEdges
+}
 
-	type mappedPage struct {
-		ID          string             `json:"id"`
-		Path        string             `json:"path"`
-		Kind        PageKind           `json:"kind"`
-		Status      *string            `json:"status"`
-		SourceType  *SourceCaptureType `json:"sourceType"`
-		SourceClass *SourceClass       `json:"sourceClass"`
-		SourceIDs   []string           `json:"sourceIds"`
-		ProjectIDs  []string           `json:"projectIds"`
-		NodeIDs     []string           `json:"nodeIds"`
-	}
+func mapPages(pages []GraphPage) []mappedPage {
 	var mappedPages []mappedPage
-	for _, p := range hashedPages {
+	for _, p := range pages {
 		mappedPages = append(mappedPages, mappedPage{
 			ID:          p.ID,
 			Path:        p.Path,
@@ -245,31 +230,39 @@ func GraphHash(graph GraphArtifact) string {
 			Status:      p.Status,
 			SourceType:  p.SourceType,
 			SourceClass: p.SourceClass,
-			SourceIDs:   sortStrings(p.SourceIDs),
-			ProjectIDs:  sortStrings(p.ProjectIDs),
-			NodeIDs:     sortStrings(p.NodeIDs),
+			SourceIDs:   utils.SortStrings(p.SourceIDs),
+			ProjectIDs:  utils.SortStrings(p.ProjectIDs),
+			NodeIDs:     utils.SortStrings(p.NodeIDs),
 		})
 	}
-	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedPages, func(a, b mappedPage) int { return cmp.Compare(a.ID, b.ID) })
+	return mappedPages
+}
 
-	type mappedCommunity struct {
-		ID      string   `json:"id"`
-		Label   string   `json:"label"`
-		NodeIDs []string `json:"nodeIds"`
-	}
+func mapCommunities(communities *[]GraphCommunity) []mappedCommunity {
 	var mappedCommunities []mappedCommunity
-	if graph.Communities != nil {
-		for _, c := range *graph.Communities {
+	if communities != nil {
+		for _, c := range *communities {
 			mappedCommunities = append(mappedCommunities, mappedCommunity{
 				ID:      c.ID,
 				Label:   c.Label,
-				NodeIDs: sortStrings(c.NodeIDs),
+				NodeIDs: utils.SortStrings(c.NodeIDs),
 			})
 		}
 	} else {
 		mappedCommunities = make([]mappedCommunity, 0)
 	}
-	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortStableFunc(mappedCommunities, func(a, b mappedCommunity) int { return cmp.Compare(a.ID, b.ID) })
+	return mappedCommunities
+}
+
+func GraphHash(graph *GraphArtifact) string {
+	var hashedPages []GraphPage
+	for _, p := range graph.Pages {
+		if p.Kind != "graph_report" && p.Kind != "community_summary" {
+			hashedPages = append(hashedPages, p)
+		}
+	}
 
 	normalizedObj := struct {
 		Nodes       []mappedNode      `json:"nodes"`
@@ -277,10 +270,10 @@ func GraphHash(graph GraphArtifact) string {
 		Pages       []mappedPage      `json:"pages"`
 		Communities []mappedCommunity `json:"communities"`
 	}{
-		Nodes:       mappedNodes,
-		Edges:       mappedEdges,
-		Pages:       mappedPages,
-		Communities: mappedCommunities,
+		Nodes:       mapNodes(graph.Nodes),
+		Edges:       mapEdges(graph.Edges),
+		Pages:       mapPages(hashedPages),
+		Communities: mapCommunities(graph.Communities),
 	}
 
 	b, _ := json.Marshal(normalizedObj)
@@ -299,8 +292,8 @@ func hasResearchSources(pages []GraphPage) bool {
 	return false
 }
 
-func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []string {
-	normalizedLimit := int(math.Max(1, math.Min(float64(maxQuestions), float64(len(DefaultBenchmarkQuestions)))))
+func DefaultBenchmarkQuestionsForGraph(graph *GraphArtifact, maxQuestions int) []string {
+	normalizedLimit := max(1, min(maxQuestions, len(DefaultBenchmarkQuestions)))
 	questions := make([]string, len(DefaultBenchmarkQuestions))
 	copy(questions, DefaultBenchmarkQuestions)
 
@@ -313,184 +306,4 @@ func DefaultBenchmarkQuestionsForGraph(graph GraphArtifact, maxQuestions int) []
 		return uniqueQs[:normalizedLimit]
 	}
 	return uniqueQs
-}
-
-type BuildBenchmarkByClassInput struct {
-	Graph               GraphArtifact                             `json:"graph"`
-	PerClassCorpusWords map[SourceClass]int                       `json:"perClassCorpusWords"`
-	PerClassPerQuestion map[SourceClass][]BenchmarkQuestionResult `json:"perClassPerQuestion"`
-}
-
-func BuildBenchmarkByClass(input BuildBenchmarkByClassInput) map[SourceClass]BenchmarkByClassEntry {
-	entries := make(map[SourceClass]BenchmarkByClassEntry)
-
-	for _, sourceClass := range AllSourceClasses {
-		corpusWords := 0
-		if cw, ok := input.PerClassCorpusWords[sourceClass]; ok {
-			corpusWords = int(math.Max(0, math.Round(float64(cw))))
-		}
-		corpusTokens := 0
-		if corpusWords > 0 {
-			corpusTokens = int(math.Max(1, math.Round(float64(corpusWords)*(100.0/75.0))))
-		}
-
-		sourceCount := 0
-		for _, s := range input.Graph.Sources {
-			if s.SourceClass != nil && *s.SourceClass == sourceClass {
-				sourceCount++
-			}
-		}
-
-		pageCount := 0
-		for _, p := range input.Graph.Pages {
-			if p.SourceClass != nil && *p.SourceClass == sourceClass {
-				pageCount++
-			}
-		}
-
-		nodeCount := 0
-		godNodeCount := 0
-		for _, n := range input.Graph.Nodes {
-			if n.SourceClass != nil && *n.SourceClass == sourceClass {
-				nodeCount++
-				if n.IsGodNode != nil && *n.IsGodNode {
-					godNodeCount++
-				}
-			}
-		}
-
-		perQuestionRaw, ok := input.PerClassPerQuestion[sourceClass]
-		if !ok {
-			perQuestionRaw = make([]BenchmarkQuestionResult, 0)
-		}
-
-		perQuestion := make([]BenchmarkQuestionResult, 0)
-		for _, entry := range perQuestionRaw {
-			if entry.QueryTokens > 0 {
-				reduction := 0.0
-				if corpusTokens > 0 {
-					reduction = float64(math.Round((1.0-float64(entry.QueryTokens)/math.Max(1.0, float64(corpusTokens)))*1000) / 1000)
-				}
-				entry.Reduction = reduction
-				perQuestion = append(perQuestion, entry)
-			}
-		}
-
-		finalContextTokens := 0
-		if len(perQuestion) > 0 {
-			total := 0
-			for _, entry := range perQuestion {
-				total += entry.QueryTokens
-			}
-			finalContextTokens = int(math.Max(1, math.Round(float64(total)/float64(len(perQuestion)))))
-		}
-
-		reductionRatio := 0.0
-		if finalContextTokens > 0 && corpusTokens > 0 {
-			reductionRatio = float64(math.Round((1.0-float64(finalContextTokens)/math.Max(1.0, float64(corpusTokens)))*1000) / 1000)
-		}
-
-		entries[sourceClass] = BenchmarkByClassEntry{
-			SourceClass:        sourceClass,
-			SourceCount:        sourceCount,
-			PageCount:          pageCount,
-			NodeCount:          nodeCount,
-			GodNodeCount:       godNodeCount,
-			CorpusWords:        corpusWords,
-			CorpusTokens:       corpusTokens,
-			FinalContextTokens: finalContextTokens,
-			ReductionRatio:     reductionRatio,
-			PerQuestion:        perQuestion,
-		}
-	}
-
-	return entries
-}
-
-type BuildBenchmarkArtifactInput struct {
-	Graph       GraphArtifact                         `json:"graph"`
-	CorpusWords int                                   `json:"corpusWords"`
-	Questions   []string                              `json:"questions"`
-	PerQuestion []BenchmarkQuestionResult             `json:"perQuestion"`
-	ByClass     map[SourceClass]BenchmarkByClassEntry `json:"byClass"`
-}
-
-func BuildBenchmarkArtifact(input BuildBenchmarkArtifactInput) BenchmarkArtifact {
-	corpusTokens := int(math.Max(1, math.Round(float64(input.CorpusWords)*(100.0/75.0))))
-
-	perQuestion := make([]BenchmarkQuestionResult, 0)
-	for _, entry := range input.PerQuestion {
-		if entry.QueryTokens > 0 {
-			reduction := float64(math.Round((1.0-float64(entry.QueryTokens)/math.Max(1.0, float64(corpusTokens)))*1000) / 1000)
-			entry.Reduction = reduction
-			perQuestion = append(perQuestion, entry)
-		}
-	}
-
-	avgQueryTokens := 0
-	if len(perQuestion) > 0 {
-		total := 0
-		for _, entry := range perQuestion {
-			total += entry.QueryTokens
-		}
-		avgQueryTokens = int(math.Max(1, math.Round(float64(total)/float64(len(perQuestion)))))
-	}
-
-	reductionRatio := 0.0
-	if avgQueryTokens > 0 {
-		reductionRatio = float64(math.Round((1.0-float64(avgQueryTokens)/math.Max(1.0, float64(corpusTokens)))*1000) / 1000)
-	}
-
-	uniqueVisitedNodesSet := make(map[string]bool)
-	for _, entry := range perQuestion {
-		for _, id := range entry.VisitedNodeIDs {
-			uniqueVisitedNodesSet[id] = true
-		}
-	}
-	uniqueVisitedNodes := len(uniqueVisitedNodesSet)
-
-	summary := BenchmarkSummary{
-		QuestionCount:      len(input.Questions),
-		UniqueVisitedNodes: uniqueVisitedNodes,
-		FinalContextTokens: avgQueryTokens,
-		NaiveCorpusTokens:  corpusTokens,
-		AvgReduction:       reductionRatio,
-		ReductionRatio:     reductionRatio,
-	}
-
-	byClass := input.ByClass
-	if byClass == nil {
-		emptyPerClassWords := map[SourceClass]int{
-			"first_party": 0,
-			"third_party": 0,
-			"resource":    0,
-			"generated":   0,
-		}
-		emptyPerClassQuestions := map[SourceClass][]BenchmarkQuestionResult{
-			"first_party": make([]BenchmarkQuestionResult, 0),
-			"third_party": make([]BenchmarkQuestionResult, 0),
-			"resource":    make([]BenchmarkQuestionResult, 0),
-			"generated":   make([]BenchmarkQuestionResult, 0),
-		}
-		byClass = BuildBenchmarkByClass(BuildBenchmarkByClassInput{
-			Graph:               input.Graph,
-			PerClassCorpusWords: emptyPerClassWords,
-			PerClassPerQuestion: emptyPerClassQuestions,
-		})
-	}
-
-	return BenchmarkArtifact{
-		GeneratedAt:     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), // ISO string approx
-		GraphHash:       GraphHash(input.Graph),
-		CorpusWords:     input.CorpusWords,
-		CorpusTokens:    corpusTokens,
-		Nodes:           len(input.Graph.Nodes),
-		Edges:           len(input.Graph.Edges),
-		AvgQueryTokens:  avgQueryTokens,
-		ReductionRatio:  reductionRatio,
-		SampleQuestions: input.Questions,
-		PerQuestion:     perQuestion,
-		Summary:         summary,
-		ByClass:         byClass,
-	}
 }

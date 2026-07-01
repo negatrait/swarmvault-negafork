@@ -1,48 +1,30 @@
-# Daily Porting Scope: agents.ts (Phase 1)
+# Daily Porting Scope: web-search/http-json
 
 ## 1. Goal
-The previous attempt to port `packages/engine/src/agents.ts` stalled because it was too large. The goal of this hyper-focused scope is to strictly port ONLY the `getAgentInstallStatus` function and its required core data structures. We will establish the `internal/agents` directory and the basic bridge.
+Port the stateless leaf module `HttpJsonWebSearchAdapter` from `packages/engine/src/web-search/http-json.ts` to Go under `internal/websearch/http_json.go`. The source file is 95 lines, which falls under the 150-line threshold. Based on the Slicing Decision Tree, we will scope the **entire file** for porting in a single run.
+  - **Metrics:** `internal/websearch/http_json.go` created. The Go struct `HttpJsonWebSearchAdapter` and its `Search` method are 100% fully implemented.
+  - **Pitfalls:** We must handle generic JSON path extraction (`deepGet`) robustly in Go using map types (`map[string]any`) or a reliable jsonpath library to ensure it handles arbitrary user-configured API responses correctly.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/agents.ts`
-- **Source Export:** `function getAgentInstallStatus(...)` (Port ONLY this function!)
-- **Target File:** `internal/agents/status.go` (and `types.go` for the struct)
-- **Target Export:** `func GetAgentInstallStatus(...)`
+- **Source File:** `packages/engine/src/web-search/http-json.ts`
+- **Source Export(s):** `HttpJsonWebSearchAdapter` class (specifically the `search` method).
+- **Target File:** `internal/websearch/http_json.go`
+- **Target Export:** `HttpJsonWebSearchAdapter` struct and `Search` method.
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native agents`
-- **Action:** `"getAgentInstallStatus"`
-- **TS Delegation Call:** Update `packages/engine/src/agents.ts` inside `getAgentInstallStatus` to route execution through `runGoSidecar("agents", { action: "getAgentInstallStatus", args: { rootDir, agent, options } })` if `process.env.USE_GO_PORT === 'true'`.
+- **CLI Subcommand:** `swarmvault-native websearch`
+- **TS Delegation Call:** Update `packages/engine/src/web-search/http-json.ts` to route execution for `search` through our centralized `runGoSidecar` wrapper (async) from `src/subprocess.ts` using the "websearch" subcommand and "http-json-search" action.
 
-## 4. Stubs, Mocks, & Out-Of-Scope (Strict Protection)
-- **What to Ignore/Leave in TS:** Do NOT port `installAgent` or `installConfiguredAgents`. Leave them exactly as they are in TS. Do not write Go handlers for them.
-- **What to Stub/Mock in Go:** `getAgentInstallStatus` relies on `primaryTargetPathForAgent` and `targetsForAgent`. You MUST port these two helper functions (and any constant maps they need, like `agentFileKinds`) into Go as private functions in `internal/agents/paths.go`. It also requires checking file existence; use `os.Stat` directly in Go instead of porting the `fileExists` utility.
+## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
+- **Verified Go Dependencies:** Standard Go libraries only (`net/http`, `encoding/json`, `net/url`). We will also use `swarmvault-native/internal/types` for config and result structures (note: currently `types.go` has graph structs, but we'll add `WebSearchResult` there, or define it locally). No unported dependencies or stubs are needed.
+- **Go-to-Go Native Imports:** `swarmvault-native/internal/types` if needed for shared types. This is a pure leaf module.
+- **Transitive Blocks:** Stubbing is strictly forbidden. The logic must be fully implemented in Go.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 500 Lines of Code. Split structs to `types.go`, path helpers to `paths.go`, and the main status logic to `status.go`.
-- **Function Limit:** Max 80 Lines of Code. Helper functions must be extracted if exceeded.
-- **Nesting Limit:** Maximum of 3 levels deep. Use early exits and guard clauses.
+- **File Limit:** Max 400 Lines of Go Code. This module will easily fit.
+- **Function Limit:** Max 80 Lines of Code. Helper functions for `deepGet` must be extracted if the function gets too large.
+- **Nesting Limit:** Maximum of 3 levels deep. Use early returns for nil or error states.
 
 ## 6. Parity Expectations
-- Input/Output schema must match structurally 1:1.
-- Define `AgentInstallStatus` and `AgentInstallTargetStatus` structs in Go with explicit JSON tags.
-- The TS execution output must identically match the Go execution output.
-
-## 7. Few-shot Examples
-Idiomatic examples and anti-patterns of TS to Go porting.
-
-### Expected Go Outcome
-```go
-package agents
-
-import "os"
-
-// fileExists is a simple internal stub to avoid porting utils.ts
-func fileExists(path string) bool {
-    _, err := os.Stat(path)
-    return err == nil
-}
-```
-
-### Anti-pattern Go Outcome
-Trying to port `initWorkspace` or heavy file operations from `utils.ts` just because they are in the same file. Do not port them! Stick strictly to `getAgentInstallStatus` dependencies!
+- Input/Output schema must match structurally 1:1. The search method returns a slice of `WebSearchResult`.
+- Unit tests must confirm equivalent behavior for fetching and parsing arbitrary JSON structures using the provided config mappings.

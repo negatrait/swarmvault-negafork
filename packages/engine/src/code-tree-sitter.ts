@@ -1,3 +1,4 @@
+// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -478,7 +479,7 @@ function nodeText(node: TreeNode | null | undefined): string {
 
 function moduleDocstringNode(rootNode: TreeNode): TreeNode | null {
   const first = rootNode.namedChildren[0];
-  if (!first || first.type !== "expression_statement") {
+  if (first?.type !== "expression_statement") {
     return null;
   }
   return first.namedChildren.find((child) => child?.type === "string" || child?.type === "concatenated_string") ?? null;
@@ -490,7 +491,7 @@ function bodyDocstringNode(node: TreeNode | null | undefined): TreeNode | null {
     return null;
   }
   const first = body.namedChildren[0];
-  if (!first || first.type !== "expression_statement") {
+  if (first?.type !== "expression_statement") {
     return null;
   }
   return first.namedChildren.find((child) => child?.type === "string" || child?.type === "concatenated_string") ?? null;
@@ -1562,7 +1563,7 @@ function parsePhpUse(node: TreeNode): CodeImport[] {
     const prefixNode = node.namedChildren.find((child): child is TreeNode => child?.type === "namespace_name") ?? null;
     const prefix = flattenPhpQualifiedName(prefixNode);
     for (const clause of groupNode.namedChildren) {
-      if (!clause || clause.type !== "namespace_use_clause") {
+      if (clause?.type !== "namespace_use_clause") {
         continue;
       }
       const parsed = parsePhpUseClause(clause, prefix);
@@ -1574,7 +1575,7 @@ function parsePhpUse(node: TreeNode): CodeImport[] {
   }
   // Flat form: `use Foo\Bar;` — one or more `namespace_use_clause` children.
   for (const child of node.namedChildren) {
-    if (!child || child.type !== "namespace_use_clause") {
+    if (child?.type !== "namespace_use_clause") {
       continue;
     }
     const parsed = parsePhpUseClause(child, "");
@@ -2371,7 +2372,7 @@ function kotlinCodeAnalysis(manifest: SourceManifest, rootNode: TreeNode, diagno
       return;
     }
     for (const child of bodyNode.namedChildren) {
-      if (!child || child.type !== "function_declaration") {
+      if (child?.type !== "function_declaration") {
         continue;
       }
       const functionName = extractIdentifier(child.childForFieldName("name") ?? findNamedChild(child, "simple_identifier"));
@@ -2469,7 +2470,7 @@ function scalaCodeAnalysis(manifest: SourceManifest, rootNode: TreeNode, diagnos
       return;
     }
     for (const child of bodyNode.namedChildren) {
-      if (!child || child.type !== "function_definition") {
+      if (child?.type !== "function_definition") {
         continue;
       }
       const functionName = extractIdentifier(child.childForFieldName("name") ?? findNamedChild(child, "identifier"));
@@ -2602,7 +2603,7 @@ function zigCodeAnalysis(manifest: SourceManifest, rootNode: TreeNode, diagnosti
       return;
     }
     for (const child of structNode.namedChildren) {
-      if (!child || child.type !== "function_declaration") {
+      if (child?.type !== "function_declaration") {
         continue;
       }
       const functionName = extractIdentifier(child.childForFieldName("name") ?? findNamedChild(child, "identifier"));
@@ -3421,7 +3422,7 @@ function elixirCodeAnalysis(manifest: SourceManifest, rootNode: TreeNode, diagno
   // `defmodule`/`defprotocol` calls; everything else (top-level `alias`, bare
   // expressions) lives inside those module bodies in real code.
   for (const topCall of rootNode.namedChildren) {
-    if (!topCall || topCall.type !== "call") {
+    if (topCall?.type !== "call") {
       continue;
     }
     const macroName = elixirCallIdentifier(topCall);
@@ -3465,7 +3466,7 @@ function elixirCodeAnalysis(manifest: SourceManifest, rootNode: TreeNode, diagno
     // commentNodes(), and the `@type` declaration's own `call` lives under the
     // operator where finalizeCodeAnalysis would not surface it in a useful way.
     for (const innerNode of doBlock.namedChildren) {
-      if (!innerNode || innerNode.type !== "call") {
+      if (innerNode?.type !== "call") {
         continue;
       }
       const innerMacro = elixirCallIdentifier(innerNode);
@@ -4245,7 +4246,7 @@ function htmlAttributesOf(element: TreeNode): Map<string, string> {
     return out;
   }
   for (const child of startTag.namedChildren) {
-    if (!child || child.type !== "attribute") {
+    if (child?.type !== "attribute") {
       continue;
     }
     const nameNode = findNamedChild(child, "attribute_name");
