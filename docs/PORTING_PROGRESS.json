@@ -489,9 +489,9 @@
     },
     {
       "path": "src/web-search/http-json.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "websearch",
+      "bridged": true
     },
     {
       "path": "src/web-search/registry.ts",

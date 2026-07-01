@@ -1,4 +1,4 @@
-import { runGoSidecarSync } from "../subprocess.js";
+import { runGoSidecar } from "../subprocess.js";
 import type { WebSearchAdapter, WebSearchProviderConfig, WebSearchResult } from "../types.js";
 
 function deepGet(value: unknown, pathValue: string | undefined): unknown {
@@ -31,7 +31,7 @@ export class HttpJsonWebSearchAdapter implements WebSearchAdapter {
 
   public async search(query: string, limit = 5): Promise<WebSearchResult[]> {
     if (process.env.USE_GO_PORT === "true") {
-      return runGoSidecarSync<WebSearchResult[]>("websearch", {
+      return await runGoSidecar<WebSearchResult[]>("websearch", {
         action: "http-json-search",
         args: {
           id: this.id,
