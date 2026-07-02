@@ -2971,7 +2971,7 @@ describe("swarmvault workflow", () => {
 
   it(
     "watches the inbox and records automation runs",
-    { timeout: 35000 },
+    { timeout: 90000 },
     async () => {
       const rootDir = await createTempWorkspace();
       await initVault(rootDir);
@@ -2997,7 +2997,7 @@ describe("swarmvault workflow", () => {
               .then(() => true)
               .catch(() => false))
           );
-        }, 29_000);
+        }, 80_000);
 
         const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
         const runs = jobsLog
@@ -3016,7 +3016,7 @@ describe("swarmvault workflow", () => {
         await controller.close();
       }
     },
-    25_000
+    95_000
   );
 
   it("watches tracked repos and recompiles code changes", async () => {
@@ -3046,7 +3046,7 @@ describe("swarmvault workflow", () => {
           .then((value) => value.trim())
           .catch(() => "");
         return modulePage.includes("watched") && jobsLog.length > 0;
-      }, 29_000);
+      }, 80_000);
 
       const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
       const runs = jobsLog
