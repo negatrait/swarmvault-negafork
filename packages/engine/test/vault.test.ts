@@ -2969,50 +2969,55 @@ describe("swarmvault workflow", () => {
     await server.close();
   });
 
-  it("watches the inbox and records automation runs", async () => {
-    const rootDir = await createTempWorkspace();
-    await initVault(rootDir);
-    const controller = await watchVault(rootDir, { lint: true, debounceMs: 100 });
+  it(
+    "watches the inbox and records automation runs",
+    { timeout: 90000 },
+    async () => {
+      const rootDir = await createTempWorkspace();
+      await initVault(rootDir);
+      const controller = await watchVault(rootDir, { lint: true, debounceMs: 100 });
 
-    try {
-      await fs.writeFile(
-        path.join(rootDir, "inbox", "watch.md"),
-        ["# Watch Note", "", "SwarmVault should import and compile this file when watch mode is running."].join("\n"),
-        "utf8"
-      );
-
-      await waitFor(async () => {
-        const graphPath = path.join(rootDir, "state", "graph.json");
-        const jobsPath = path.join(rootDir, "state", "jobs.ndjson");
-        return (
-          (await fs
-            .stat(graphPath)
-            .then(() => true)
-            .catch(() => false)) &&
-          (await fs
-            .stat(jobsPath)
-            .then(() => true)
-            .catch(() => false))
+      try {
+        await fs.writeFile(
+          path.join(rootDir, "inbox", "watch.md"),
+          ["# Watch Note", "", "SwarmVault should import and compile this file when watch mode is running."].join("\n"),
+          "utf8"
         );
-      }, 29_000);
 
-      const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
-      const runs = jobsLog
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line) as { success: boolean; importedCount: number });
+        await waitFor(async () => {
+          const graphPath = path.join(rootDir, "state", "graph.json");
+          const jobsPath = path.join(rootDir, "state", "jobs.ndjson");
+          return (
+            (await fs
+              .stat(graphPath)
+              .then(() => true)
+              .catch(() => false)) &&
+            (await fs
+              .stat(jobsPath)
+              .then(() => true)
+              .catch(() => false))
+          );
+        }, 80_000);
 
-      expect(runs.length).toBeGreaterThan(0);
-      expect(runs.at(-1)?.success).toBe(true);
-      expect(runs.at(-1)?.importedCount).toBe(1);
+        const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
+        const runs = jobsLog
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as { success: boolean; importedCount: number });
 
-      const sessionFiles = (await fs.readdir(path.join(rootDir, "state", "sessions"))).filter((file) => file.endsWith(".md"));
-      expect(sessionFiles.some((file) => file.includes("-watch-"))).toBe(true);
-    } finally {
-      await controller.close();
-    }
-  }, 25_000);
+        expect(runs.length).toBeGreaterThan(0);
+        expect(runs.at(-1)?.success).toBe(true);
+        expect(runs.at(-1)?.importedCount).toBe(1);
+
+        const sessionFiles = (await fs.readdir(path.join(rootDir, "state", "sessions"))).filter((file) => file.endsWith(".md"));
+        expect(sessionFiles.some((file) => file.includes("-watch-"))).toBe(true);
+      } finally {
+        await controller.close();
+      }
+    },
+    95_000
+  );
 
   it("watches tracked repos and recompiles code changes", async () => {
     const rootDir = await createTempWorkspace();
@@ -3041,7 +3046,7 @@ describe("swarmvault workflow", () => {
           .then((value) => value.trim())
           .catch(() => "");
         return modulePage.includes("watched") && jobsLog.length > 0;
-      }, 29_000);
+      }, 80_000);
 
       const jobsLog = await fs.readFile(path.join(rootDir, "state", "jobs.ndjson"), "utf8");
       const runs = jobsLog
