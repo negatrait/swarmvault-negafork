@@ -84,12 +84,20 @@ func ExtractJson(text string) (string, error) {
 		end := strings.LastIndex(text, "}")
 		for end > start {
 			candidate := text[start : end+1]
-			var dummy map[string]any
-			if err := json.Unmarshal([]byte(candidate), &dummy); err == nil {
+			var val any
+			if err := json.Unmarshal([]byte(candidate), &val); err == nil {
 				return candidate, nil
 			}
-			// Search for next `}` before current end
-			end = strings.LastIndex(text[:end], "}")
+			// Search for next `}` before current end.
+			// Equivalent to JS `text.lastIndexOf("}", end - 1)`
+			if end-1 < 0 {
+				break
+			}
+			prevEnd := strings.LastIndex(text[:end], "}")
+			if prevEnd == -1 {
+				break
+			}
+			end = prevEnd
 		}
 	}
 

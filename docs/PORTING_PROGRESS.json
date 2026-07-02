@@ -459,7 +459,7 @@
     },
     {
       "path": "src/utils.ts",
-      "status": "bridged",
+      "status": "completed",
       "subcommand": "utils",
       "bridged": true
     },
