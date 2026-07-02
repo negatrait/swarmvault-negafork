@@ -1,0 +1,4 @@
+🎯 **Target:** Fix the technical debt in `internal/utils/strings.go` to satisfy the Zero-Stubbing Mandate by fully implementing the `ExtractJson` utility.
+💡 **Rationale:** Codebase audit revealed a dummy stub (`var dummy map[string]any`) being used in place of actual json string extraction logic, violating the physical-first verification rule. The daily scope was re-written to target this technical debt rather than porting new code.
+🛡️ **Boundaries:** Zero stubs or mocks are required. The Go-to-Go calls will remain internal since this is an isolated utility function relying only on standard library capabilities (`encoding/json`, `regexp`, `strings`).
+✨ **Expected Parity:** The `ExtractJson` method maintains a 1:1 structural contract (takes a string, returns a string/error) and will continue being served on the existing Go sidecar `utils` subcommand bridge without changes to the TS side.

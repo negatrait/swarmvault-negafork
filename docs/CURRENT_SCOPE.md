@@ -1,30 +1,30 @@
-# Daily Porting Scope: web-search/http-json
+# Daily Porting Scope: internal/utils/strings.go
 
 ## 1. Goal
-Port the stateless leaf module `HttpJsonWebSearchAdapter` from `packages/engine/src/web-search/http-json.ts` to Go under `internal/websearch/http_json.go`. The source file is 95 lines, which falls under the 150-line threshold. Based on the Slicing Decision Tree, we will scope the **entire file** for porting in a single run.
-  - **Metrics:** `internal/websearch/http_json.go` created. The Go struct `HttpJsonWebSearchAdapter` and its `Search` method are 100% fully implemented.
-  - **Pitfalls:** We must handle generic JSON path extraction (`deepGet`) robustly in Go using map types (`map[string]any`) or a reliable jsonpath library to ensure it handles arbitrary user-configured API responses correctly.
+Fix the stubbed/dummy code found in `internal/utils/strings.go` to satisfy the Zero-Stubbing Mandate. The `ExtractJson` function currently has a stub block (`var dummy map[string]any`). This violates the physical-first codebase audit rule.
+  - **Metrics:** Re-implement `ExtractJson` fully without using `var dummy` placeholders. The function must robustly parse json and fall back cleanly without shortcuts.
+  - **Pitfalls:** The original code attempts to slice standard JSON iteratively to find valid fragments. We must ensure the actual parsing logic aligns properly with TypeScript behaviour.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/web-search/http-json.ts`
-- **Source Export(s):** `HttpJsonWebSearchAdapter` class (specifically the `search` method).
-- **Target File:** `internal/websearch/http_json.go`
-- **Target Export:** `HttpJsonWebSearchAdapter` struct and `Search` method.
+- **Source File:** `internal/utils/strings.go` (Self-contained fix, no specific TS file mapped)
+- **Source Export(s):** N/A
+- **Target File:** `internal/utils/strings.go`
+- **Target Export:** `func ExtractJson(text string) (string, error)`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native websearch`
-- **TS Delegation Call:** Update `packages/engine/src/web-search/http-json.ts` to route execution for `search` through our centralized `runGoSidecar` wrapper (async) from `src/subprocess.ts` using the "websearch" subcommand and "http-json-search" action.
+- **CLI Subcommand:** No new command needed. This is internal utility code that is already exposed via the `utils` subcommand (`HandleUtils` in `internal/cmd/utils.go`).
+- **TS Delegation Call:** Existing bridge in `packages/engine/src/utils.ts` should continue to function normally.
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard Go libraries only (`net/http`, `encoding/json`, `net/url`). We will also use `swarmvault-native/internal/types` for config and result structures (note: currently `types.go` has graph structs, but we'll add `WebSearchResult` there, or define it locally). No unported dependencies or stubs are needed.
-- **Go-to-Go Native Imports:** `swarmvault-native/internal/types` if needed for shared types. This is a pure leaf module.
-- **Transitive Blocks:** Stubbing is strictly forbidden. The logic must be fully implemented in Go.
+- **Verified Go Dependencies:** `encoding/json`, `strings`, `errors`, `regexp`.
+- **Go-to-Go Native Imports:** None needed, purely internal file.
+- **Transitive Blocks:** The builder will fully implement the JSON extraction. No stubs.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 Lines of Go Code. This module will easily fit.
-- **Function Limit:** Max 80 Lines of Code. Helper functions for `deepGet` must be extracted if the function gets too large.
-- **Nesting Limit:** Maximum of 3 levels deep. Use early returns for nil or error states.
+- **File Limit:** Max 400 Lines of Go Code. This file is currently small.
+- **Function Limit:** Max 80 Lines of Code.
+- **Nesting Limit:** Maximum of 3 levels deep.
 
 ## 6. Parity Expectations
-- Input/Output schema must match structurally 1:1. The search method returns a slice of `WebSearchResult`.
-- Unit tests must confirm equivalent behavior for fetching and parsing arbitrary JSON structures using the provided config mappings.
+- Input/Output schema must remain unchanged (takes string, returns string/error).
+- Will properly unmarshal the slice using `json.RawMessage` or an empty interface `interface{}` to check if it's valid JSON instead of `var dummy map[string]any`.
