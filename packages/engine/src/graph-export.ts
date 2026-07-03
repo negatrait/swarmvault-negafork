@@ -7,7 +7,6 @@ import matter from "gray-matter";
 import { loadVaultConfig } from "./config.js";
 import {
   cypherStringLiteral,
-  exportHyperedgeNodeId,
   graphNodeById,
   graphPageById,
   normalizeEdgeProps,
