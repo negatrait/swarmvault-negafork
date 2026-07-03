@@ -1,0 +1,164 @@
+{
+  "tests": [
+    {
+      "name": "headings and paragraphs",
+      "text": "# Title 1\n\nSome paragraph text here.\n\n## Title 2\n\nMore text.",
+      "expected": [
+        {
+          "type": "heading",
+          "depth": 1,
+          "children": [
+            {
+              "type": "text",
+              "value": "Title 1"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "Some paragraph text here."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "Title 2"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "More text."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lists and blockquotes",
+      "text": "> This is a quote\n\n- Item 1\n- Item 2",
+      "expected": [
+        {
+          "type": "blockquote",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "This is a quote"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "children": [
+            {
+              "type": "listItem",
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "Item 1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "Item 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "inline styling and images",
+      "text": "Text with *emphasis* and **strong** and `inline code`.\n![AltText](img.png)",
+      "expected": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "Text with "
+            },
+            {
+              "type": "emphasis",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "emphasis"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": " and "
+            },
+            {
+              "type": "strong",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": " and "
+            },
+            {
+              "type": "inlineCode",
+              "value": "inline code"
+            },
+            {
+              "type": "text",
+              "value": ".\n"
+            },
+            {
+              "type": "image",
+              "alt": "AltText"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "code block",
+      "text": "```json\n{\n  \"key\": \"value\"\n}\n```",
+      "expected": [
+        {
+          "type": "code",
+          "value": "{\n  \"key\": \"value\"\n}"
+        }
+      ]
+    }
+  ]
+}

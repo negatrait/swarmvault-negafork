@@ -1,5 +1,5 @@
-// TODO: Port document parsing, ingestion, or token estimation to Go under internal/parser. Leverage Goroutines for concurrent processing and compare results in shadow mode. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { runGoSidecarSync } from "./subprocess.js";
 import type { SourceRationale } from "./types.js";
 import { normalizeWhitespace, truncate } from "./utils.js";
 
@@ -17,10 +17,20 @@ export type MarkdownNode = {
  * gracefully.
  */
 export function parseMarkdownNodes(text: string): MarkdownNode[] {
+  if (process.env.USE_GO_PORT === "true") {
+    try {
+      return runGoSidecarSync<MarkdownNode[]>("parser", { action: "parseMarkdownNodes", args: { text } });
+    } catch (_err) {
+      console.error(_err);
+      return [];
+    }
+  }
+
   try {
     const root = fromMarkdown(text) as { children?: MarkdownNode[] };
     return Array.isArray(root.children) ? root.children : [];
-  } catch {
+  } catch (_err) {
+    console.error(_err);
     return [];
   }
 }
