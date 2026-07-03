@@ -37,7 +37,6 @@
     "@biomejs/biome": "^2.5.1",
     "@evilmartians/lefthook": "^2.1.9",
     "playwright": "^1.61.1",
-    "tsx": "^4.22.5",
     "typescript": "^6.0.3"
   }
 }
