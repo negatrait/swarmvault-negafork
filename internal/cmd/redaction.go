@@ -8,10 +8,7 @@ import (
 )
 
 func HandleRedaction() error {
-	var payload struct {
-		Action string          `json:"action"`
-		Args   json.RawMessage `json:"args"`
-	}
+	var payload utils.ActionPayload
 	if err := utils.DecodePayload(&payload); err != nil {
 		return fmt.Errorf("error decoding JSON: %w", err)
 	}

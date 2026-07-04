@@ -7,13 +7,8 @@ import (
 	"swarmvault-native/internal/utils"
 )
 
-type ConfigPayload struct {
-	Action string          `json:"action"`
-	Args   json.RawMessage `json:"args"`
-}
-
 func HandleConfig() error {
-	var payload ConfigPayload
+	var payload utils.ActionPayload
 	if err := utils.DecodePayload(&payload); err != nil {
 		return fmt.Errorf("error decoding JSON: %w", err)
 	}
