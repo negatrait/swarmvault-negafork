@@ -1,5 +1,5 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import { z } from "zod";
+import { runGoSidecarSync } from "./subprocess.js";
 import type { ChartSpec, OutputAsset, OutputFormat, SceneSpec } from "./types.js";
 
 function escapeXml(value: string): string {
@@ -58,6 +58,9 @@ export const sceneSpecSchema = z.object({
 });
 
 export function renderChartSvg(spec: ChartSpec): { svg: string; width: number; height: number } {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync("output-artifacts", { action: "renderChartSvg", args: { spec } });
+  }
   const width = 1200;
   const height = 720;
   const margin = { top: 110, right: 80, bottom: 110, left: 110 };

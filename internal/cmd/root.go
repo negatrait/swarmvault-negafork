@@ -41,6 +41,8 @@ func Execute() error {
 		return HandleRedaction()
 	case "websearch":
 		return HandleWebSearch()
+	case "output-artifacts":
+		return HandleOutputArtifacts()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -63,4 +65,5 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  config")
 	fmt.Fprintln(os.Stderr, "  redaction")
 	fmt.Fprintln(os.Stderr, "  websearch")
+	fmt.Fprintln(os.Stderr, "  output-artifacts")
 }

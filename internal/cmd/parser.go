@@ -78,6 +78,16 @@ func HandleParser() error {
 		if err := utils.EncodeResponse(parser.ContentTokens(args.Text, args.MinLength)); err != nil {
 			return err
 		}
+	case "parseMarkdownNodes":
+		var args struct {
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		if err := utils.EncodeResponse(parser.ParseMarkdownNodes(args.Text)); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown parser action: %s", payload.Action)
 	}
