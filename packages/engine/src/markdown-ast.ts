@@ -17,15 +17,6 @@ export type MarkdownNode = {
  * gracefully.
  */
 export function parseMarkdownNodes(text: string): MarkdownNode[] {
-  if (process.env.USE_GO_PORT === "true") {
-    try {
-      return runGoSidecarSync<MarkdownNode[]>("parser", { action: "parseMarkdownNodes", args: { text } });
-    } catch (_err) {
-      console.error(_err);
-      return [];
-    }
-  }
-
   try {
     const root = fromMarkdown(text) as { children?: MarkdownNode[] };
     return Array.isArray(root.children) ? root.children : [];
