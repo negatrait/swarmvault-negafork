@@ -1,5 +1,5 @@
 import { fromMarkdown } from "mdast-util-from-markdown";
-import { runGoSidecarSync } from "./subprocess.js";
+
 import type { SourceRationale } from "./types.js";
 import { normalizeWhitespace, truncate } from "./utils.js";
 
