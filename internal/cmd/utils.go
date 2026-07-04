@@ -7,10 +7,7 @@ import (
 )
 
 func HandleUtils() error {
-	var payload struct {
-		Action string          `json:"action"`
-		Args   json.RawMessage `json:"args"`
-	}
+	var payload utils.ActionPayload
 	if err := utils.DecodePayload(&payload); err != nil {
 		return fmt.Errorf("error decoding JSON: %w", err)
 	}
@@ -139,7 +136,7 @@ func handleUtilsFsOpsBasic(action string, rawArgs json.RawMessage) error {
 		if err := utils.EnsureDir(args.DirPath); err != nil {
 			return err
 		}
-		if err := utils.EncodeResponse(nil); err != nil {
+		if err := utils.EncodeResponse(struct{}{}); err != nil {
 			return err
 		}
 	case "fileExists":
@@ -181,7 +178,7 @@ func handleUtilsFsOpsBasic(action string, rawArgs json.RawMessage) error {
 		if err := utils.WriteJsonFile(args.FilePath, args.Value); err != nil {
 			return err
 		}
-		if err := utils.EncodeResponse(nil); err != nil {
+		if err := utils.EncodeResponse(struct{}{}); err != nil {
 			return err
 		}
 	}
@@ -201,7 +198,7 @@ func handleUtilsFsOpsAdvanced(action string, rawArgs json.RawMessage) error {
 		if err := utils.AppendJsonLine(args.FilePath, args.Value); err != nil {
 			return err
 		}
-		if err := utils.EncodeResponse(nil); err != nil {
+		if err := utils.EncodeResponse(struct{}{}); err != nil {
 			return err
 		}
 	case "writeFileIfChanged":

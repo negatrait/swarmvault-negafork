@@ -7,13 +7,8 @@ import (
 	"swarmvault-native/internal/utils"
 )
 
-type BenchmarkPayload struct {
-	Action string          `json:"action"`
-	Args   json.RawMessage `json:"args"`
-}
-
 func HandleBenchmark() error {
-	var payload BenchmarkPayload
+	var payload utils.ActionPayload
 	if err := utils.DecodePayload(&payload); err != nil {
 		return fmt.Errorf("error decoding JSON: %w", err)
 	}

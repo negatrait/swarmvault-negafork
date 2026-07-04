@@ -43,7 +43,7 @@ func ReadJsonFile[T any](filePath string) (*T, error) {
 	return &result, nil
 }
 
-func WriteJsonFile(filePath string, value any) error {
+func WriteJsonFile[T any](filePath string, value T) error {
 	dir := filepath.Dir(filePath)
 	if err := EnsureDir(dir); err != nil {
 		return err
@@ -68,7 +68,7 @@ func WriteJsonFile(filePath string, value any) error {
 	return nil
 }
 
-func AppendJsonLine(filePath string, value any) error {
+func AppendJsonLine[T any](filePath string, value T) error {
 	dir := filepath.Dir(filePath)
 	if err := EnsureDir(dir); err != nil {
 		return err
