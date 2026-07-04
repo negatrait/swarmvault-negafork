@@ -297,9 +297,9 @@
     },
     {
       "path": "src/output-artifacts.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "output-artifacts",
+      "bridged": true
     },
     {
       "path": "src/outputs.ts",
