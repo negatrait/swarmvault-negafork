@@ -50,7 +50,7 @@ jobs:
       - name: Build Go binaries
         run: |
           mkdir -p bin
-          CGO_ENABLED=0 CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         run: |
@@ -100,7 +100,7 @@ jobs:
       - name: Build Go binaries
         run: |
           mkdir -p bin
-          CGO_ENABLED=0 CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         run: |
@@ -152,7 +152,7 @@ jobs:
       - name: Build Go binaries
         run: |
           mkdir -p bin
-          CGO_ENABLED=0 CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         run: |
@@ -214,7 +214,7 @@ jobs:
       - name: Build Go binaries
         run: |
           mkdir -p bin
-          CGO_ENABLED=0 CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         if: env.OPENAI_API_KEY != ''
@@ -286,7 +286,7 @@ jobs:
       - name: Build Go binaries
         run: |
           mkdir -p bin
-          CGO_ENABLED=0 CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
+          CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
 
       - name: Build and Pack local packages
         if: env.OLLAMA_API_KEY != ''
