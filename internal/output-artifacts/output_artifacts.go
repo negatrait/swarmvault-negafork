@@ -90,7 +90,7 @@ func renderLineMarks(points []Point) string {
 	}
 	for _, point := range points {
 		lineMarksArr = append(lineMarksArr, fmt.Sprintf(`<circle cx="%g" cy="%g" r="8" fill="#f8fafc" stroke="#0ea5e9" stroke-width="4" />
-          <text x="%g" y="%g" text-anchor="middle" font-size="13" fill="#0f172a">%s</text>`, point.CenterX, point.Y, point.CenterX, point.Y-18, escapeXml(fmt.Sprintf("%.0f", point.Value))))
+               <text x="%g" y="%g" text-anchor="middle" font-size="13" fill="#0f172a">%s</text>`, point.CenterX, point.Y, point.CenterX, point.Y-18, escapeXml(fmt.Sprintf("%.0f", point.Value))))
 	}
 	return strings.Join(lineMarksArr, "")
 }
