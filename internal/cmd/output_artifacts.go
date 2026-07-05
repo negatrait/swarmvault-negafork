@@ -3,7 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"swarmvault-native/internal/output-artifacts"
+
+	outputartifacts "swarmvault-native/internal/output-artifacts"
 	"swarmvault-native/internal/utils"
 )
 
