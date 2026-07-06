@@ -1,7 +1,7 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { runGoSidecar } from "./subprocess.js";
 import type { GitHookStatus } from "./types.js";
 import { ensureDir, fileExists } from "./utils.js";
 
@@ -129,6 +129,9 @@ async function resolveHookRepoRoot(rootDir: string, options: GitHookTargetOption
 }
 
 export async function getGitHookStatus(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("hooks", { action: "getGitHookStatus", args: { vaultRoot: rootDir, options } });
+  }
   const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
     return {
@@ -146,6 +149,9 @@ export async function getGitHookStatus(rootDir: string, options: GitHookTargetOp
 }
 
 export async function installGitHooks(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("hooks", { action: "installGitHooks", args: { vaultRoot: rootDir, options } });
+  }
   const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
     throw new Error(
@@ -162,6 +168,9 @@ export async function installGitHooks(rootDir: string, options: GitHookTargetOpt
 }
 
 export async function uninstallGitHooks(rootDir: string, options: GitHookTargetOptions = {}): Promise<GitHookStatus> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecar("hooks", { action: "uninstallGitHooks", args: { vaultRoot: rootDir, options } });
+  }
   const repoRoot = await resolveHookRepoRoot(rootDir, options);
   if (!repoRoot) {
     return {
