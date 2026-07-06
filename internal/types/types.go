@@ -7,6 +7,8 @@ type GraphNode struct {
 	Label      *string  `json:"label,omitempty"`
 	Degree     *int     `json:"degree,omitempty"`
 	Centrality *float64 `json:"centrality,omitempty"`
+	BridgeScore *float64 `json:"bridgeScore,omitempty"`
+	SourceClass *string  `json:"sourceClass,omitempty"`
 }
 
 type GraphPage struct {
@@ -19,6 +21,9 @@ type GraphPage struct {
 type GraphArtifact struct {
 	Nodes []GraphNode `json:"nodes"`
 	Pages []GraphPage `json:"pages"`
+	Edges      []GraphEdge      `json:"edges"`
+	Hyperedges []GraphHyperedge `json:"hyperedges"`
+	Communities []GraphCommunity `json:"communities,omitempty"`
 }
 
 type ClaimStatus string
@@ -64,4 +69,33 @@ type GraphHyperedge struct {
 	Confidence    float64       `json:"confidence"`
 	SourcePageIDs []string      `json:"sourcePageIds"`
 	Why           string        `json:"why"`
+}
+
+
+type GraphEdge struct {
+	ID       string `json:"id"`
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	Relation string `json:"relation"`
+}
+
+type GraphCommunity struct {
+	ID      string   `json:"id"`
+	Label   string   `json:"label"`
+	NodeIDs []string `json:"nodeIds"`
+}
+
+type GraphReportNode struct {
+	NodeID string `json:"nodeId"`
+}
+
+type GraphReportConnection struct {
+	SourceNodeID string `json:"sourceNodeId"`
+	TargetNodeID string `json:"targetNodeId"`
+}
+
+type GraphReportArtifact struct {
+	GodNodes              []GraphReportNode       `json:"godNodes"`
+	BridgeNodes           []GraphReportNode       `json:"bridgeNodes"`
+	SurprisingConnections []GraphReportConnection `json:"surprisingConnections"`
 }

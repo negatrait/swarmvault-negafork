@@ -1,4 +1,4 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphHyperedge, GraphNode, GraphReportArtifact } from "./types.js";
 
 const OVERVIEW_THRESHOLD = 5_000;
@@ -110,6 +110,10 @@ export function buildViewerGraphArtifact(
     nodeBudget?: number;
   } = {}
 ): ViewerGraphArtifact {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<ViewerGraphArtifact>("graph", { action: "buildViewerGraphArtifact", args: { graph, options } });
+  }
+
   const threshold = options.threshold ?? OVERVIEW_THRESHOLD;
   const nodeBudget = options.nodeBudget ?? OVERVIEW_NODE_BUDGET;
   const totalCommunities = graph.communities?.length ?? 0;
