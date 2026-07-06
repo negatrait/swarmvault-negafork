@@ -1,12 +1,12 @@
 package types
 
 type GraphNode struct {
-	ID         string   `json:"id"`
-	Type       string   `json:"type"`
-	Name       string   `json:"name"`
-	Label      *string  `json:"label,omitempty"`
-	Degree     *int     `json:"degree,omitempty"`
-	Centrality *float64 `json:"centrality,omitempty"`
+	ID          string   `json:"id"`
+	Type        string   `json:"type"`
+	Name        string   `json:"name"`
+	Label       *string  `json:"label,omitempty"`
+	Degree      *int     `json:"degree,omitempty"`
+	Centrality  *float64 `json:"centrality,omitempty"`
 	BridgeScore *float64 `json:"bridgeScore,omitempty"`
 	SourceClass *string  `json:"sourceClass,omitempty"`
 }
@@ -19,10 +19,10 @@ type GraphPage struct {
 }
 
 type GraphArtifact struct {
-	Nodes []GraphNode `json:"nodes"`
-	Pages []GraphPage `json:"pages"`
-	Edges      []GraphEdge      `json:"edges"`
-	Hyperedges []GraphHyperedge `json:"hyperedges"`
+	Nodes       []GraphNode      `json:"nodes"`
+	Pages       []GraphPage      `json:"pages"`
+	Edges       []GraphEdge      `json:"edges"`
+	Hyperedges  []GraphHyperedge `json:"hyperedges"`
 	Communities []GraphCommunity `json:"communities,omitempty"`
 }
 
@@ -70,7 +70,6 @@ type GraphHyperedge struct {
 	SourcePageIDs []string      `json:"sourcePageIds"`
 	Why           string        `json:"why"`
 }
-
 
 type GraphEdge struct {
 	ID       string `json:"id"`

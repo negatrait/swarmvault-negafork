@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	OverviewThreshold = 5000
+	OverviewThreshold  = 5000
 	OverviewNodeBudget = 1500
 )
 
