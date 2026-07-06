@@ -26,6 +26,18 @@ func HandleGraph() error {
 		if err := utils.EncodeResponse(result); err != nil {
 			return err
 		}
+	case "buildViewerGraphArtifact":
+		var args struct {
+			Graph   types.GraphArtifact `json:"graph"`
+			Options graph.Options       `json:"options"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		result := graph.BuildViewerGraphArtifact(args.Graph, args.Options)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown graph action: %s", payload.Action)
 	}
