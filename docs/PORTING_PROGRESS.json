@@ -357,7 +357,7 @@
     },
     {
       "path": "src/providers/openai-compatible-capabilities.ts",
-      "status": "pending",
+      "status": "completed",
       "subcommand": null,
       "bridged": false
     },
