@@ -1,5 +1,8 @@
 name: Daily Release
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 on:
   schedule:
     - cron: '0 0 * * *'
