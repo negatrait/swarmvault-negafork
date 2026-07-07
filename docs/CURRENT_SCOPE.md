@@ -1,30 +1,33 @@
-# Daily Porting Scope: Hooks (getGitHookStatus)
+# Daily Porting Scope: providers/openai-compatible-capabilities.ts
 
 ## 1. Goal
-Port the `getGitHookStatus` leaf function from `packages/engine/src/hooks.ts` to Go. This file manages installing and updating git `post-commit` and `post-checkout` hooks to trigger SwarmVault's watcher. Because the TS file is over 150 lines (177 lines), we must adhere to the Slicing Decision Tree and scope exactly one leaf function at a time.
-  - Success metric: the `internal/hooks` Go package compiles cleanly, exposes equivalent functionality, and accurately reads git hooks matching TS logic.
-  - Identified pitfalls: The logic relies on resolving the nearest git root and checking hook file contents. Path manipulation and file reading must perfectly match Node.js `path` and `fs` behaviors.
+Port the `openai-compatible-capabilities.ts` leaf file to Go under `internal/providers/capabilities.go`. This file is purely data and simple logic regarding provider capabilities (length 88 lines, 0 TS imports besides types), fitting perfectly within the "Stateless Utility Bundle" slicing decision for files under 150 lines.
+
+  - Success metric: the `internal/providers` Go package exposes an equivalent capability matrix and `LookupPresetCapabilities` function. `WithCapabilityFallback` will also be ported as a generic Go function `WithCapabilityFallback[T any]`.
+  - Identified pitfalls: The TS `withCapabilityFallback` function uses a callback function, so we cannot easily bridge it across the JSON boundary using `runGoSidecar`. Since `openai-compatible-capabilities.ts` is only used internally by other unported TS provider files, we will port the code into Go natively so Go code can use it, and we will *remove* the `// TODO: Port` comment from the TS file to mark it as complete. We won't physically delete the TS file yet because the unported TS code still relies on it natively (Frankenstein TS Clean-Cut rule applies later).
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/hooks.ts`
-- **Source Export(s):** `getGitHookStatus`
-- **Target File:** `internal/hooks/hooks.go`
-- **Target Export:** `func GetGitHookStatus(rootDir string, options GitHookTargetOptions) (GitHookStatus, error)`
+- **Source File:** `packages/engine/src/providers/openai-compatible-capabilities.ts`
+- **Source Export(s):** `OPENAI_COMPATIBLE_CAPABILITY_MATRIX`, `lookupPresetCapabilities`, `withCapabilityFallback`
+- **Target File:** `internal/providers/capabilities.go`
+- **Target Export:** `CapabilityMatrix`, `LookupPresetCapabilities`, `WithCapabilityFallback[T any]`
+- **Target Types File:** `internal/types/providers.go`
+- **Target Types Export:** `ProviderCapability`, `DegradeReason`, `DegradationOutcome[T]`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native hooks`
-- **TS Delegation Call:** Update `packages/engine/src/hooks.ts` to route execution of `getGitHookStatus` through our centralized `runGoSidecar` wrapper when `process.env.USE_GO_PORT` is enabled.
+- **CLI Subcommand:** None
+- **TS Delegation Call:** We will leave the original TS file intact (except removing the `TODO: Port` line) since bridging higher order functions (callbacks) across a JSON boundary is impossible/unidiomatic without complex RPC. The TS code will continue to use the TS version until those TS modules are ported. Go code will import the new Go package `internal/providers` directly.
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Go standard libraries (`os`, `path/filepath`, `strings`). Confirm that NO stubs, mocks, or unported TS files are required.
-- **Go-to-Go Native Imports:** `swarmvault-native/internal/utils` (for `FileExists`). Explicitly state that Go must call Go natively; it must never use the subprocess bridge.
-- **Transitive Blocks:** Stubbing is forbidden. All hook status checking logic must be implemented fully in Go.
+- **Verified Go Dependencies:** `swarmvault-native/internal/types`. We will need to define `ProviderCapability` in `internal/types/providers.go`.
+- **Go-to-Go Native Imports:** `swarmvault-native/internal/types`.
+- **Transitive Blocks:** None, as this is a true leaf file. Stubbing is forbidden. All provider capability matrix mappings must be implemented fully in Go.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 Lines of Go Code.
-- **Function Limit:** Max 80 Lines of Code. Extract path lookups into smaller helper functions (e.g. `findNearestGitRoot`).
-- **Nesting Limit:** Maximum of 3 levels deep. Use early exits and guard clauses.
+- **File Limit:** Max 400 lines of Go code.
+- **Function Limit:** Max 80 lines of Go code per function.
+- **Nesting Limit:** Max 3 levels deep.
 
 ## 6. Parity Expectations
-- Input/Output schema must match structurally 1:1.
-- Unit tests must run the exact same JSON test fixtures across both TS and Go to verify identical output.
+- The Go data structure `CapabilityMatrix` must exactly match `OPENAI_COMPATIBLE_CAPABILITY_MATRIX`.
+- The `ProviderCapability` enum must map exactly to TS.
