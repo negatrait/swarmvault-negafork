@@ -11,9 +11,9 @@ import (
 )
 
 type freshnessArgs struct {
-	Pages  []types.GraphPage  `json:"pages"`
-	Config types.DecayConfig  `json:"config"`
-	Now    string             `json:"now"`
+	Pages  []types.GraphPage `json:"pages"`
+	Config types.DecayConfig `json:"config"`
+	Now    string            `json:"now"`
 }
 
 func HandleFreshness() error {

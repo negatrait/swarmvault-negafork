@@ -2,12 +2,12 @@ package freshness
 
 import (
 	"math"
-	"time"
 	"swarmvault-native/internal/types"
+	"time"
 )
 
 const (
-	DefaultHalfLifeDays float64 = 365
+	DefaultHalfLifeDays   float64 = 365
 	DefaultStaleThreshold float64 = 0.3
 )
 
@@ -22,6 +22,11 @@ type ApplyDecayResult struct {
 	Updated     []types.GraphPage `json:"updated"`
 	MarkedStale []string          `json:"markedStale"`
 }
+
+const (
+	FreshnessStale types.Freshness = "stale"
+	FreshnessFresh types.Freshness = "fresh"
+)
 
 func ResolveDecayConfig(config *types.DecayConfig) types.DecayConfig {
 	if config == nil {
@@ -125,17 +130,17 @@ func ApplyDecayToPages(pages []types.GraphPage, config types.DecayConfig, now ti
 	for i, page := range pages {
 		decayScore := ComputeDecayScore(page.LastConfirmedAt, page.SourceClass, config, now)
 		previousFreshness := page.Freshness
-		nextFreshness := previousFreshness
+		var nextFreshness types.Freshness
 
 		if page.SupersededBy != nil && *page.SupersededBy != "" {
-			nextFreshness = "stale"
+			nextFreshness = FreshnessStale
 		} else if decayScore < staleThreshold {
-			nextFreshness = "stale"
+			nextFreshness = FreshnessStale
 		} else {
-			nextFreshness = "fresh"
+			nextFreshness = FreshnessFresh
 		}
 
-		if nextFreshness == "stale" && previousFreshness != "stale" {
+		if nextFreshness == FreshnessStale && previousFreshness != FreshnessStale {
 			markedStale = append(markedStale, page.ID)
 		}
 

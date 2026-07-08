@@ -130,7 +130,10 @@ import { runGoSidecarSync } from "./subprocess.js";
 
 export function applyDecayToPages(pages: GraphPage[], config: DecayConfig, now: Date = new Date()): ApplyDecayResult {
   if (process.env.USE_GO_PORT === "true") {
-    return runGoSidecarSync<ApplyDecayResult>("freshness", { action: "applyDecayToPages", args: { pages, config, now: now.toISOString() } });
+    return runGoSidecarSync<ApplyDecayResult>("freshness", {
+      action: "applyDecayToPages",
+      args: { pages, config, now: now.toISOString() }
+    });
   }
   const staleThreshold = resolveStaleThreshold(config);
   const markedStale: string[] = [];
