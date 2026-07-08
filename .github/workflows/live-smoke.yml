@@ -29,7 +29,7 @@ permissions:
 jobs:
   heuristic:
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'heuristic'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -77,7 +77,7 @@ jobs:
     if: |
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == 'heuristic'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -129,7 +129,7 @@ jobs:
     if: |
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.lane == 'all')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -180,7 +180,7 @@ jobs:
     if: |
       (github.event_name != 'schedule') &&
       (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'openai')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Skip OpenAI lane when secret is unavailable
@@ -248,7 +248,7 @@ jobs:
     if: |
       (github.event_name != 'schedule') &&
       (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'ollama')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
       OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
     steps:
       - name: Skip Ollama lane when secret is unavailable
