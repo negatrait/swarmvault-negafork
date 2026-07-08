@@ -11,11 +11,28 @@ type GraphNode struct {
 	SourceClass *string  `json:"sourceClass,omitempty"`
 }
 
+type Freshness string
+type SourceClass string
+type DecayConfig struct {
+	HalfLifeDaysBySourceClass map[SourceClass]float64 `json:"halfLifeDaysBySourceClass,omitempty"`
+	DefaultHalfLifeDays       *float64                `json:"defaultHalfLifeDays,omitempty"`
+	StaleThreshold            *float64                `json:"staleThreshold,omitempty"`
+}
+
 type GraphPage struct {
-	ID         string  `json:"id"`
-	Kind       string  `json:"kind"`
-	Title      string  `json:"title"`
-	SourceType *string `json:"sourceType,omitempty"`
+	ID              string       `json:"id"`
+	Kind            string       `json:"kind"`
+	Title           string       `json:"title"`
+	SourceType      *string      `json:"sourceType,omitempty"`
+	Path            string       `json:"path"`
+	SourceClass     *SourceClass `json:"sourceClass,omitempty"`
+	SourceIDs       []string     `json:"sourceIds"`
+	ProjectIDs      []string     `json:"projectIds"`
+	NodeIDs         []string     `json:"nodeIds"`
+	Freshness       Freshness    `json:"freshness"`
+	DecayScore      *float64     `json:"decayScore,omitempty"`
+	LastConfirmedAt *string      `json:"lastConfirmedAt,omitempty"`
+	SupersededBy    *string      `json:"supersededBy,omitempty"`
 }
 
 type GraphArtifact struct {
