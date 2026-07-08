@@ -1,7 +1,7 @@
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 name: Daily Release
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   schedule:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,5 +41,4 @@ jobs:
           files: |
             dist/swarmvault-native-linux-amd64
             dist/swarmvault-native-linux-arm64
-        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

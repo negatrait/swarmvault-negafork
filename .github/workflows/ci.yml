@@ -1,5 +1,5 @@
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 name: CI
 
 on:
@@ -10,13 +10,13 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - uses: actions/setup-go@v5
@@ -34,13 +34,13 @@ jobs:
       - run: USE_GO_PORT=true pnpm test
 
   perf-budget:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - uses: actions/setup-go@v5
         with:
@@ -51,15 +51,15 @@ jobs:
       - run: USE_GO_PORT=true pnpm check:perf
 
   packaged-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: check
     if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - uses: actions/setup-go@v5
         with:
