@@ -35,6 +35,8 @@ func Execute() error {
 		return HandleFindings()
 	case "graph":
 		return HandleGraph()
+	case "freshness":
+		return HandleFreshness()
 	case "config":
 		return HandleConfig()
 	case "redaction":
@@ -64,6 +66,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  parser")
 	fmt.Fprintln(os.Stderr, "  findings")
 	fmt.Fprintln(os.Stderr, "  graph")
+	fmt.Fprintln(os.Stderr, "  freshness")
 	fmt.Fprintln(os.Stderr, "  config")
 	fmt.Fprintln(os.Stderr, "  redaction")
 	fmt.Fprintln(os.Stderr, "  websearch")

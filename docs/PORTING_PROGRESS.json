@@ -111,9 +111,9 @@
     },
     {
       "path": "src/freshness.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "freshness",
+      "bridged": true
     },
     {
       "path": "src/graph-callers.ts",

@@ -1,4 +1,3 @@
-// TODO: Port this module to Go, adhering to the 1:1 structural port paradigm (mirroring directory structures and data models) and ensuring 100% output parity. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
@@ -127,7 +126,12 @@ export function computeDecayScore(
  * above the threshold are upgraded back to `"fresh"` so re-confirmation
  * outside of compile (e.g. human review) can take effect.
  */
+import { runGoSidecarSync } from "./subprocess.js";
+
 export function applyDecayToPages(pages: GraphPage[], config: DecayConfig, now: Date = new Date()): ApplyDecayResult {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<ApplyDecayResult>("freshness", { action: "applyDecayToPages", args: { pages, config, now: now.toISOString() } });
+  }
   const staleThreshold = resolveStaleThreshold(config);
   const markedStale: string[] = [];
   const updated: GraphPage[] = pages.map((page) => {
