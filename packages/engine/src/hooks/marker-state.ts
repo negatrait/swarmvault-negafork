@@ -1,3 +1,4 @@
+// TODO: Port model-specific hook logic and state handling to Go. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 // NOTE: This file is bundled by tsup as a standalone hook script
 // (`dist/hooks/marker-state.js`) and installed into user projects. It must
 // only import Node builtins — no engine imports. The helpers below share
