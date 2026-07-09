@@ -225,9 +225,9 @@
     },
     {
       "path": "src/hooks/marker-state.ts",
-      "status": "pending",
-      "subcommand": null,
-      "bridged": false
+      "status": "completed",
+      "subcommand": "hook-state",
+      "bridged": true
     },
     {
       "path": "src/hooks/opencode.ts",

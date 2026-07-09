@@ -266,10 +266,7 @@ func SaveChatSessionTurn(rootDir string, session VaultChatSession, options AskCh
 		return AskChatResult{}, err
 	}
 
-	resumed := false
-	if options.SessionID != nil && *options.SessionID != "" {
-		resumed = true
-	}
+	resumed := options.SessionID != nil && *options.SessionID != ""
 
 	return AskChatResult{
 		Session:      persisted,
