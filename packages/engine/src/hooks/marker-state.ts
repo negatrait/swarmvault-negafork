@@ -4,17 +4,17 @@
 // the "has the session seen the graph report" tracking across the per-agent
 // hook scripts so each agent can manage its own per-cwd state directory.
 
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 
 function runGoSidecarSyncInline<T>(subcommand: string, payload: unknown): T {
   let binaryPath = "swarmvault-native";
   try {
     const ext = process.platform === "win32" ? ".exe" : "";
-    const localPath = path.resolve(__dirname, "../../bin/swarmvault-native" + ext);
+    const localPath = path.resolve(__dirname, `../../bin/swarmvault-native${ext}`);
     binaryPath = localPath;
   } catch {
     // ignore
@@ -23,7 +23,7 @@ function runGoSidecarSyncInline<T>(subcommand: string, payload: unknown): T {
   const child = spawnSync(binaryPath, [subcommand], {
     input: JSON.stringify(payload),
     encoding: "utf8",
-    maxBuffer: 50 * 1024 * 1024,
+    maxBuffer: 50 * 1024 * 1024
   });
 
   if (child.error) {
