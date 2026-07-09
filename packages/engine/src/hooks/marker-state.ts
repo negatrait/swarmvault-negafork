@@ -1,14 +1,40 @@
-// TODO: Port model-specific hook logic and state handling to Go. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 // NOTE: This file is bundled by tsup as a standalone hook script
 // (`dist/hooks/marker-state.js`) and installed into user projects. It must
 // only import Node builtins — no engine imports. The helpers below share
 // the "has the session seen the graph report" tracking across the per-agent
 // hook scripts so each agent can manage its own per-cwd state directory.
 
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+
+function runGoSidecarSyncInline<T>(subcommand: string, payload: unknown): T {
+  let binaryPath = "swarmvault-native";
+  try {
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const localPath = path.resolve(__dirname, `../../bin/swarmvault-native${ext}`);
+    binaryPath = localPath;
+  } catch {
+    // ignore
+  }
+
+  const child = spawnSync(binaryPath, [subcommand], {
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024
+  });
+
+  if (child.error) {
+    throw child.error;
+  }
+  if (child.status !== 0) {
+    throw new Error(`Go sidecar failed (code ${child.status}): ${child.stderr}`);
+  }
+  if (!child.stdout) return null as T;
+  return JSON.parse(child.stdout) as T;
+}
 
 export interface MarkerState {
   dir: string;
@@ -304,8 +330,11 @@ export interface WatchStaleness {
  * Cheap staleness signal read straight from the watch artifacts without
  * spawning the CLI. Returns null when no watch state exists yet.
  */
-// TODO: Port exactly this leaf function to Go. Maintain 1:1 parity and existential missing file tolerance. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 export async function readWatchStaleness(cwd: string): Promise<WatchStaleness | null> {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSyncInline<WatchStaleness | null>("hook-state", { action: "readWatchStaleness", args: { cwd } });
+  }
+
   const watchDir = path.join(artifactRootDir(cwd), "state", "watch");
   let lastRunAt: string | undefined;
   let lastRunSuccess: boolean | undefined;

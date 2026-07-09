@@ -47,6 +47,8 @@ func Execute() error {
 		return HandleOutputArtifacts()
 	case "hooks":
 		return HandleHooks()
+	case "hook-state":
+		return HandleHookState()
 	default:
 		printUsage()
 		return fmt.Errorf("unknown subcommand: %s", subcommand)
@@ -72,4 +74,5 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  websearch")
 	fmt.Fprintln(os.Stderr, "  output-artifacts")
 	fmt.Fprintln(os.Stderr, "  hooks")
+	fmt.Fprintln(os.Stderr, "  hook-state")
 }
