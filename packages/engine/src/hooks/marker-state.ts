@@ -304,6 +304,7 @@ export interface WatchStaleness {
  * Cheap staleness signal read straight from the watch artifacts without
  * spawning the CLI. Returns null when no watch state exists yet.
  */
+// TODO: Port exactly this leaf function to Go. Maintain 1:1 parity and existential missing file tolerance. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
 export async function readWatchStaleness(cwd: string): Promise<WatchStaleness | null> {
   const watchDir = path.join(artifactRootDir(cwd), "state", "watch");
   let lastRunAt: string | undefined;

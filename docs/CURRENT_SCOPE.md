@@ -1,31 +1,32 @@
-# Daily Porting Scope: freshness
+# Daily Porting Scope: marker-state (readWatchStaleness)
 
 ## 1. Goal
-Port the batch processing function `applyDecayToPages` (and its required stateless mathematical helpers like `computeDecayScore`, `resolveHalfLifeForSourceClass`, etc.) from `src/freshness.ts` into a new Go package `internal/freshness`.
-  - **Success Metrics:** The Go CLI subcommand `freshness` successfully accepts a JSON payload containing an array of `GraphPage` objects and a `DecayConfig`, processes them identically to the TS implementation, and returns the updated pages.
-  - **Identified Pitfalls:** We must port the *batch* function `applyDecayToPages` rather than just the singular `computeDecayScore`. If we only bridged `computeDecayScore`, the TS loop in `applyDecayToPages` would trigger a sidecar subprocess per page, leading to severe CI timeouts ("Tight Loops" pitfall). We will port both to Go natively, and bridge the batch function.
+Port exactly one leaf function, `readWatchStaleness`, from the 430-line `src/hooks/marker-state.ts` into a new Go package `internal/hooks`. This follows the Slicing Decision Tree constraint for files over 150 lines (scoping exactly one leaf function to prevent timeouts).
+  - **Success Metrics:** The Go CLI subcommand `hook-state` accepts a JSON payload containing the `cwd` argument, executes the filesystem reads for the watch status, and returns a 1:1 matching JSON response (or `null` if missing).
+  - **Identified Pitfalls:** We must replicate Node's `fs.readFile` failure tolerance gracefully. Missing files or invalid JSON should safely return `null` or a partial state without panicking or returning hard CLI errors, exactly as the TS implementation catches those errors silently.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/freshness.ts`
-- **Source Export(s):** `applyDecayToPages`, `computeDecayScore`, `resolveDecayConfig`
-- **Target File:** `internal/freshness/decay.go`
-- **Target Export:** `ApplyDecayToPages`, `ComputeDecayScore`, `ResolveDecayConfig`
+- **Source File:** `packages/engine/src/hooks/marker-state.ts`
+- **Source Export(s):** `readWatchStaleness` (and the `WatchStaleness` interface)
+- **Target File:** `internal/hooks/marker_state.go`
+- **Target Export:** `ReadWatchStaleness`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native freshness`
-- **TS Delegation Call:** Update `applyDecayToPages` in `packages/engine/src/freshness.ts` to delegate to `runGoSidecarSync<ApplyDecayResult>("freshness", { action: "applyDecayToPages", args: { pages, config, now } })` when `USE_GO_PORT=true`.
+- **CLI Subcommand:** `swarmvault-native hook-state`
+- **TS Delegation Call:** Update `readWatchStaleness` in `packages/engine/src/hooks/marker-state.ts` to delegate to `runGoSidecarSync<WatchStaleness | null>("hook-state", { action: "readWatchStaleness", args: { cwd } })` when `USE_GO_PORT=true`.
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard Go libraries (`math`, `time`). The `types.GraphPage` and `types.DecayConfig` structs must be mapped or utilized if they exist in `internal/types`, otherwise added.
-- **Go-to-Go Native Imports:** `swarmvault-native/internal/types` (for `GraphPage`, `SourceClass`, etc.)
-- **Transitive Blocks:** None. This is pure JSON-in, JSON-out logic. Stubbing is strictly forbidden. The logic must exactly replicate the TS exponential decay math (`0.5 ^ (ageDays / halfLifeDays)`).
+- **Verified Go Dependencies:** Standard Go libraries (`os`, `path/filepath`, `encoding/json`).
+- **Go-to-Go Native Imports:** `swarmvault-native/internal/utils` for JSON decoding/encoding in the CLI handler, but the core function `ReadWatchStaleness` should only depend on standard library IO.
+- **Transitive Blocks:** None. This function is a pure leaf that only interacts with the filesystem directly. Stubbing is strictly forbidden. We must fully implement the `status.json` and `pending-semantic-refresh.json` reads.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 lines of Go code in `decay.go`.
-- **Function Limit:** Max 80 lines of Go code per function.
-- **Nesting Limit:** Max 3 levels deep per function.
+- **File Limit:** Max 400 Lines of Go Code. `marker_state.go` will be very small.
+- **Function Limit:** Max 80 Lines of Code. Extract JSON parsing to a private helper if it exceeds this (unlikely).
+- **Nesting Limit:** Max 3 levels deep. Use early returns for `os.ReadFile` errors.
 
 ## 6. Parity Expectations
-- The exponential decay math must use `float64` and strictly map floating-point values for exact JSON parity.
-- Missing or invalid dates must safely default to a decay score of `1`, exactly as TS does (`Date.parse` returning NaN).
+- Input/Output schema must match structurally 1:1.
+- The TS implementation returns `null` if neither file is found, but returns partial data if at least one is found. Go must replicate this exact existential flag (`found = false`).
+- Missing or malformed JSON in the target files must be handled gracefully just like the empty `catch {}` blocks in TS.
 - Unit tests must run identical JSON test fixtures in `/shared-fixtures` across both TS and Go to verify identical output.
