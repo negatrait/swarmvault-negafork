@@ -38,6 +38,17 @@ func HandleGraph() error {
 		if err := utils.EncodeResponse(result); err != nil {
 			return err
 		}
+	case "sortedFallbackHubs":
+		var args struct {
+			Graph types.GraphArtifact `json:"graph"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		result := graph.SortedFallbackHubs(args.Graph)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown graph action: %s", payload.Action)
 	}

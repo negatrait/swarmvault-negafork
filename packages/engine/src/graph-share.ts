@@ -1,4 +1,4 @@
-// TODO: Port graph querying, traversal, or compilation to Go under internal/graph. Maintain 1:1 structural parity and add differential testing against TS output. | Porting Priority: HIGH (Leaf node, Depth: 0/10)
+import { runGoSidecarSync } from "./subprocess.js";
 import type { GraphArtifact, GraphNode, GraphReportArtifact, GraphShareArtifact, GraphShareBundleFile } from "./types.js";
 import { truncate, uniqueBy } from "./utils.js";
 
@@ -8,6 +8,9 @@ function displayVaultName(value: string | undefined): string {
 }
 
 function sortedFallbackHubs(graph: GraphArtifact): GraphNode[] {
+  if (process.env.USE_GO_PORT === "true") {
+    return runGoSidecarSync<GraphNode[]>("graph", { action: "sortedFallbackHubs", args: { graph } });
+  }
   return graph.nodes
     .filter((node) => node.type !== "source")
     .sort(
