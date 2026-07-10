@@ -45,6 +45,7 @@ export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload
       }
       const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
       if (fs.existsSync(homeBin)) return homeBin;
+      if (fs.existsSync("/app/bin/" + binaryName)) return "/app/bin/" + binaryName;
 
       return path.join(process.cwd(), binaryName);
     })();
