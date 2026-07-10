@@ -235,16 +235,16 @@ func RenderPromotionSessionMarkdown(
 	lines = append(lines, "| page | decision | score | reasons |")
 	lines = append(lines, "| --- | --- | --- | --- |")
 
-	promotedMap := make(map[string]bool)
+	promotedMap := make(map[string]struct{})
 	for _, id := range promotedPageIds {
-		promotedMap[id] = true
+		promotedMap[id] = struct{}{}
 	}
 
 	sortedDecisions := SortDecisionsForPromotion(decisions)
 	for _, decision := range sortedDecisions {
 		decided := "skipped"
 		if decision.Promote {
-			if promotedMap[decision.PageID] {
+			if _, ok := promotedMap[decision.PageID]; ok {
 				decided = "promoted"
 			} else {
 				decided = "promote (dry-run)"

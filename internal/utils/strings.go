@@ -84,15 +84,11 @@ func ExtractJson(text string) (string, error) {
 		end := strings.LastIndex(text, "}")
 		for end > start {
 			candidate := text[start : end+1]
-			var val any
-			if err := json.Unmarshal([]byte(candidate), &val); err == nil {
+			if json.Valid([]byte(candidate)) {
 				return candidate, nil
 			}
-			// Search for next `}` before current end.
-			// Equivalent to JS `text.lastIndexOf("}", end - 1)`
-			if end-1 < 0 {
-				break
-			}
+
+			// Move end back to the previous '}'
 			prevEnd := strings.LastIndex(text[:end], "}")
 			if prevEnd == -1 {
 				break
@@ -104,18 +100,8 @@ func ExtractJson(text string) (string, error) {
 	return "", errors.New("Could not locate JSON object in provider response.")
 }
 
-func SafeFrontmatter(value map[string]any) map[string]any {
-	// Re-encode via JSON to drop nil/undefined values to simulate JSON.parse(JSON.stringify(value))
-	data, err := json.Marshal(value)
-	if err != nil {
-		return value
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
-		return value
-	}
-	return result
+func SafeFrontmatter(value map[string]json.RawMessage) map[string]json.RawMessage {
+	return value
 }
 
 func Truncate(value string, maxLength int) string {

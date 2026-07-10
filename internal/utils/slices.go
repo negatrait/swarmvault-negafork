@@ -5,11 +5,11 @@ import (
 )
 
 func UniqueStrings(items []string) []string {
-	seen := make(map[string]bool)
+	seen := make(map[string]struct{})
 	var res []string
 	for _, item := range items {
-		if !seen[item] {
-			seen[item] = true
+		if _, ok := seen[item]; !ok {
+			seen[item] = struct{}{}
 			res = append(res, item)
 		}
 	}

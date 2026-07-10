@@ -19,13 +19,17 @@ func HandleFindings() error {
 	switch payload.Action {
 	case "normalizeFindingSeverity":
 		var args struct {
-			Value any `json:"value"`
+			Value json.RawMessage `json:"value"`
 		}
 		if err := json.Unmarshal(payload.Args, &args); err != nil {
 			return fmt.Errorf("failed to unmarshal args: %w", err)
 		}
 
-		result := findings.NormalizeFindingSeverity(args.Value)
+		var strValue string
+		if err := json.Unmarshal(args.Value, &strValue); err != nil {
+			strValue = ""
+		}
+		result := findings.NormalizeFindingSeverity(strValue)
 		return utils.EncodeResponse(result)
 	default:
 		return fmt.Errorf("unknown action: %s", payload.Action)

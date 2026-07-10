@@ -63,9 +63,9 @@ func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pa
 	nodesById := nodeMap(graph)
 	pagesById := pageMap(graph)
 
-	edgeIds := make(map[string]bool)
+	edgeIds := make(map[string]struct{})
 	for _, id := range queryResult.VisitedEdgeIDs {
-		edgeIds[id] = true
+		edgeIds[id] = struct{}{}
 	}
 
 	var lines []string
@@ -106,7 +106,7 @@ func BenchmarkQueryTokens(graph *GraphArtifact, queryResult GraphQueryResult, pa
 	}
 
 	for _, edge := range graph.Edges {
-		if !edgeIds[edge.ID] {
+		if _, ok := edgeIds[edge.ID]; !ok {
 			continue
 		}
 		sourceLabel := edge.Source
