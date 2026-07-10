@@ -45,6 +45,13 @@ export async function runGoSidecar<T = unknown>(subcommand: string, inputPayload
       }
       const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
       if (fs.existsSync(homeBin)) return homeBin;
+      if (process.env.SWARMVAULT_BIN_PATH && fs.existsSync(path.join(process.env.SWARMVAULT_BIN_PATH, binaryName))) {
+        return path.join(process.env.SWARMVAULT_BIN_PATH, binaryName);
+      }
+
+      const dynamicDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+      const relativeBin = path.resolve(dynamicDir, "../../../bin", binaryName);
+      if (fs.existsSync(relativeBin)) return relativeBin;
 
       return path.join(process.cwd(), binaryName);
     })();
@@ -117,6 +124,12 @@ export function runGoSidecarSync<T = unknown>(subcommand: string, inputPayload: 
     const homeBin = path.join(process.env.HOME || "", ".swarmvault-negafork", "bin", binaryName);
     if (fs.existsSync(homeBin)) return homeBin;
 
+    if (process.env.SWARMVAULT_BIN_PATH && fs.existsSync(path.join(process.env.SWARMVAULT_BIN_PATH, binaryName))) {
+      return path.join(process.env.SWARMVAULT_BIN_PATH, binaryName);
+    }
+    const dynamicDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+    const relativeBin = path.resolve(dynamicDir, "../../../bin", binaryName);
+    if (fs.existsSync(relativeBin)) return relativeBin;
     return path.join(process.cwd(), binaryName);
   })();
 

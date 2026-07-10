@@ -31,7 +31,7 @@ jobs:
           mkdir -p bin
           USE_GO_PORT=true CGO_ENABLED=0 go build -o bin/swarmvault-native ./cmd/swarmvault-native
       - run: pnpm test
-      - run: USE_GO_PORT=true pnpm test
+      - run: SWARMVAULT_BIN_PATH=$(pwd)/bin USE_GO_PORT=true pnpm test
 
   perf-budget:
     runs-on: ubuntu-22.04
