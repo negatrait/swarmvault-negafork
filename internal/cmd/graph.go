@@ -15,6 +15,17 @@ func HandleGraph() error {
 	}
 
 	switch payload.Action {
+	case "sortedFallbackHubs":
+		var args struct {
+			Graph types.GraphArtifact `json:"graph"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		result := graph.SortedFallbackHubs(args.Graph)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
 	case "exportHyperedgeNodeId":
 		var args struct {
 			Hyperedge types.GraphHyperedge `json:"hyperedge"`
