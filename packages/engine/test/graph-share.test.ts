@@ -144,7 +144,7 @@ function report(): GraphReportArtifact {
 
 describe("graph share card", () => {
   it("sorts fallback hubs correctly", () => {
-    const result = sortedFallbackHubs(fixture as GraphArtifact);
+    const result = sortedFallbackHubs(fixture as unknown as GraphArtifact);
     expect(result.length).toBe(5);
     expect(result.map((n) => n.label)).toEqual(["Alpha", "Beta", "Zeta", "Delta", "Gamma"]);
   });
