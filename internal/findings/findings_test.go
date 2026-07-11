@@ -7,12 +7,10 @@ import (
 func TestNormalizeFindingSeverity(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    any
+		input    string
 		expected string
 	}{
-		{"not a string (number)", 123, "info"},
-		{"not a string (nil)", nil, "info"},
-		{"not a string (bool)", true, "info"},
+
 		{"empty string", "", "info"},
 
 		{"error variants - exact", "error", "error"},

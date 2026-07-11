@@ -171,9 +171,9 @@
     },
     {
       "path": "src/graph-share.ts",
-      "status": "completed",
+      "status": "pending",
       "subcommand": null,
-      "bridged": true
+      "bridged": false
     },
     {
       "path": "src/graph-status.ts",

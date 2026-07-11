@@ -4,9 +4,11 @@ import {
   renderGraphShareBundleFiles,
   renderGraphShareMarkdown,
   renderGraphSharePreviewHtml,
-  renderGraphShareSvg
+  renderGraphShareSvg,
+  sortedFallbackHubs
 } from "../src/graph-share.js";
 import type { GraphArtifact, GraphNode, GraphPage, GraphReportArtifact, SourceManifest } from "../src/types.js";
+import fixture from "./shared-fixtures/graph-share.json" with { type: "json" };
 
 function node(input: Partial<GraphNode> & { id: string; label: string; type: GraphNode["type"] }): GraphNode {
   return {
@@ -141,6 +143,12 @@ function report(): GraphReportArtifact {
 }
 
 describe("graph share card", () => {
+  it("sorts fallback hubs correctly", () => {
+    const result = sortedFallbackHubs(fixture as unknown as GraphArtifact);
+    expect(result.length).toBe(5);
+    expect(result.map((n) => n.label)).toEqual(["Alpha", "Beta", "Zeta", "Delta", "Gamma"]);
+  });
+
   it("builds a post-ready share artifact from graph report highlights", () => {
     const artifact = buildGraphShareArtifact({ graph: graph(), report: report(), vaultName: "demo-vault" });
 

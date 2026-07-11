@@ -7,7 +7,7 @@ function displayVaultName(value: string | undefined): string {
   return trimmed ? trimmed : "this vault";
 }
 
-function sortedFallbackHubs(graph: GraphArtifact): GraphNode[] {
+export function sortedFallbackHubs(graph: GraphArtifact): GraphNode[] {
   if (process.env.USE_GO_PORT === "true") {
     return runGoSidecarSync<GraphNode[]>("graph", { action: "sortedFallbackHubs", args: { graph } });
   }
@@ -484,3 +484,4 @@ export function renderGraphShareBundleFiles(artifact: GraphShareArtifact): Graph
     }
   ];
 }
+// TODO: target

@@ -16,19 +16,19 @@ const (
 
 var AllSourceClasses = []string{ClassFirstParty, ClassThirdParty, ClassResource, ClassGenerated}
 
-var thirdPartySegments = map[string]bool{
-	"node_modules": true,
-	"vendor":       true,
-	"Pods":         true,
+var thirdPartySegments = map[string]struct{}{
+	"node_modules": {},
+	"vendor":       {},
+	"Pods":         {},
 }
 
-var generatedSegments = map[string]bool{
-	"dist":        true,
-	"build":       true,
-	".next":       true,
-	"coverage":    true,
-	"DerivedData": true,
-	"target":      true,
+var generatedSegments = map[string]struct{}{
+	"dist":        {},
+	"build":       {},
+	".next":       {},
+	"coverage":    {},
+	"DerivedData": {},
+	"target":      {},
 }
 
 type SourceManifest struct {
@@ -92,10 +92,10 @@ func ClassifyRepoPath(relativePath string, repoAnalysis *RepoAnalysis) string {
 		if segment == "" {
 			continue
 		}
-		if thirdPartySegments[segment] {
+		if _, ok := thirdPartySegments[segment]; ok {
 			return ClassThirdParty
 		}
-		if generatedSegments[segment] {
+		if _, ok := generatedSegments[segment]; ok {
 			return ClassGenerated
 		}
 		if strings.HasSuffix(segment, ".xcassets") || strings.HasSuffix(segment, ".imageset") {
@@ -112,17 +112,17 @@ func NormalizeExtractClasses(repoAnalysis *RepoAnalysis, extra []string) []strin
 		configured = repoAnalysis.ExtractClasses
 	}
 
-	allowedSet := make(map[string]bool)
+	allowedSet := make(map[string]struct{})
 	for _, c := range configured {
-		allowedSet[c] = true
+		allowedSet[c] = struct{}{}
 	}
 	for _, e := range extra {
-		allowedSet[e] = true
+		allowedSet[e] = struct{}{}
 	}
 
 	var result []string
 	for _, sc := range AllSourceClasses {
-		if allowedSet[sc] {
+		if _, ok := allowedSet[sc]; ok {
 			result = append(result, sc)
 		}
 	}
@@ -133,16 +133,16 @@ func NormalizeExtractClasses(repoAnalysis *RepoAnalysis, extra []string) []strin
 }
 
 func AggregateSourceClass(values []*string) *string {
-	availableSet := make(map[string]bool)
+	availableSet := make(map[string]struct{})
 	for _, v := range values {
 		if v != nil {
-			availableSet[*v] = true
+			availableSet[*v] = struct{}{}
 		}
 	}
 
 	var available []string
 	for _, sc := range AllSourceClasses {
-		if availableSet[sc] {
+		if _, ok := availableSet[sc]; ok {
 			available = append(available, sc)
 		}
 	}

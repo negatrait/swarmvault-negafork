@@ -135,10 +135,10 @@ func BuildBenchmarkArtifact(input BuildBenchmarkArtifactInput) BenchmarkArtifact
 		reductionRatio = float64(math.Round((1.0-float64(avgQueryTokens)/math.Max(1.0, float64(corpusTokens)))*1000) / 1000)
 	}
 
-	uniqueVisitedNodesSet := make(map[string]bool)
+	uniqueVisitedNodesSet := make(map[string]struct{})
 	for _, entry := range perQuestion {
 		for _, id := range entry.VisitedNodeIDs {
-			uniqueVisitedNodesSet[id] = true
+			uniqueVisitedNodesSet[id] = struct{}{}
 		}
 	}
 	uniqueVisitedNodes := len(uniqueVisitedNodesSet)

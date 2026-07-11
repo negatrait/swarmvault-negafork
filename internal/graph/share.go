@@ -7,7 +7,7 @@ import (
 )
 
 func SortedFallbackHubs(graph types.GraphArtifact) []types.GraphNode {
-	var filtered []types.GraphNode
+	filtered := []types.GraphNode{}
 	for _, node := range graph.Nodes {
 		if node.Type != "source" {
 			filtered = append(filtered, node)
@@ -18,30 +18,28 @@ func SortedFallbackHubs(graph types.GraphArtifact) []types.GraphNode {
 		left := filtered[i]
 		right := filtered[j]
 
-		rightDegree := 0
-		if right.Degree != nil {
-			rightDegree = *right.Degree
-		}
 		leftDegree := 0
 		if left.Degree != nil {
 			leftDegree = *left.Degree
 		}
-
+		rightDegree := 0
+		if right.Degree != nil {
+			rightDegree = *right.Degree
+		}
 		if rightDegree != leftDegree {
-			return rightDegree < leftDegree // Descending
+			return rightDegree < leftDegree
 		}
 
-		rightScore := 0.0
-		if right.BridgeScore != nil {
-			rightScore = *right.BridgeScore
-		}
-		leftScore := 0.0
+		leftBridgeScore := 0.0
 		if left.BridgeScore != nil {
-			leftScore = *left.BridgeScore
+			leftBridgeScore = *left.BridgeScore
 		}
-
-		if rightScore != leftScore {
-			return rightScore < leftScore // Descending
+		rightBridgeScore := 0.0
+		if right.BridgeScore != nil {
+			rightBridgeScore = *right.BridgeScore
+		}
+		if rightBridgeScore != leftBridgeScore {
+			return rightBridgeScore < leftBridgeScore
 		}
 
 		leftLabel := ""
@@ -52,18 +50,11 @@ func SortedFallbackHubs(graph types.GraphArtifact) []types.GraphNode {
 		if right.Label != nil {
 			rightLabel = *right.Label
 		}
-
-		return strings.Compare(leftLabel, rightLabel) < 0 // Ascending
+		return strings.Compare(leftLabel, rightLabel) < 0
 	})
 
-	limit := 5
-	if len(filtered) < limit {
-		limit = len(filtered)
+	if len(filtered) > 5 {
+		return filtered[:5]
 	}
-
-	if limit == 0 {
-		return make([]types.GraphNode, 0)
-	}
-
-	return filtered[:limit]
+	return filtered
 }
