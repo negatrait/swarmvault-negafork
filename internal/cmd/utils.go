@@ -101,7 +101,7 @@ func handleUtilsStringOpsAdvanced(action string, rawArgs json.RawMessage) error 
 		}
 	case "safeFrontmatter":
 		var args struct {
-			Value map[string]any `json:"value"`
+			Value map[string]json.RawMessage `json:"value"`
 		}
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
 			return fmt.Errorf("error decoding args: %w", err)

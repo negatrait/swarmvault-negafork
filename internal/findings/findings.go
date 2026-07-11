@@ -5,11 +5,8 @@ import (
 )
 
 // NormalizeFindingSeverity normalizes the finding severity string.
-func NormalizeFindingSeverity(value any) string {
-	strValue, ok := value.(string)
-	if !ok {
-		return "info"
-	}
+func NormalizeFindingSeverity(value string) string {
+	strValue := value
 
 	normalized := strings.ToLower(strings.TrimSpace(strValue))
 
