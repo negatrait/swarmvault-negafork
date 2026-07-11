@@ -20,19 +20,39 @@ type DecayConfig struct {
 }
 
 type GraphPage struct {
-	ID              string       `json:"id"`
-	Kind            string       `json:"kind"`
-	Title           string       `json:"title"`
-	SourceType      *string      `json:"sourceType,omitempty"`
-	Path            string       `json:"path"`
-	SourceClass     *SourceClass `json:"sourceClass,omitempty"`
-	SourceIDs       []string     `json:"sourceIds"`
-	ProjectIDs      []string     `json:"projectIds"`
-	NodeIDs         []string     `json:"nodeIds"`
-	Freshness       Freshness    `json:"freshness"`
-	DecayScore      *float64     `json:"decayScore,omitempty"`
-	LastConfirmedAt *string      `json:"lastConfirmedAt,omitempty"`
-	SupersededBy    *string      `json:"supersededBy,omitempty"`
+	ID                      string            `json:"id"`
+	Kind                    string            `json:"kind"`
+	Title                   string            `json:"title"`
+	SourceType              *string           `json:"sourceType,omitempty"`
+	Path                    string            `json:"path"`
+	SourceClass             *SourceClass      `json:"sourceClass,omitempty"`
+	SourceIDs               []string          `json:"sourceIds"`
+	ProjectIDs              []string          `json:"projectIds"`
+	NodeIDs                 []string          `json:"nodeIds"`
+	Freshness               Freshness         `json:"freshness"`
+	DecayScore              *float64          `json:"decayScore,omitempty"`
+	LastConfirmedAt         *string           `json:"lastConfirmedAt,omitempty"`
+	SupersededBy            *string           `json:"supersededBy,omitempty"`
+	Status                  string            `json:"status"`
+	Confidence              float64           `json:"confidence,omitempty"`
+	Backlinks               []string          `json:"backlinks,omitempty"`
+	SchemaHash              string            `json:"schemaHash,omitempty"`
+	SourceHashes            map[string]string `json:"sourceHashes,omitempty"`
+	SourceSemanticHashes    map[string]string `json:"sourceSemanticHashes,omitempty"`
+	RelatedPageIds          []string          `json:"relatedPageIds,omitempty"`
+	RelatedNodeIds          []string          `json:"relatedNodeIds,omitempty"`
+	RelatedSourceIds        []string          `json:"relatedSourceIds,omitempty"`
+	CreatedAt               string            `json:"createdAt,omitempty"`
+	UpdatedAt               string            `json:"updatedAt,omitempty"`
+	CompiledFrom            []string          `json:"compiledFrom,omitempty"`
+	ManagedBy               string            `json:"managedBy,omitempty"`
+	Origin                  any               `json:"origin,omitempty"`
+	Question                *string           `json:"question,omitempty"`
+	OutputFormat            *string           `json:"outputFormat,omitempty"`
+	OutputAssets            any               `json:"outputAssets,omitempty"`
+	Tier                    *string           `json:"tier,omitempty"`
+	ConsolidatedFromPageIds []string          `json:"consolidatedFromPageIds,omitempty"`
+	ConsolidationConfidence *float64          `json:"consolidationConfidence,omitempty"`
 }
 
 type GraphArtifact struct {

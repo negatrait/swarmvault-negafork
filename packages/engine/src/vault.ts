@@ -7076,7 +7076,8 @@ function structuralLintFindings(
         });
       }
 
-      const freshnessHashes = Object.keys(page.sourceSemanticHashes).length ? page.sourceSemanticHashes : page.sourceHashes;
+      const freshnessHashes =
+        page.sourceSemanticHashes && Object.keys(page.sourceSemanticHashes).length ? page.sourceSemanticHashes : page.sourceHashes || {};
       for (const [sourceId, knownHash] of Object.entries(freshnessHashes)) {
         const manifest = manifestMap.get(sourceId);
         const manifestHash = manifest?.semanticHash ?? manifest?.contentHash;
