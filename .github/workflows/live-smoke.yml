@@ -35,7 +35,7 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
-          node-version: "22"
+          node-version: 22
 
       - run: pnpm install --frozen-lockfile
 
@@ -83,7 +83,7 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
-          node-version: "22"
+          node-version: 22
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
@@ -135,7 +135,7 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
-          node-version: "22"
+          node-version: 22
 
       - run: pnpm install --frozen-lockfile
 
@@ -195,7 +195,7 @@ jobs:
       - uses: actions/setup-node@v4.1.0
         if: env.OPENAI_API_KEY != ''
         with:
-          node-version: "22"
+          node-version: 22
 
       - run: pnpm install --frozen-lockfile
         if: env.OPENAI_API_KEY != ''
@@ -263,7 +263,7 @@ jobs:
       - uses: actions/setup-node@v4.1.0
         if: env.OLLAMA_API_KEY != ''
         with:
-          node-version: "22"
+          node-version: 22
 
       - run: pnpm install --frozen-lockfile
         if: env.OLLAMA_API_KEY != ''
