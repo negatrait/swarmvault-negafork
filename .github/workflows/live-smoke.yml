@@ -34,10 +34,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
-      - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
           node-version: "22"
+      - uses: pnpm/action-setup@v4.0.0
 
       - run: pnpm install --frozen-lockfile
 
@@ -82,10 +82,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
-      - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
           node-version: "22"
+      - uses: pnpm/action-setup@v4.0.0
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
@@ -134,10 +134,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
-      - uses: pnpm/action-setup@v4.0.0
       - uses: actions/setup-node@v4.1.0
         with:
           node-version: "22"
+      - uses: pnpm/action-setup@v4.0.0
 
       - run: pnpm install --frozen-lockfile
 
