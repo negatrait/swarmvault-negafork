@@ -1,31 +1,30 @@
-# Daily Porting Scope: graph-share (sortedFallbackHubs)
+# Daily Porting Scope: providers/base.ts (BaseProviderAdapter structure)
 
 ## 1. Goal
-Port exactly one leaf function, `sortedFallbackHubs`, from the 483-line `packages/engine/src/graph-share.ts` into the Go package `internal/graph`. This follows the Slicing Decision Tree constraint for files over 150 lines (scoping exactly one leaf function to prevent timeouts).
-  - **Success Metrics:** The Go CLI subcommand `graph` accepts a JSON payload containing the `graph` argument, executes the sorting algorithm for nodes, and returns a 1:1 matching JSON response containing an array of `GraphNode`.
-  - **Identified Pitfalls:** We must replicate the Node.js `localeCompare` string comparison used as a tie-breaker. `strings.Compare` in Go handles exact lexical sorting which aligns with typical default locale behaviors. Null/undefined values (`degree ?? 0`) translate to zero-values in Go structs, so we must be precise when dealing with struct pointers vs concrete values.
+Port the abstract base class and utility structures from `packages/engine/src/providers/base.ts` to `internal/providers/base.go`. This is a foundational file (Leaf Node, Depth 0) that provides the `BaseProvider` struct (which other Go provider implementations will embed) and handles common utility methods like capability tracking.
+  - **Success Metrics:** The Go package `internal/providers` provides a `BaseProvider` struct with a `Capabilities` set (represented idiomatically as `map[types.ProviderCapability]struct{}`) and default implementations for the provider interface matching `BaseProviderAdapter`.
+  - **Identified Pitfalls:** Go does not have abstract classes or inheritance, so we will use struct embedding (composition). We must port the default methods that return generic errors (`generateImage`, `embedTexts`, `transcribeAudio`) so that structs embedding `BaseProvider` get these default error returns. The JSON Schema stringification from Zod cannot be perfectly replicated in a simple Go base file without dependencies, so the Go translation of `generateStructured` should be structurally similar (taking a schema description string) or rely on `types.ProviderAdapter` method signatures.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/graph-share.ts`
-- **Source Export(s):** `sortedFallbackHubs` (internal utility, not exported)
-- **Target File:** `internal/graph/share.go`
-- **Target Export:** `SortedFallbackHubs`
+- **Source File:** `packages/engine/src/providers/base.ts`
+- **Source Export(s):** `BaseProviderAdapter`
+- **Target File:** `internal/providers/base.go`
+- **Target Export:** `BaseProvider`
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native graph`
-- **TS Delegation Call:** Update `sortedFallbackHubs` in `packages/engine/src/graph-share.ts` to delegate to `runGoSidecarSync<GraphNode[]>("graph", { action: "sortedFallbackHubs", args: { graph } })` when `USE_GO_PORT=true`.
+- **CLI Subcommand:** N/A (This is an internal core structure, not exposed directly via CLI)
+- **TS Delegation Call:** We won't bridge this abstract base class natively via CLI. This is a foundational port to unblock the rest of the `/providers` folder. Note: `PORTING_PROGRESS.json` tracks it as `subcommand: null`.
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard Go library (`sort`, `strings`).
-- **Go-to-Go Native Imports:** `swarmvault-native/internal/utils` for JSON decoding/encoding in the CLI handler, and `swarmvault-native/internal/types` (or equivalent) for the `GraphArtifact` and `GraphNode` structures.
-- **Transitive Blocks:** None. This function is a pure algorithmic leaf that sorts an array. Stubbing is strictly forbidden.
+- **Verified Go Dependencies:** `swarmvault-native/internal/types` for the `GenerationRequest`, `GenerationResponse`, `ImageGenerationRequest`, `ImageGenerationResponse`, `AudioTranscriptionRequest`, `AudioTranscriptionResponse` structs.
+- **Go-to-Go Native Imports:** `swarmvault-native/internal/types`.
+- **Transitive Blocks:** The file is small and has no internal TS dependencies other than types.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 Lines of Go Code. `share.go` will be small.
-- **Function Limit:** Max 80 Lines of Code. `SortedFallbackHubs` will easily fit.
-- **Nesting Limit:** Max 3 levels deep. The sort callback will be flat.
+- **File Limit:** Max 400 Lines of Go Code. `base.go` will be very short.
+- **Function Limit:** Max 80 Lines of Code.
+- **Nesting Limit:** Max 3 levels deep.
 
 ## 6. Parity Expectations
-- Input/Output schema must match structurally 1:1.
-- Array order must be perfectly identical to the TS output when tie-breaking by `degree`, `bridgeScore`, and `label`.
-- Unit tests must run identical JSON test fixtures in `/shared-fixtures` across both TS and Go to verify identical output.
+- Provides a Go struct that can be embedded by other Go providers to satisfy the `ProviderAdapter` interface.
+- Returns explicit errors (instead of throwing) for unsupported methods like `EmbedTexts`, `GenerateImage`, and `TranscribeAudio`.
