@@ -51,7 +51,7 @@ if [ "$OS" = "Linux" ]; then
   fi
 
   if [ -n "$GOARCH" ]; then
-    echo "=> Attempting to download pre-compiled Go binary for Linux $GOARCH..."
+    echo "=> Attempting to download pre-compiled Go binary for Linux (AMD64/ARM64) $GOARCH..."
     RELEASE_URL="https://github.com/negatrait/swarmvault-negafork/releases/download/daily/swarmvault-native-linux-${GOARCH}"
 
     mkdir -p bin

@@ -3,7 +3,6 @@ package types
 type GraphNode struct {
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
-	Name        string   `json:"name"`
 	Label       *string  `json:"label,omitempty"`
 	Degree      *int     `json:"degree,omitempty"`
 	Centrality  *float64 `json:"centrality,omitempty"`

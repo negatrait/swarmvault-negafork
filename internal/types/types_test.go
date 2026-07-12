@@ -13,7 +13,6 @@ func TestGraphNodeSerialization(t *testing.T) {
 	node := GraphNode{
 		ID:         "node-1",
 		Type:       "page",
-		Name:       "Test Node",
 		Label:      &label,
 		Degree:     &degree,
 		Centrality: &centrality,
@@ -30,7 +29,7 @@ func TestGraphNodeSerialization(t *testing.T) {
 		t.Fatalf("failed to unmarshal GraphNode: %v", err)
 	}
 
-	if decoded.ID != node.ID || decoded.Type != node.Type || decoded.Name != node.Name {
+	if decoded.ID != node.ID || decoded.Type != node.Type {
 		t.Errorf("unmarshaled node mismatch: %+v vs %+v", decoded, node)
 	}
 
