@@ -1,6 +1,7 @@
 package types
 
 type GraphNode struct {
+	PageID      *string  `json:"pageId,omitempty"`
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
 	Label       *string  `json:"label,omitempty"`
@@ -108,10 +109,16 @@ type GraphHyperedge struct {
 }
 
 type GraphEdge struct {
-	ID       string `json:"id"`
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	Relation string `json:"relation"`
+	ID                string        `json:"id"`
+	Source            string        `json:"source"`
+	Target            string        `json:"target"`
+	Relation          string        `json:"relation"`
+	Status            ClaimStatus   `json:"status"`
+	EvidenceClass     EvidenceClass `json:"evidenceClass"`
+	Confidence        float64       `json:"confidence"`
+	Provenance        []string      `json:"provenance"`
+	SimilarityReasons []string      `json:"similarityReasons,omitempty"`
+	SimilarityBasis   string        `json:"similarityBasis,omitempty"`
 }
 
 type GraphCommunity struct {

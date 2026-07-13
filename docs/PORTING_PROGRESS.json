@@ -123,9 +123,9 @@
     },
     {
       "path": "src/graph-enrichment.ts",
-      "status": "pending",
+      "status": "completed",
       "subcommand": null,
-      "bridged": false
+      "bridged": true
     },
     {
       "path": "src/graph-export.ts",
