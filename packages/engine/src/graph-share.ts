@@ -8,6 +8,7 @@ function displayVaultName(value: string | undefined): string {
 }
 
 export function sortedFallbackHubs(graph: GraphArtifact): GraphNode[] {
+  // Delegated to Go sidecar implementation
   if (process.env.USE_GO_PORT === "true") {
     return runGoSidecarSync<GraphNode[]>("graph", { action: "sortedFallbackHubs", args: { graph } });
   }

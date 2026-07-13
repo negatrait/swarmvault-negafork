@@ -56,10 +56,7 @@ func getNodePriority(node types.GraphNode, pinnedNodeIds map[string]struct{}) no
 	if node.BridgeScore != nil {
 		negBridge = -*node.BridgeScore
 	}
-	label := ""
-	if node.Label != nil {
-		label = *node.Label
-	}
+	label := node.Label
 	return nodePriorityTuple{
 		isNotPinned: isNotPinned,
 		negDegree:   negDegree,

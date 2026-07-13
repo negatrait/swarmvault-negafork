@@ -26,8 +26,8 @@ func TestSortedFallbackHubs(t *testing.T) {
 
 	expectedLabels := []string{"Alpha", "Beta", "Zeta", "Delta", "Gamma"}
 	for i, node := range result {
-		if *node.Label != expectedLabels[i] {
-			t.Errorf("expected node %d to be %s, got %s", i, expectedLabels[i], *node.Label)
+		if node.Label != expectedLabels[i] {
+			t.Errorf("expected node %d to be %s, got %s", i, expectedLabels[i], node.Label)
 		}
 	}
 }
