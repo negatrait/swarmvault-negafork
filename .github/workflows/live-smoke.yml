@@ -32,16 +32,16 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'heuristic'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm install --frozen-lockfile
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -68,7 +68,7 @@ jobs:
 
       - name: Upload heuristic smoke artifacts
         if: failure()
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v7
         with:
           name: live-smoke-heuristic
           path: .live-smoke-artifacts/
@@ -80,17 +80,17 @@ jobs:
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == 'heuristic'))
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload heuristic browser smoke artifacts
         if: failure()
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v7
         with:
           name: live-smoke-heuristic-browser
           path: .live-smoke-artifacts/
@@ -132,16 +132,16 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.lane == 'all')
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm install --frozen-lockfile
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -171,7 +171,7 @@ jobs:
 
       - name: Upload OSS corpus artifacts
         if: failure()
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v7
         with:
           name: live-oss-corpus
           path: .oss-corpus-artifacts/
@@ -188,21 +188,21 @@ jobs:
         if: env.OPENAI_API_KEY == ''
         run: echo "OPENAI_API_KEY is not configured; skipping OpenAI live smoke."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.OPENAI_API_KEY != ''
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: env.OPENAI_API_KEY != ''
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: env.OPENAI_API_KEY != ''
 
 
       - run: pnpm install --frozen-lockfile
         if: env.OPENAI_API_KEY != ''
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -239,7 +239,7 @@ jobs:
 
       - name: Upload OpenAI smoke artifacts
         if: failure() && env.OPENAI_API_KEY != ''
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v7
         with:
           name: live-smoke-openai
           path: .live-smoke-artifacts/
@@ -256,21 +256,21 @@ jobs:
         if: env.OLLAMA_API_KEY == ''
         run: echo "OLLAMA_API_KEY is not configured; skipping Ollama live smoke."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.OLLAMA_API_KEY != ''
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: env.OLLAMA_API_KEY != ''
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: env.OLLAMA_API_KEY != ''
 
 
       - run: pnpm install --frozen-lockfile
         if: env.OLLAMA_API_KEY != ''
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -313,7 +313,7 @@ jobs:
 
       - name: Upload Ollama smoke artifacts
         if: failure() && env.OLLAMA_API_KEY != ''
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v7
         with:
           name: live-smoke-ollama
           path: .live-smoke-artifacts/
