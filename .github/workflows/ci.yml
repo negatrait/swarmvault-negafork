@@ -10,14 +10,18 @@ jobs:
   check:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v6
+      - name: Workaround for Node.js 20 deprecation in actions/setup-node
+        run: |
+          export ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true
+          echo "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true" >> $GITHUB_ENV
+      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -34,13 +38,17 @@ jobs:
   perf-budget:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v6
+      - name: Workaround for Node.js 20 deprecation in actions/setup-node
+        run: |
+          export ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true
+          echo "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true" >> $GITHUB_ENV
+      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -53,13 +61,17 @@ jobs:
     needs: check
     if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v6
+      - name: Workaround for Node.js 20 deprecation in actions/setup-node
+        run: |
+          export ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true
+          echo "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true" >> $GITHUB_ENV
+      - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
           cache-dependency-path: go.mod
@@ -67,7 +79,7 @@ jobs:
 
       - name: Upload packaged smoke artifacts
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: packaged-smoke-artifacts
           path: |
