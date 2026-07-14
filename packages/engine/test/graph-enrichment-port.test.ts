@@ -6,6 +6,7 @@ describe("graph enrichment porting", () => {
   it("buildTopicHyperedges should match exactly when USE_GO_PORT is true", () => {
     // Construct a mock graph that produces a topic hyperedge
     const graph = {
+      sources: [],
       generatedAt: new Date().toISOString(),
       nodes: [
         { id: "source1", type: "source", label: "Source 1", degree: 1, sourceIds: ["source1"], projectIds: [] },
@@ -66,6 +67,7 @@ describe("graph enrichment porting", () => {
 
   it("buildModuleFormHyperedges should match exactly when USE_GO_PORT is true", () => {
     const graph = {
+      sources: [],
       generatedAt: new Date().toISOString(),
       nodes: [
         { id: "module1", type: "module", label: "MyModule", degree: 3, sourceIds: ["s1"], projectIds: [] },
