@@ -9,6 +9,8 @@ type GraphNode struct {
 	Centrality  *float64 `json:"centrality,omitempty"`
 	BridgeScore *float64 `json:"bridgeScore,omitempty"`
 	SourceClass *string  `json:"sourceClass,omitempty"`
+	SourceIDs   []string `json:"sourceIds"`
+	ProjectIDs  []string `json:"projectIds"`
 }
 
 type Freshness string
