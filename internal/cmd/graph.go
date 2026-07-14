@@ -37,6 +37,29 @@ func HandleGraph() error {
 		if err := utils.EncodeResponse(result); err != nil {
 			return err
 		}
+
+	case "buildTopicHyperedges":
+		var args struct {
+			Graph types.GraphArtifact `json:"graph"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		result := graph.BuildTopicHyperedges(args.Graph)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
+	case "buildModuleFormHyperedges":
+		var args struct {
+			Graph types.GraphArtifact `json:"graph"`
+		}
+		if err := json.Unmarshal(payload.Args, &args); err != nil {
+			return fmt.Errorf("error decoding args: %w", err)
+		}
+		result := graph.BuildModuleFormHyperedges(args.Graph)
+		if err := utils.EncodeResponse(result); err != nil {
+			return err
+		}
 	case "buildViewerGraphArtifact":
 		var args struct {
 			Graph   types.GraphArtifact `json:"graph"`

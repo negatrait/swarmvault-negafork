@@ -42,15 +42,7 @@ func SortedFallbackHubs(graph types.GraphArtifact) []types.GraphNode {
 			return rightBridgeScore < leftBridgeScore
 		}
 
-		leftLabel := ""
-		if left.Label != nil {
-			leftLabel = *left.Label
-		}
-		rightLabel := ""
-		if right.Label != nil {
-			rightLabel = *right.Label
-		}
-		return strings.Compare(leftLabel, rightLabel) < 0
+		return strings.Compare(left.Label, right.Label) < 0
 	})
 
 	if len(filtered) > 5 {

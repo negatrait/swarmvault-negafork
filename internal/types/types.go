@@ -1,14 +1,16 @@
 package types
 
 type GraphNode struct {
+	PageID      *string  `json:"pageId,omitempty"`
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
-	Name        string   `json:"name"`
-	Label       *string  `json:"label,omitempty"`
+	Label       string   `json:"label"`
 	Degree      *int     `json:"degree,omitempty"`
 	Centrality  *float64 `json:"centrality,omitempty"`
 	BridgeScore *float64 `json:"bridgeScore,omitempty"`
 	SourceClass *string  `json:"sourceClass,omitempty"`
+	SourceIDs   []string `json:"sourceIds"`
+	ProjectIDs  []string `json:"projectIds"`
 }
 
 type Freshness string
@@ -109,10 +111,16 @@ type GraphHyperedge struct {
 }
 
 type GraphEdge struct {
-	ID       string `json:"id"`
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	Relation string `json:"relation"`
+	ID                string        `json:"id"`
+	Source            string        `json:"source"`
+	Target            string        `json:"target"`
+	Relation          string        `json:"relation"`
+	Status            ClaimStatus   `json:"status"`
+	EvidenceClass     EvidenceClass `json:"evidenceClass"`
+	Confidence        float64       `json:"confidence"`
+	Provenance        []string      `json:"provenance"`
+	SimilarityReasons []string      `json:"similarityReasons,omitempty"`
+	SimilarityBasis   string        `json:"similarityBasis,omitempty"`
 }
 
 type GraphCommunity struct {
