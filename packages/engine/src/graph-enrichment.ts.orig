@@ -427,9 +427,7 @@ function buildSemanticSimilarityEdges(
   return candidates;
 }
 
-function buildTopicHyperedges(
-  graph: Omit<GraphArtifact, "hyperedges" | "generatedAt" | "sources"> & { hyperedges: GraphHyperedge[] }
-): GraphHyperedge[] {
+function buildTopicHyperedges(graph: GraphArtifact): GraphHyperedge[] {
   if (process.env.USE_GO_PORT === "true") {
     return runGoSidecarSync<GraphHyperedge[]>("graph", { action: "buildTopicHyperedges", args: { graph } });
   }
@@ -474,9 +472,7 @@ function buildTopicHyperedges(
   });
 }
 
-function buildModuleFormHyperedges(
-  graph: Omit<GraphArtifact, "hyperedges" | "generatedAt" | "sources"> & { hyperedges: GraphHyperedge[] }
-): GraphHyperedge[] {
+function buildModuleFormHyperedges(graph: GraphArtifact): GraphHyperedge[] {
   if (process.env.USE_GO_PORT === "true") {
     return runGoSidecarSync<GraphHyperedge[]>("graph", { action: "buildModuleFormHyperedges", args: { graph } });
   }

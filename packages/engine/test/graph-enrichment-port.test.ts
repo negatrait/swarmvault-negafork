@@ -5,7 +5,8 @@ import type { GraphArtifact } from "../src/types.js";
 describe("graph enrichment porting", () => {
   it("buildTopicHyperedges should match exactly when USE_GO_PORT is true", () => {
     // Construct a mock graph that produces a topic hyperedge
-    const graph: GraphArtifact = {
+    const graph = {
+      generatedAt: new Date().toISOString(),
       nodes: [
         { id: "source1", type: "source", label: "Source 1", degree: 1, sourceIds: ["source1"], projectIds: [] },
         { id: "source2", type: "source", label: "Source 2", degree: 1, sourceIds: ["source2"], projectIds: [] },
@@ -46,7 +47,7 @@ describe("graph enrichment porting", () => {
       ],
       pages: [],
       hyperedges: []
-    };
+    } as unknown as GraphArtifact;
 
     // Call TS version
     process.env.USE_GO_PORT = "false";
@@ -64,7 +65,8 @@ describe("graph enrichment porting", () => {
   });
 
   it("buildModuleFormHyperedges should match exactly when USE_GO_PORT is true", () => {
-    const graph: GraphArtifact = {
+    const graph = {
+      generatedAt: new Date().toISOString(),
       nodes: [
         { id: "module1", type: "module", label: "MyModule", degree: 3, sourceIds: ["s1"], projectIds: [] },
         { id: "symbol1", type: "symbol", label: "Symbol 1", degree: 1, sourceIds: [], projectIds: [] },
@@ -105,7 +107,7 @@ describe("graph enrichment porting", () => {
       ],
       pages: [],
       hyperedges: []
-    };
+    } as unknown as GraphArtifact;
 
     process.env.USE_GO_PORT = "false";
     const tsResult = enrichGraph(graph, [], []);
