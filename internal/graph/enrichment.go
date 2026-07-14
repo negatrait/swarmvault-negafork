@@ -50,13 +50,16 @@ func BuildTopicHyperedges(graph types.GraphArtifact) []types.GraphHyperedge {
 		nodeIds = append(nodeIds, anchor.ID)
 		nodeIds = append(nodeIds, uniqueMembers...)
 
-		var sourcePageIdsRaw []string
+		sourcePageIdsRaw := make([]string, 0)
 		for _, nID := range nodeIds {
 			if n, ok := nodesById[nID]; ok && n.PageID != nil && *n.PageID != "" {
 				sourcePageIdsRaw = append(sourcePageIdsRaw, *n.PageID)
 			}
 		}
 		sourcePageIds := utils.UniqueStrings(sourcePageIdsRaw)
+		if sourcePageIds == nil {
+			sourcePageIds = make([]string, 0)
+		}
 
 		conf := 0.72 + float64(len(uniqueMembers))*0.06
 		if conf > 0.96 {
@@ -69,10 +72,7 @@ func BuildTopicHyperedges(graph types.GraphArtifact) []types.GraphHyperedge {
 			hash = hash[:16]
 		}
 
-		var label string
-		if anchor.Label != nil {
-			label = *anchor.Label
-		}
+		label := anchor.Label
 
 		res = append(res, types.GraphHyperedge{
 			ID:            "hyper:" + hash,
@@ -130,13 +130,16 @@ func BuildModuleFormHyperedges(graph types.GraphArtifact) []types.GraphHyperedge
 		nodeIds = append(nodeIds, moduleNode.ID)
 		nodeIds = append(nodeIds, uniqueMembers...)
 
-		var sourcePageIdsRaw []string
+		sourcePageIdsRaw := make([]string, 0)
 		for _, nID := range nodeIds {
 			if n, ok := nodesById[nID]; ok && n.PageID != nil && *n.PageID != "" {
 				sourcePageIdsRaw = append(sourcePageIdsRaw, *n.PageID)
 			}
 		}
 		sourcePageIds := utils.UniqueStrings(sourcePageIdsRaw)
+		if sourcePageIds == nil {
+			sourcePageIds = make([]string, 0)
+		}
 
 		conf := 0.78 + float64(len(uniqueMembers))*0.04
 		if conf > 0.98 {
@@ -149,10 +152,7 @@ func BuildModuleFormHyperedges(graph types.GraphArtifact) []types.GraphHyperedge
 			hash = hash[:16]
 		}
 
-		var label string
-		if moduleNode.Label != nil {
-			label = *moduleNode.Label
-		}
+		label := moduleNode.Label
 
 		res = append(res, types.GraphHyperedge{
 			ID:            "hyper:" + hash,
