@@ -70,8 +70,8 @@ func BuildTopicHyperedges(graph types.GraphArtifact) []types.GraphHyperedge {
 		}
 
 		var label string
-		if anchor.Label != nil {
-			label = *anchor.Label
+		if anchor.Label != "" {
+			label = anchor.Label
 		}
 
 		res = append(res, types.GraphHyperedge{
@@ -150,8 +150,8 @@ func BuildModuleFormHyperedges(graph types.GraphArtifact) []types.GraphHyperedge
 		}
 
 		var label string
-		if moduleNode.Label != nil {
-			label = *moduleNode.Label
+		if moduleNode.Label != "" {
+			label = moduleNode.Label
 		}
 
 		res = append(res, types.GraphHyperedge{
