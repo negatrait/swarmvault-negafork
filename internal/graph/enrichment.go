@@ -69,10 +69,8 @@ func BuildTopicHyperedges(graph types.GraphArtifact) []types.GraphHyperedge {
 			hash = hash[:16]
 		}
 
-		var label string
-		if anchor.Label != "" {
-			label = anchor.Label
-		}
+		// Simplified technical debt: label is a string value type
+		label := anchor.Label
 
 		res = append(res, types.GraphHyperedge{
 			ID:            "hyper:" + hash,
@@ -149,10 +147,8 @@ func BuildModuleFormHyperedges(graph types.GraphArtifact) []types.GraphHyperedge
 			hash = hash[:16]
 		}
 
-		var label string
-		if moduleNode.Label != "" {
-			label = moduleNode.Label
-		}
+		// Simplified technical debt: label is a string value type
+		label := moduleNode.Label
 
 		res = append(res, types.GraphHyperedge{
 			ID:            "hyper:" + hash,
