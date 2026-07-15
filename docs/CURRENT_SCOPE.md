@@ -1,28 +1,31 @@
-# Daily Porting Scope: Fix Technical Debt (graph-enrichment)
+# Daily Porting Scope: parseStoredPage (pages.ts)
 
 ## 1. Goal
-Halt forward progression and fix the broken build in `internal/graph/enrichment.go`. The previous builder committed code with mismatched types (comparing strings to untyped nil), violating the Zero-Stubbing Mandate by leaving code that doesn't compile.
-  - **Success Metrics:** The Go native sidecar compiles successfully (`pnpm build`).
-  - **Identified Pitfalls:** The builder attempted to check if a string was nil (`anchor.Label != nil` and `moduleNode.Label != nil`) and attempted to dereference a string (`*anchor.Label` and `*moduleNode.Label`). Strings are value types in Go and cannot be nil unless they are pointers (`*string`). If the struct defines them as `string`, they must be checked against the empty string `""` and assigned directly.
+Port the `parseStoredPage` function and its stateless normalization helpers from `packages/engine/src/pages.ts` to Go (`internal/pages/parse.go`). This function parses markdown files with YAML frontmatter into a `types.GraphPage` struct.
+  - **Success Metrics:** `parseStoredPage` perfectly replicates `gray-matter` parsing behavior, and all normalizers perfectly map TS logic to Go.
+  - **Identified Pitfalls:** We must use a robust YAML parser (e.g., `gopkg.in/yaml.v3`) instead of fragile regex to parse the frontmatter, matching `gray-matter` behavior. We must carefully map TS string dates to Go `time.Time` or ISO string formatting.
 
 ## 2. Source-to-Target Map
-- **Source File:** `packages/engine/src/graph-enrichment.ts`
-- **Target File:** `internal/graph/enrichment.go`
+- **Source File:** `packages/engine/src/pages.ts`
+- **Source Export(s):** `parseStoredPage`, `normalizeStringArray`, `normalizeProjectIds`, `normalizeSourceHashes`, `normalizeSourceSemanticHashes`, `normalizePageStatus`, `normalizePageManager`, `normalizeSourceType`, `normalizeSourceClass`, `normalizeOutputFormat`, `normalizeOutputAssets`, `inferPageKind`, `normalizeMemoryTier`
+- **Target File:** `internal/pages/parse.go`
+- **Target Export:** `func ParseStoredPage(relativePath string, content []byte, fallbackCreatedAt, fallbackUpdatedAt string) types.GraphPage` and associated unexported normalizers.
 
 ## 3. Subcommand & Bridge Contract
-- **CLI Subcommand:** `swarmvault-native graph`
-- **TS Delegation Call:** No changes to TS bridge, fixing the underlying Go implementation.
+- **CLI Subcommand:** `swarmvault-native pages` (action: "parseStoredPage")
+- **TS Delegation Call:** Update `parseStoredPage` in `packages/engine/src/pages.ts` to route execution through `runGoSidecarSync` using the `pages` subcommand.
 
 ## 4. Leaf Dependency Mapping (Strictly Zero-Stubs)
-- **Verified Go Dependencies:** Standard library `strings`.
-- **Go-to-Go Native Imports:** None required for this fix.
-- **Transitive Blocks:** You must fix the compilation error before proceeding with any new structural ports.
+- **Verified Go Dependencies:** `gopkg.in/yaml.v3` (must be added to `go.mod`), standard libraries (`strings`, `path`).
+- **Go-to-Go Native Imports:** `swarmvault-native/internal/types`, `swarmvault-native/internal/utils` (for slugify).
+- **Transitive Blocks:** Zero stubs or mocks are permitted. The Go parser must fully handle the frontmatter and body separation, matching the exact struct schema of `types.GraphPage`.
 
 ## 5. Code Size & Complexity Restrictions (Strict)
-- **File Limit:** Max 400 Lines of Go Code. `enrichment.go` will be well under this limit.
-- **Function Limit:** Max 80 Lines of Code.
+- **File Limit:** Max 400 Lines of Go Code. `parse.go` will be well under this limit.
+- **Function Limit:** Max 80 Lines of Code. Extract the YAML unmarshaling and struct field mapping into smaller helpers.
 - **Nesting Limit:** Max 3 levels deep.
 
 ## 6. Parity Expectations
-- The project must compile successfully via `pnpm build`.
-- The Go implementation output for `buildTopicHyperedges` and `buildModuleFormHyperedges` must match the TS output.
+- Input/Output schema must match structurally 1:1.
+- Unit tests must run the exact same JSON test fixtures in `/shared-fixtures` across both TS and Go to verify identical output.
+- `gray-matter` behavior (parsing YAML between `---` fences at the top of the file) must be perfectly replicated.
